@@ -1,0 +1,43 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Xcode
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+*.xcsettings
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM/
+*.dSYM.zip
+*.xcarchive/
+*.xcresult/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Local build-server configuration
+buildServer.json
+
+# OpenCode local dependencies
+.opencode/node_modules/
+.opencode/package.json
+.opencode/package-lock.json
+.opencode/bun.lock
+.opencode/bun.lockb
+.opencode/.gitignore
+
+# Local environment and signing files
+.env
+.env.*
+!.env.example
+*.p12
+*.mobileprovision

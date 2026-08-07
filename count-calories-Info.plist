@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Count Calories uses the camera to scan product barcodes.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>count_calories</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>countcalories</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

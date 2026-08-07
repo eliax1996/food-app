@@ -1,0 +1,26 @@
+[
+  {
+    "label": "iOS: Build",
+    "command": "just",
+    "args": ["build"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "env": {
+      "DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer"
+    },
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "iOS: Run on iPhone",
+    "command": "just",
+    "args": ["run"],
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "env": {
+      "DEVELOPER_DIR": "/Applications/Xcode-beta.app/Contents/Developer"
+    },
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  }
+]
