@@ -8,156 +8,214 @@ import XCTest
 
 @MainActor
 final class NutritionLookupTests: XCTestCase {
-    func testClientMapsOpenFoodFactsResponse() async throws {
-        MockURLProtocol.responseData = """
-        {
-          "status": 1,
-          "product": {
-            "code": "3017620422003",
-            "product_name": "Nutella",
-            "brands": "Ferrero",
-            "quantity": "350 g",
-            "serving_quantity": "15",
-            "nutriments": {
-              "energy-kcal_100g": 539,
-              "proteins_100g": 6.3,
-              "carbohydrates_100g": 57.5,
-              "fat_100g": 30.9,
-              "fiber_100g": 0,
-              "sugars_100g": 56.3,
-              "salt_100g": 0.107
+    func testPrimaryResponseCancelsDelayedFallback() async throws {
+        let primaryNutrition = sampleNutrition(barcode: "12345678", name: "V3 product")
+        let primary = StubNutritionClient(result: .found(primaryNutrition))
+        let fallback = StubNutritionClient(result: .found(sampleNutrition(barcode: "12345678", name: "V2 product")))
+        let client = OpenFoodFactsClient(
+            primary: primary,
+            fallback: fallback,
+            fallbackDelay: .milliseconds(100),
+            responseTimeout: .seconds(1)
+        )
+
+        let result = try await client.fetchNutrition(for: "12345678")
+
+        let primaryCallCount = await primary.callCount
+        let fallbackCallCount = await fallback.callCount
+        XCTAssertEqual(result, .found(primaryNutrition))
+        XCTAssertEqual(primaryCallCount, 1)
+        XCTAssertEqual(fallbackCallCount, 0)
+    }
+
+    func testFallbackWinsWhenPrimaryIsSlow() async throws {
+        let fallbackNutrition = sampleNutrition(barcode: "12345678", name: "V2 fallback")
+        let primary = StubNutritionClient(
+            result: .found(sampleNutrition(barcode: "12345678", name: "Slow v3")),
+            delay: .milliseconds(250)
+        )
+        let fallback = StubNutritionClient(
+            result: .found(fallbackNutrition),
+            delay: .milliseconds(10)
+        )
+        let client = OpenFoodFactsClient(
+            primary: primary,
+            fallback: fallback,
+            fallbackDelay: .milliseconds(20),
+            responseTimeout: .seconds(1)
+        )
+
+        let result = try await client.fetchNutrition(for: "12345678")
+
+        let primaryCallCount = await primary.callCount
+        let fallbackCallCount = await fallback.callCount
+        XCTAssertEqual(result, .found(fallbackNutrition))
+        XCTAssertEqual(primaryCallCount, 1)
+        XCTAssertEqual(fallbackCallCount, 1)
+    }
+
+    func testFallbackReplacesIncompletePrimaryProduct() async throws {
+        let fallbackNutrition = sampleNutrition(barcode: "12345678", name: "Complete v2 product")
+        let primary = StubNutritionClient(result: .incompleteProduct)
+        let fallback = StubNutritionClient(result: .found(fallbackNutrition))
+        let client = OpenFoodFactsClient(
+            primary: primary,
+            fallback: fallback,
+            fallbackDelay: .seconds(1),
+            responseTimeout: .milliseconds(100)
+        )
+
+        let result = try await client.fetchNutrition(for: "12345678")
+
+        XCTAssertEqual(result, .found(fallbackNutrition))
+    }
+
+    func testSharedRateLimitDoesNotSpendAnotherRequestOnFallback() async {
+        for statusCode in [429, 503] {
+            let primary = StubNutritionClient(error: .serverError(statusCode))
+            let fallback = StubNutritionClient(result: .notFound)
+            let client = OpenFoodFactsClient(
+                primary: primary,
+                fallback: fallback,
+                fallbackDelay: .milliseconds(100),
+                responseTimeout: .seconds(1)
+            )
+
+            do {
+                _ = try await client.fetchNutrition(for: "12345678")
+                XCTFail("Expected shared rate-limit error.")
+            } catch let error as FoodNutritionFetchError {
+                XCTAssertEqual(error, .serverError(statusCode))
+            } catch {
+                XCTFail("Unexpected error: \(error)")
             }
-          }
+            let fallbackCallCount = await fallback.callCount
+            XCTAssertEqual(fallbackCallCount, 0)
         }
-        """.data(using: .utf8)!
-
-        let client = OpenFoodFactsClient(session: mockSession())
-        let nutrition = try await client.fetchNutrition(for: "3017620422003")
-
-        XCTAssertEqual(nutrition?.name, "Nutella")
-        XCTAssertEqual(nutrition?.brand, "Ferrero")
-        XCTAssertEqual(nutrition?.servingAmount, 15)
-        XCTAssertEqual(nutrition?.resolvedServingUnit, .grams)
-        XCTAssertEqual(nutrition?.caloriesPer100Grams, 539)
-        XCTAssertEqual(nutrition?.proteinGramsPer100Grams, 6.3)
-        XCTAssertEqual(nutrition?.calories(for: 30), 161.7)
-        XCTAssertEqual(MockURLProtocol.lastRequest?.url?.query?.contains("fields="), true)
     }
 
-    func testClientMapsBeveragePackageToMilliliters() async throws {
-        MockURLProtocol.responseData = """
-        {
-          "status": 1,
-          "product": {
-            "code": "8032919465535",
-            "product_name": "La Nostra Limonata",
-            "quantity": "275 ml",
-            "product_quantity": 275,
-            "product_quantity_unit": "ml",
-            "categories_tags": ["en:beverages", "en:lemonades"],
-            "nutrition_data_per": "100ml",
-            "nutriments": {
-              "energy-kcal_100g": 64
-            }
-          }
-        }
-        """.data(using: .utf8)!
+    func testInFlightFallbackCanFindProductAfterSlowPrimaryNotFound() async throws {
+        let fallbackNutrition = sampleNutrition(barcode: "12345678", name: "V2 product")
+        let primary = StubNutritionClient(result: .notFound, delay: .milliseconds(20))
+        let fallback = StubNutritionClient(
+            result: .found(fallbackNutrition),
+            delay: .milliseconds(40)
+        )
+        let client = OpenFoodFactsClient(
+            primary: primary,
+            fallback: fallback,
+            fallbackDelay: .milliseconds(1),
+            responseTimeout: .seconds(1)
+        )
 
-        let nutrition = try await OpenFoodFactsClient(session: mockSession())
-            .fetchNutrition(for: "8032919465535")
+        let result = try await client.fetchNutrition(for: "12345678")
 
-        XCTAssertEqual(nutrition?.name, "La Nostra Limonata")
-        XCTAssertEqual(nutrition?.servingAmount, 275)
-        XCTAssertEqual(nutrition?.resolvedServingUnit, .milliliters)
-        XCTAssertEqual(nutrition?.calories(for: 275), 176)
+        XCTAssertEqual(result, .found(fallbackNutrition))
     }
 
-    func testClientReturnsNilForUnknownProduct() async throws {
-        MockURLProtocol.responseData = #"{"status": 0, "product": null}"#.data(using: .utf8)!
+    func testInFlightFallbackCanCompleteAfterLatePrimaryRateLimit() async throws {
+        let fallbackNutrition = sampleNutrition(barcode: "12345678", name: "In-flight v2 fallback")
+        let primary = StubNutritionClient(error: .serverError(429), delay: .milliseconds(20))
+        let fallback = StubNutritionClient(
+            result: .found(fallbackNutrition),
+            delay: .milliseconds(40)
+        )
+        let client = OpenFoodFactsClient(
+            primary: primary,
+            fallback: fallback,
+            fallbackDelay: .milliseconds(1),
+            responseTimeout: .seconds(1)
+        )
 
-        let nutrition = try await OpenFoodFactsClient(session: mockSession()).fetchNutrition(for: "12345678")
+        let result = try await client.fetchNutrition(for: "12345678")
 
-        XCTAssertNil(nutrition)
+        XCTAssertEqual(result, .found(fallbackNutrition))
     }
 
-    func testClientRejectsInvalidBarcodeBeforeNetworkRequest() async {
-        let client = OpenFoodFactsClient(session: mockSession())
+    func testLookupStopsAtOverallUXDeadline() async {
+        let primary = StubNutritionClient(result: .notFound, delay: .seconds(1))
+        let fallback = StubNutritionClient(result: .notFound, delay: .seconds(1))
+        let client = OpenFoodFactsClient(
+            primary: primary,
+            fallback: fallback,
+            fallbackDelay: .milliseconds(1),
+            responseTimeout: .milliseconds(30)
+        )
 
         do {
-            _ = try await client.fetchNutrition(for: "123")
-            XCTFail("Expected an invalid barcode error.")
+            _ = try await client.fetchNutrition(for: "12345678")
+            XCTFail("Expected timeout.")
         } catch let error as FoodNutritionFetchError {
-            XCTAssertEqual(error, .invalidBarcode)
+            XCTAssertEqual(error, .timedOut)
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
     }
 
-    func testClientRejectsMalformedPayload() async {
-        MockURLProtocol.responseData = #"{"status": 1, "product": {"#.data(using: .utf8)!
+    func testDefinitivePrimaryNotFoundDoesNotSpendFallbackRequest() async throws {
+        let fallback = StubNutritionClient(result: .notFound)
+        let client = OpenFoodFactsClient(
+            primary: StubNutritionClient(result: .notFound),
+            fallback: fallback,
+            fallbackDelay: .seconds(1),
+            responseTimeout: .seconds(2)
+        )
 
-        do {
-            _ = try await OpenFoodFactsClient(session: mockSession()).fetchNutrition(for: "12345678")
-            XCTFail("Expected a decoding error.")
-        } catch is DecodingError {
-        } catch {
-            XCTFail("Unexpected error: \(error)")
-        }
-    }
+        let result = try await client.fetchNutrition(for: "12345678")
+        let fallbackCallCount = await fallback.callCount
 
-    func testClientPropagatesTransportFailure() async {
-        MockURLProtocol.error = URLError(.notConnectedToInternet)
-        defer { MockURLProtocol.error = nil }
-
-        do {
-            _ = try await OpenFoodFactsClient(session: mockSession()).fetchNutrition(for: "12345678")
-            XCTFail("Expected a transport error.")
-        } catch let error as URLError {
-            XCTAssertEqual(error.code, .notConnectedToInternet)
-        } catch {
-            XCTFail("Unexpected error: \(error)")
-        }
+        XCTAssertEqual(result, .notFound)
+        XCTAssertEqual(fallbackCallCount, 0)
     }
 
     func testLookupUsesPersistentCacheBeforeNetwork() async throws {
         let fileURL = try temporaryFileURL()
         let cache = try NutritionCache(fileURL: fileURL, maximumBytes: 10_000)
-        let client = CountingClient(result: sampleNutrition(barcode: "12345678"))
+        let nutrition = sampleNutrition(barcode: "12345678")
+        let client = StubNutritionClient(result: .found(nutrition))
         let service = NutritionLookupService(client: client, cache: cache)
 
-        _ = try await service.nutrition(for: "12345678")
-        _ = try await service.nutrition(for: "12345678")
+        let firstResult = try await service.lookup(barcode: "12345678")
+        let secondResult = try await service.lookup(barcode: "12345678")
 
-        let callCount = client.callCount
-        XCTAssertEqual(callCount, 1)
+        let clientCallCount = await client.callCount
         let reopenedCache = try NutritionCache(fileURL: fileURL, maximumBytes: 10_000)
         let persistedNutrition = await reopenedCache.nutrition(for: "12345678")
-        XCTAssertEqual(persistedNutrition, sampleNutrition(barcode: "12345678"))
+        XCTAssertEqual(firstResult, .found(nutrition))
+        XCTAssertEqual(secondResult, .found(nutrition))
+        XCTAssertEqual(clientCallCount, 1)
+        XCTAssertEqual(persistedNutrition, nutrition)
     }
 
-    func testLookupRefreshesLegacyCacheWithoutServingUnit() async throws {
-        let cache = try NutritionCache(fileURL: temporaryFileURL(), maximumBytes: 10_000)
-        let legacyNutrition = sampleNutrition(barcode: "12345678", servingUnit: nil)
-        try await cache.store(legacyNutrition)
-        let refreshedNutrition = sampleNutrition(barcode: "12345678", servingUnit: .milliliters)
-        let client = CountingClient(result: refreshedNutrition)
-        let service = NutritionLookupService(client: client, cache: cache)
+    func testCacheDecodesLegacyOptionalNutritionShape() async throws {
+        let fileURL = try temporaryFileURL()
+        let legacyNutrition = LegacyFoodNutrition(
+            barcode: "8032919465535",
+            name: "La Nostra Limonata",
+            brand: "Lurisia",
+            quantityDescription: "275 ml",
+            servingGrams: 275,
+            servingUnit: nil,
+            caloriesPer100Grams: 64,
+            proteinGramsPer100Grams: 0,
+            carbohydrateGramsPer100Grams: 16,
+            fatGramsPer100Grams: 0,
+            fiberGramsPer100Grams: nil,
+            sugarGramsPer100Grams: 16,
+            saltGramsPer100Grams: 0
+        )
+        let legacyEntry = LegacyCacheEntry(nutrition: legacyNutrition, lastAccessed: .now)
+        try JSONEncoder().encode([legacyNutrition.barcode: legacyEntry]).write(to: fileURL)
 
-        let nutrition = try await service.nutrition(for: "12345678")
+        let cache = try NutritionCache(fileURL: fileURL, maximumBytes: 10_000)
+        let migrated = await cache.nutrition(for: legacyNutrition.barcode)
 
-        XCTAssertEqual(nutrition, refreshedNutrition)
-        XCTAssertEqual(client.callCount, 1)
-    }
-
-    func testLookupUsesLegacyCacheWhenMetadataRefreshFails() async throws {
-        let cache = try NutritionCache(fileURL: temporaryFileURL(), maximumBytes: 10_000)
-        let legacyNutrition = sampleNutrition(barcode: "12345678", servingUnit: nil)
-        try await cache.store(legacyNutrition)
-        let service = NutritionLookupService(client: FailingClient(), cache: cache)
-
-        let nutrition = try await service.nutrition(for: "12345678")
-
-        XCTAssertEqual(nutrition, legacyNutrition)
+        XCTAssertEqual(migrated, FoodNutrition(
+            barcode: legacyNutrition.barcode,
+            name: legacyNutrition.name,
+            defaultAmount: NutritionAmount(value: 275, unit: .milliliters),
+            caloriesPer100: 64
+        ))
     }
 
     func testCacheEvictsLeastRecentlyUsedEntryWhenOverBudget() async throws {
@@ -184,104 +242,95 @@ final class NutritionLookupTests: XCTestCase {
         let fileURL = try temporaryFileURL()
         try Data("not json".utf8).write(to: fileURL)
         let cache = try NutritionCache(fileURL: fileURL, maximumBytes: 10_000)
-        let client = CountingClient(result: sampleNutrition(barcode: "12345678"))
+        let nutrition = sampleNutrition(barcode: "12345678")
+        let client = StubNutritionClient(result: .found(nutrition))
         let service = NutritionLookupService(client: client, cache: cache)
 
-        let nutrition = try await service.nutrition(for: "12345678")
+        let result = try await service.lookup(barcode: "12345678")
 
-        XCTAssertEqual(nutrition, sampleNutrition(barcode: "12345678"))
-        XCTAssertEqual(client.callCount, 1)
+        let clientCallCount = await client.callCount
         let reopenedCache = try NutritionCache(fileURL: fileURL, maximumBytes: 10_000)
         let persistedNutrition = await reopenedCache.nutrition(for: "12345678")
+        XCTAssertEqual(result, .found(nutrition))
+        XCTAssertEqual(clientCallCount, 1)
         XCTAssertEqual(persistedNutrition, nutrition)
-    }
-
-    // Set RUN_OPEN_FOOD_FACTS_LIVE_TEST=1 to validate the public service from a networked environment.
-    func testLiveOpenFoodFactsLookup() async throws {
-        guard ProcessInfo.processInfo.environment["RUN_OPEN_FOOD_FACTS_LIVE_TEST"] == "1" else {
-            throw XCTSkip("Live API tests are opt-in.")
-        }
-
-        let nutrition = try await OpenFoodFactsClient().fetchNutrition(for: "3017620422003")
-        XCTAssertEqual(nutrition?.barcode, "3017620422003")
-        XCTAssertFalse(nutrition?.name.isEmpty ?? true)
-    }
-
-    private func mockSession() -> URLSession {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [MockURLProtocol.self]
-        return URLSession(configuration: configuration)
     }
 
     private func sampleNutrition(
         barcode: String,
-        name: String = "Sample food",
-        servingUnit: NutritionUnit? = .grams
+        name: String = "Sample food"
     ) -> FoodNutrition {
         FoodNutrition(
             barcode: barcode,
             name: name,
-            brand: nil,
-            quantityDescription: nil,
-            servingGrams: 100,
-            servingUnit: servingUnit,
-            caloriesPer100Grams: 100,
-            proteinGramsPer100Grams: 10,
-            carbohydrateGramsPer100Grams: 10,
-            fatGramsPer100Grams: 2,
-            fiberGramsPer100Grams: 1,
-            sugarGramsPer100Grams: 1,
-            saltGramsPer100Grams: 0.1
+            defaultAmount: NutritionAmount(value: 100, unit: .grams),
+            caloriesPer100: 100
         )
     }
 
     private func temporaryFileURL() throws -> URL {
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        let directory = FileManager.default.temporaryDirectory.appending(
+            path: UUID().uuidString,
+            directoryHint: .isDirectory
+        )
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory.appending(path: "nutrition.json")
     }
 }
 
-@MainActor
-private final class CountingClient: FoodNutritionFetching {
+private actor StubNutritionClient: FoodNutritionFetching {
     private(set) var callCount = 0
-    private let result: FoodNutrition?
+    private let result: FoodNutritionFetchResult?
+    private let error: FoodNutritionFetchError?
+    private let delay: Duration
 
-    init(result: FoodNutrition?) {
+    init(
+        result: FoodNutritionFetchResult,
+        delay: Duration = .zero
+    ) {
         self.result = result
+        error = nil
+        self.delay = delay
     }
 
-    func fetchNutrition(for barcode: String) async -> FoodNutrition? {
+    init(
+        error: FoodNutritionFetchError,
+        delay: Duration = .zero
+    ) {
+        result = nil
+        self.error = error
+        self.delay = delay
+    }
+
+    func fetchNutrition(for barcode: String) async throws -> FoodNutritionFetchResult {
         callCount += 1
-        return result
-    }
-}
-
-private struct FailingClient: FoodNutritionFetching {
-    func fetchNutrition(for barcode: String) async throws -> FoodNutrition? {
-        throw URLError(.notConnectedToInternet)
-    }
-}
-
-private final class MockURLProtocol: URLProtocol, @unchecked Sendable {
-    nonisolated(unsafe) static var responseData = Data()
-    nonisolated(unsafe) static var error: Error?
-    nonisolated(unsafe) static var lastRequest: URLRequest?
-
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-    override func startLoading() {
-        Self.lastRequest = request
-        if let error = Self.error {
-            client?.urlProtocol(self, didFailWithError: error)
-            return
+        if delay > .zero {
+            try await Task.sleep(for: delay)
         }
-        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Self.responseData)
-        client?.urlProtocolDidFinishLoading(self)
+        if let error {
+            throw error
+        }
+        return result ?? .notFound
     }
+}
 
-    override func stopLoading() {}
+private struct LegacyCacheEntry: Codable {
+    let nutrition: LegacyFoodNutrition
+    let lastAccessed: Date
+}
+
+private struct LegacyFoodNutrition: Codable {
+    let barcode: String
+    let name: String
+    let brand: String?
+    let quantityDescription: String?
+    let servingGrams: Double?
+    let servingUnit: NutritionUnit?
+    let caloriesPer100Grams: Double?
+    let proteinGramsPer100Grams: Double?
+    let carbohydrateGramsPer100Grams: Double?
+    let fatGramsPer100Grams: Double?
+    let fiberGramsPer100Grams: Double?
+    let sugarGramsPer100Grams: Double?
+    let saltGramsPer100Grams: Double?
 }

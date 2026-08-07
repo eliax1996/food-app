@@ -109,36 +109,23 @@ struct NutritionLookupService: Sendable {
         self.cache = cache
     }
 
-    func nutrition(for barcode: String) async throws -> FoodNutrition? {
+    func lookup(barcode: String) async throws -> FoodNutritionFetchResult {
         let normalizedBarcode = barcode.filter(\.isNumber)
-        let cachedNutrition = await cache.nutrition(for: normalizedBarcode)
-        if let cachedNutrition, cachedNutrition.hasServingUnitMetadata {
+        if let cachedNutrition = await cache.nutrition(for: normalizedBarcode) {
             Self.logger.info("Nutrition lookup served from cache for barcode length \(normalizedBarcode.count, privacy: .public)")
-            return cachedNutrition
+            return .found(cachedNutrition)
         }
 
-        if cachedNutrition != nil {
-            Self.logger.info("Refreshing cached nutrition without serving-unit metadata for barcode length \(normalizedBarcode.count, privacy: .public)")
-        } else {
-            Self.logger.info("Nutrition lookup requesting remote data for barcode length \(normalizedBarcode.count, privacy: .public)")
-        }
-
-        let refreshedNutrition: FoodNutrition?
-        do {
-            refreshedNutrition = try await client.fetchNutrition(for: normalizedBarcode)
-        } catch {
-            if let cachedNutrition {
-                Self.logger.notice("Nutrition metadata refresh failed; using cached product for barcode length \(normalizedBarcode.count, privacy: .public)")
-                return cachedNutrition
-            }
-            throw error
-        }
-
-        guard let nutrition = refreshedNutrition else {
+        Self.logger.info("Nutrition lookup requesting remote data for barcode length \(normalizedBarcode.count, privacy: .public)")
+        let result = try await client.fetchNutrition(for: normalizedBarcode)
+        switch result {
+        case let .found(nutrition):
+            try await cache.store(nutrition, for: normalizedBarcode)
+        case .incompleteProduct:
+            Self.logger.notice("Nutrition lookup found a product without usable calories for barcode length \(normalizedBarcode.count, privacy: .public)")
+        case .notFound:
             Self.logger.notice("Nutrition lookup found no remote product for barcode length \(normalizedBarcode.count, privacy: .public)")
-            return cachedNutrition
         }
-        try await cache.store(nutrition, for: normalizedBarcode)
-        return nutrition
+        return result
     }
 }

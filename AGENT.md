@@ -14,7 +14,8 @@ Prioritize a fast, dependable user experience. Preserve offline access for produ
 - `count_calories/Services/`: app-wide logging, notification, Live Activity, and widget-summary integrations.
 - `count_calories/Tracking/`: deterministic calorie math, daily-history aggregation, meal-time suggestions, and deep-link parsing shared with hostless tests.
 - `count_calories/Reminders/ReminderSchedule.swift`: deterministic meal/water reminder planning shared with hostless tests.
-- `count_calories/Nutrition/`: independent nutrition lookup domain, including normalized food data, Open Food Facts decoding, and persistent LRU caching.
+- `count_calories/Nutrition/`: independent nutrition lookup domain, including nonoptional normalized food data, Open Food Facts v3.6 primary/v2 fallback clients, hedged timeout coordination, and persistent LRU caching.
+- `docs/open-food-facts-api-assessment.md`: sampled API-schema, optionality, rate-limit, fallback, timeout, and official Swift SDK assessment.
 - `Package.swift`: hostless `CaloriesCore`, `ReminderCore`, and `TrackingCore` targets that compile production logic directly for fast macOS tests.
 - `count_caloriesWidget/`: WidgetKit extension and shared widget summary storage.
 - `CaloriesActivityAttributes.swift`: Live Activity attributes shared by app and widget.
@@ -93,7 +94,18 @@ Use the persistent local XcodeBridge service for agent access to Xcode and the i
 
 ## Continuity
 
-Do not stop at a partial implementation when the requested work is actionable. Keep a concise `WORKING_NOTES.md` with the active goal, shared judge feedback, unresolved work, and required validation. Read it at the beginning of substantive work and after context compaction. Update it as work is completed or new shared feedback is found.
+Do not stop at a partial implementation when the requested work is actionable. For every substantive multi-step task, create a temporary root-level `.TASK_NOTES.md` as durable working memory across turns and context compactions. Keep it concise and current with:
+
+- the final user goal and acceptance criteria;
+- the current phase, active subtask, and next action;
+- completed work and remaining subtasks;
+- key decisions, constraints, and relevant user feedback;
+- unresolved questions or blockers;
+- required validation and results already obtained.
+
+Read `.TASK_NOTES.md` before substantive work begins. Immediately after every context compaction, read it before continuing, reconcile it with the compacted context, and update stale or missing state. Before starting a new phase, reread it, refresh the final goal against the latest user instructions, mark the previous phase appropriately, and record the new phase and active subtask. Update it after meaningful progress, scope changes, new feedback, or validation results so it always describes actual task state.
+
+Treat `.TASK_NOTES.md` as ephemeral local state. Never stage or commit it unless the user explicitly requests that exact file. Before declaring the task complete, use it for a final check that every requested item, subtask, and required validation has been completed. Delete it only after that final check succeeds. Keep it when work remains blocked or incomplete so a later turn can resume accurately.
 
 Periodically run three independent, read-only LLM-as-judge reviews against this document. Give each reviewer only the repository path and evaluation criteria, collect their results without priming them, and address findings shared by all three. Repeat review and implementation until they agree on the final evaluation.
 
@@ -162,10 +174,11 @@ Tracking coverage should protect serving/portion calorie scaling, invalid amount
 
 Nutrition coverage should protect at least:
 
-- Open Food Facts payload decoding into normalized nutrition, package/serving amount, and g/ml unit fields.
-- Unknown products and malformed or invalid barcodes.
-- Cache-first behavior preventing unnecessary requests.
-- Cache persistence across service/cache recreation.
-- LRU eviction when the configured byte budget is exceeded.
+- Open Food Facts v3.6 structured `nutrition` decoding and deprecated v2 `nutriments` fallback decoding into one normalized model.
+- Structured-v3 serving precedence, package fallback, validated 100 g/ml aggregate basis/defaults, and unit normalization without optional domain fields.
+- Delayed fallback hedging, immediate incomplete/error fallback, definitive-not-found short circuit, six-second overall timeout, loser cancellation, and no new fallback after shared-limit HTTP 429/503.
+- Valid zero-calorie products, unknown products, and malformed or invalid barcodes.
+- Cache-first behavior, legacy optional-cache migration, persistence across recreation, corrupt-cache recovery, and LRU eviction.
+- Opt-in live v3.6 and v2 checks through `RUN_OPEN_FOOD_FACTS_LIVE_TEST=1 just test-one OpenFoodFactsLiveTests`; never include live network calls in normal gates.
 
 Keep `just test` as the bounded automated correctness gate and keep UI/performance checks available as explicit recipes. A passing UI run complements unit coverage; it never replaces missing deterministic unit tests. Run narrow tests throughout implementation, then final validation and UI proof before declaring behavior-changing work complete.

@@ -59,6 +59,13 @@ extension Food {
     var nutritionUnit: NutritionUnit {
         NutritionUnit(rawValue: servingUnitRawValue ?? "") ?? .grams
     }
+
+    func matchesLookupProduct(barcode scannedBarcode: String, name scannedName: String) -> Bool {
+        if let barcode, !barcode.isEmpty {
+            return barcode == scannedBarcode
+        }
+        return name.localizedCaseInsensitiveCompare(scannedName) == .orderedSame
+    }
 }
 
 extension PlateEntry {

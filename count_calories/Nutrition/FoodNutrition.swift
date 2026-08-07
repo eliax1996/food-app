@@ -1,37 +1,70 @@
 import Foundation
 
-enum NutritionUnit: String, Codable, Equatable, Sendable {
+nonisolated enum NutritionUnit: String, Codable, Equatable, Sendable {
     case grams = "g"
     case milliliters = "ml"
+
+    static func inferred(from description: String?) -> NutritionUnit? {
+        guard let description else { return nil }
+        if let parsedAmount = NutritionAmount.parse(description) {
+            return parsedAmount.unit
+        }
+
+        switch description.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "g", "gram", "grams", "kg", "kilogram", "kilograms":
+            return .grams
+        case "ml", "milliliter", "milliliters", "millilitre", "millilitres",
+             "cl", "centiliter", "centiliters", "centilitre", "centilitres",
+             "l", "liter", "liters", "litre", "litres":
+            return .milliliters
+        default:
+            return nil
+        }
+    }
 }
 
-struct NutritionAmount: Equatable, Sendable {
+nonisolated struct NutritionAmount: Codable, Equatable, Sendable {
     let value: Double
     let unit: NutritionUnit
 
-    init?(value: Double?, unit: NutritionUnit?) {
-        guard let value, value > 0, let unit else { return nil }
+    init(value: Double, unit: NutritionUnit) {
+        precondition(value.isFinite && value > 0, "Nutrition amounts must be finite and positive.")
         self.value = value
         self.unit = unit
     }
 
-    init?(value: Double?, unitDescription: String?) {
-        guard let value, value > 0, let unitDescription else { return nil }
+    static func validated(value: Double?, unit: NutritionUnit?) -> NutritionAmount? {
+        guard let value, value.isFinite, value > 0, let unit else { return nil }
+        return NutritionAmount(value: value, unit: unit)
+    }
 
+    static func normalized(value: Double?, unitDescription: String?) -> NutritionAmount? {
+        guard let value, value.isFinite, value > 0, let unitDescription else { return nil }
+
+        let normalizedValue: Double
+        let unit: NutritionUnit
         switch unitDescription.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "g", "gram", "grams":
-            self.init(value: value, unit: .grams)
+            normalizedValue = value
+            unit = .grams
         case "kg", "kilogram", "kilograms":
-            self.init(value: value * 1_000, unit: .grams)
+            normalizedValue = value * 1_000
+            unit = .grams
         case "ml", "milliliter", "milliliters", "millilitre", "millilitres":
-            self.init(value: value, unit: .milliliters)
+            normalizedValue = value
+            unit = .milliliters
         case "cl", "centiliter", "centiliters", "centilitre", "centilitres":
-            self.init(value: value * 10, unit: .milliliters)
+            normalizedValue = value * 10
+            unit = .milliliters
         case "l", "liter", "liters", "litre", "litres":
-            self.init(value: value * 1_000, unit: .milliliters)
+            normalizedValue = value * 1_000
+            unit = .milliliters
         default:
             return nil
         }
+
+        guard normalizedValue.isFinite else { return nil }
+        return NutritionAmount(value: normalizedValue, unit: unit)
     }
 
     static func parse(_ description: String?) -> NutritionAmount? {
@@ -51,71 +84,110 @@ struct NutritionAmount: Equatable, Sendable {
             return nil
         }
 
-        return NutritionAmount(value: value, unitDescription: String(description[unitRange]))
+        return normalized(value: value, unitDescription: String(description[unitRange]))
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let value = try container.decode(Double.self, forKey: .value)
+        let unit = try container.decode(NutritionUnit.self, forKey: .unit)
+        guard value.isFinite, value > 0 else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .value,
+                in: container,
+                debugDescription: "Nutrition amounts must be finite and positive."
+            )
+        }
+        self.value = value
+        self.unit = unit
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case value
+        case unit
     }
 }
 
-struct FoodNutrition: Codable, Equatable, Identifiable, Sendable {
+nonisolated struct FoodNutrition: Codable, Equatable, Identifiable, Sendable {
     let barcode: String
     let name: String
-    let brand: String?
-    let quantityDescription: String?
-    let servingGrams: Double?
-    let servingUnit: NutritionUnit?
-    let caloriesPer100Grams: Double?
-    let proteinGramsPer100Grams: Double?
-    let carbohydrateGramsPer100Grams: Double?
-    let fatGramsPer100Grams: Double?
-    let fiberGramsPer100Grams: Double?
-    let sugarGramsPer100Grams: Double?
-    let saltGramsPer100Grams: Double?
+    let defaultAmount: NutritionAmount
+    let caloriesPer100: Double
 
     init(
         barcode: String,
         name: String,
-        brand: String?,
-        quantityDescription: String?,
-        servingGrams: Double?,
-        servingUnit: NutritionUnit? = nil,
-        caloriesPer100Grams: Double?,
-        proteinGramsPer100Grams: Double?,
-        carbohydrateGramsPer100Grams: Double?,
-        fatGramsPer100Grams: Double?,
-        fiberGramsPer100Grams: Double?,
-        sugarGramsPer100Grams: Double?,
-        saltGramsPer100Grams: Double?
+        defaultAmount: NutritionAmount,
+        caloriesPer100: Double
     ) {
+        precondition(caloriesPer100.isFinite && caloriesPer100 >= 0, "Calories must be finite and nonnegative.")
         self.barcode = barcode
         self.name = name
-        self.brand = brand
-        self.quantityDescription = quantityDescription
-        self.servingGrams = servingGrams
-        self.servingUnit = servingUnit
-        self.caloriesPer100Grams = caloriesPer100Grams
-        self.proteinGramsPer100Grams = proteinGramsPer100Grams
-        self.carbohydrateGramsPer100Grams = carbohydrateGramsPer100Grams
-        self.fatGramsPer100Grams = fatGramsPer100Grams
-        self.fiberGramsPer100Grams = fiberGramsPer100Grams
-        self.sugarGramsPer100Grams = sugarGramsPer100Grams
-        self.saltGramsPer100Grams = saltGramsPer100Grams
+        self.defaultAmount = defaultAmount
+        self.caloriesPer100 = caloriesPer100
     }
 
     var id: String { barcode }
 
-    var servingAmount: Double? {
-        servingGrams ?? NutritionAmount.parse(quantityDescription)?.value
+    func calories(for amount: Double) -> Double {
+        caloriesPer100 * amount / 100
     }
 
-    var resolvedServingUnit: NutritionUnit {
-        servingUnit ?? NutritionAmount.parse(quantityDescription)?.unit ?? .grams
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let barcode = try container.decode(String.self, forKey: .barcode)
+        let name = try container.decode(String.self, forKey: .name)
+        let calories = try container.decodeIfPresent(Double.self, forKey: .caloriesPer100)
+            ?? container.decode(Double.self, forKey: .legacyCaloriesPer100Grams)
+
+        let defaultAmount: NutritionAmount
+        if let currentAmount = try container.decodeIfPresent(NutritionAmount.self, forKey: .defaultAmount) {
+            defaultAmount = currentAmount
+        } else {
+            let legacyValue = try container.decodeIfPresent(Double.self, forKey: .legacyServingGrams)
+            let legacyUnit = try container.decodeIfPresent(NutritionUnit.self, forKey: .legacyServingUnit)
+            let quantityDescription = try container.decodeIfPresent(String.self, forKey: .legacyQuantityDescription)
+            defaultAmount = NutritionAmount.validated(value: legacyValue, unit: legacyUnit)
+                ?? NutritionAmount.parse(quantityDescription)
+                ?? NutritionAmount.validated(value: legacyValue, unit: .grams)
+                ?? NutritionAmount(value: 100, unit: .grams)
+        }
+
+        guard
+            !barcode.isEmpty,
+            !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            calories.isFinite,
+            calories >= 0
+        else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .name,
+                in: container,
+                debugDescription: "Cached food nutrition is incomplete or invalid."
+            )
+        }
+
+        self.barcode = barcode
+        self.name = name
+        self.defaultAmount = defaultAmount
+        caloriesPer100 = calories
     }
 
-    var hasServingUnitMetadata: Bool {
-        servingUnit != nil || NutritionAmount.parse(quantityDescription) != nil
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(barcode, forKey: .barcode)
+        try container.encode(name, forKey: .name)
+        try container.encode(defaultAmount, forKey: .defaultAmount)
+        try container.encode(caloriesPer100, forKey: .caloriesPer100)
     }
 
-    func calories(for weightGrams: Double) -> Double? {
-        guard let caloriesPer100Grams else { return nil }
-        return caloriesPer100Grams * weightGrams / 100
+    private enum CodingKeys: String, CodingKey {
+        case barcode
+        case name
+        case defaultAmount
+        case caloriesPer100
+        case legacyQuantityDescription = "quantityDescription"
+        case legacyServingGrams = "servingGrams"
+        case legacyServingUnit = "servingUnit"
+        case legacyCaloriesPer100Grams = "caloriesPer100Grams"
     }
 }

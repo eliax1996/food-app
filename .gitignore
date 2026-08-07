@@ -35,6 +35,9 @@ buildServer.json
 .opencode/bun.lockb
 .opencode/.gitignore
 
+# Ephemeral agent task state
+/.TASK_NOTES.md
+
 # Local environment and signing files
 .env
 .env.*

@@ -355,21 +355,24 @@ struct CalorieCounterView: View {
                 client: OpenFoodFactsClient(),
                 cache: try NutritionCache.applicationCache()
             )
-            guard let nutrition = try await service.nutrition(for: barcodeToLookup.filter(\.isNumber)) else {
+            let result = try await service.lookup(barcode: barcodeToLookup.filter(\.isNumber))
+            let nutrition: FoodNutrition
+            switch result {
+            case let .found(foundNutrition):
+                nutrition = foundNutrition
+            case .incompleteProduct:
+                errorMessage = "This product does not provide usable calorie information."
+                return
+            case .notFound:
                 errorMessage = "No product was found for that barcode."
                 return
             }
-            guard let calories = nutrition.caloriesPer100Grams, calories > 0 else {
-                errorMessage = "This product does not provide calories per 100 g or ml."
-                return
-            }
-
-            let servingAmount = nutrition.servingAmount ?? 100
-            let servingUnit = nutrition.resolvedServingUnit
-            let servingCalories = Int((calories * servingAmount / 100).rounded())
-            let food = foods.first { $0.barcode == nutrition.barcode }
-                ?? foods.first { $0.name.localizedCaseInsensitiveCompare(nutrition.name) == .orderedSame }
-                ?? Food(
+            let servingAmount = nutrition.defaultAmount.value
+            let servingUnit = nutrition.defaultAmount.unit
+            let servingCalories = Int(nutrition.calories(for: servingAmount).rounded())
+            let food = foods.first {
+                $0.matchesLookupProduct(barcode: nutrition.barcode, name: nutrition.name)
+            } ?? Food(
                     name: nutrition.name,
                     calories: servingCalories,
                     servingGrams: servingAmount,

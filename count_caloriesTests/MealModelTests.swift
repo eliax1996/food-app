@@ -29,6 +29,26 @@ final class MealModelTests: XCTestCase {
         XCTAssertEqual(entry.portionQuantity, 2)
     }
 
+    func testBarcodeLookupDoesNotOverwriteDifferentScannedProductWithSameName() {
+        let existingScannedFood = Food(
+            name: "Cola",
+            calories: 42,
+            servingGrams: 330,
+            barcode: "11111111"
+        )
+        let manuallyAddedFood = Food(name: "Cola", calories: 42, servingGrams: 330)
+
+        XCTAssertFalse(
+            existingScannedFood.matchesLookupProduct(barcode: "22222222", name: "Cola")
+        )
+        XCTAssertTrue(
+            existingScannedFood.matchesLookupProduct(barcode: "11111111", name: "Different label")
+        )
+        XCTAssertTrue(
+            manuallyAddedFood.matchesLookupProduct(barcode: "22222222", name: "cola")
+        )
+    }
+
     func testLegacyFoodWithoutUnitFallsBackToGrams() {
         let food = Food(name: "Apple", calories: 52, servingGrams: 100)
         food.servingUnitRawValue = nil
