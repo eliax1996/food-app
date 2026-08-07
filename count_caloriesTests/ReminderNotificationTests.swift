@@ -1,7 +1,10 @@
-#if !SWIFT_PACKAGE
 import Foundation
 import XCTest
+#if SWIFT_PACKAGE
+@testable import ReminderCore
+#else
 @testable import count_calories
+#endif
 
 @MainActor
 final class ReminderNotificationTests: XCTestCase {
@@ -165,6 +168,7 @@ final class ReminderNotificationTests: XCTestCase {
         XCTAssertEqual(Set(plans.map(\.identifier)).count, plans.count)
     }
 
+#if !SWIFT_PACKAGE
     func testLegacyWidgetSummaryDecodesWithoutWaterTimestamp() throws {
         let data = #"{"date":0,"calories":120,"waterGlasses":2}"#.data(using: .utf8)!
 
@@ -174,6 +178,7 @@ final class ReminderNotificationTests: XCTestCase {
         XCTAssertEqual(summary.waterGlasses, 2)
         XCTAssertNil(summary.lastWaterRecordedAt)
     }
+#endif
 
     func testStoredPreferencesKeepReminderTypesIndependent() throws {
         let suiteName = "ReminderNotificationTests.\(UUID().uuidString)"
@@ -228,4 +233,3 @@ final class ReminderNotificationTests: XCTestCase {
         )))
     }
 }
-#endif

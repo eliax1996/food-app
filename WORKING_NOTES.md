@@ -15,24 +15,37 @@ Keep calorie, water, weight, and nutrition recording fast while supporting opt-i
 - Completed a three-agent judge review with no shared actionable findings.
 - Added physical-device validation and fixed target-specific bundle identifiers.
 - Made `just` the sole operations entrypoint and added a bounded internal iteration helper.
+- Serialized `just` operations with a cross-process lock and added explicit configured-simulator shutdown.
 - Added isolated persistent simulator/device caches, fast unit/selected-test loops, and explicit slow UI/performance validation.
-- Added a hostless `CaloriesCore` Swift package over the production nutrition sources; warm core tests complete in under one second.
+- Added hostless `CaloriesCore`, `ReminderCore`, and `TrackingCore` package targets over production domain sources; warm core tests complete in under one second.
 - Split compile-only, UI smoke, and launch-performance work into separate bounded recipes.
 - Added independent breakfast, lunch, snack, dinner, and water reminder controls in Config.
 - Added conditional local-notification scheduling: fixed missing-meal windows and daytime water reminders based on latest glass, with daily-goal suppression.
 - Added deterministic reminder planner tests and UI control coverage.
+- Split catch-all app source into `App`, `Features`, `Models`, `Services`, and `Tracking` ownership boundaries.
+- Added seeded previews for complete app, each primary tab, meal editor, counter components, and history chart.
+- Added hostless tracking tests for calorie scaling, meal windows, daily aggregation, history limits, and widget deep links, plus app-hosted legacy model tests.
+- Completed three independent read-only architecture/test reviews: no actionable finding was shared by all three; one approved and two reported non-overlapping residual suggestions.
 
 ## Required Validation
 
-After app/UI edits: run `just check`. Reminder planner tests require `just test-app-unit`. After core behavior edits: run `just iterate` or the narrowest `just test-one` filter.
+After app/UI edits: run `just check`. Nutrition, reminder, and tracking rules run hostlessly through `just test-unit`. After core behavior edits: run `just iterate` or the narrowest `just test-one` filter. Prefer these deterministic checks throughout the edit loop instead of repeatedly paying for simulator UI startup.
 
-Before completion: run `just validate` for hostless tests, app compilation, installation, and launch. Run `just test-ui` separately for UI behavior changes.
+Before completing any non-documentation feature or bug fix that changes app behavior: run `just validate` for hostless tests, app compilation, installation, and launch, then run expensive `just test-ui` once against the final artifact. Rerun UI proof after any product fix or later artifact-changing edit. Add stable UI coverage for critical new user flows while keeping most behavioral coverage in unit tests.
 
-When simulator infrastructure is unavailable, run `just device-validate` on the configured physical iPhone.
+When simulator infrastructure is unavailable, run `just device-validate` on the configured physical iPhone and report unavailable UI-test proof separately.
+
+## Architecture Direction
+
+- Keep `App/ContentView.swift` limited to tab and deep-link composition.
+- Organize UI feature-first under `Features`; keep shared models, app-wide services, and independently testable domain rules separate.
+- Give primary screens and independently useful UI portions local `#Preview` definitions backed by `App/PreviewData.swift` when persistence data is needed.
+- Split by ownership and reasons to change, not one file per tiny type or arbitrary line-count limits.
 
 ## Pending Test Coverage
 
 - The meal-addition flow was verified through Xcode MCP: the default Almond Milk meal saves as 15 kcal and updates today's total. Repeat it with `/skill:count-calories-meal-flow` from `.pi/skills/count-calories-meal-flow/SKILL.md`.
 - `count_caloriesUITests` contains the deterministic meal-addition flow. It uses the `-ui-testing` launch argument for an in-memory store and asserts that the default Almond Milk meal updates today's total to 15 kcal.
 - Beverage mapping is covered with a representative La Nostra Limonata payload: 275 ml and 176 kcal per package. App-hosted tests cover fractional quantity and volume-unit persistence.
-- The Xcode 27 simulator UI-test runner remains intermittent: it can complete assertions, fail to obtain the app process handle, or stall before XCTest progress. `just test-ui` restarts the simulator and has a 90-second process-group deadline; it is intentionally excluded from the fast correctness gate until the beta test host is dependable.
+- The Xcode 27 simulator UI-test runner remains intermittent: it can complete assertions, fail to obtain the app process handle, or stall before XCTest progress. `just test-ui` restarts the simulator, runs both functional UI flows while excluding launch performance, and has a 90-second process-group deadline; it is intentionally excluded from the fast correctness gate until the beta test host is dependable.
+- Current architecture change passed `just validate`, hostless tests, app compilation, install, and normal launch. Three bounded `just test-ui` attempts stalled before XCTest progress, including one after `just recover`; a later app-hosted retry reported `Application launch ... did not return a process handle`. `just simulator-run` then launched app normally, isolating failure to Xcode test hosting.

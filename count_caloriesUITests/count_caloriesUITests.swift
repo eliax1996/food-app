@@ -62,14 +62,22 @@ final class CountCaloriesUITests: XCTestCase {
             "breakfast-reminder-toggle",
             "lunch-reminder-toggle",
             "snack-reminder-toggle",
-            "dinner-reminder-toggle",
-            "water-reminder-toggle"
+            "dinner-reminder-toggle"
         ] {
             XCTAssertTrue(
                 app.switches[identifier].waitForExistence(timeout: 5),
                 "Missing reminder control: \(identifier)"
             )
         }
+
+        let waterReminderToggle = app.switches["water-reminder-toggle"]
+        if !waterReminderToggle.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(
+            waterReminderToggle.waitForExistence(timeout: 5),
+            "Missing reminder control: water-reminder-toggle"
+        )
     }
 
     @MainActor

@@ -50,7 +50,10 @@ simulator-install timeout=iteration_timeout: (_run "simulator-install" timeout "
 # Incrementally compile, install, and launch in the simulator.
 simulator-run timeout=iteration_timeout: (_run "simulator-run" timeout "")
 
-# Run the fast hostless unit suite against the production nutrition sources.
+# Shut down the configured simulator without erasing its data or build cache.
+simulator-stop timeout=iteration_timeout: (_run "simulator-stop" timeout "")
+
+# Run fast hostless tests against production nutrition, reminder, and tracking sources.
 test-unit timeout=iteration_timeout: (_run "test-unit" timeout "")
 
 # Re-run the already-built hostless tests without compiling; use only when sources are unchanged.
@@ -59,7 +62,7 @@ test-rerun timeout=iteration_timeout: (_run "test-rerun" timeout "")
 # Incrementally compile and run one hostless XCTest filter (Class or Class/method).
 test-one identifier timeout=iteration_timeout: (_run "test-one" timeout identifier)
 
-# Run the functional UI smoke test without launch-performance measurement.
+# Run functional UI smoke tests without launch-performance measurement.
 test-ui timeout=validation_timeout: (_run "test-ui" timeout "")
 
 # Run the app-hosted unit target when iOS-specific test hosting needs verification.
@@ -109,4 +112,5 @@ _run action timeout argument:
     SIMULATOR_ID="{{ simulator }}" \
     DERIVED_DATA_ROOT="{{ derived_data }}" \
     TEST_CASE_TIMEOUT="{{ test_case_timeout }}" \
-    ./scripts/iterate.zsh "{{ action }}" "{{ timeout }}" "{{ argument }}"
+    /usr/bin/lockf -t 0 "{{ derived_data }}.operation.lock" \
+        ./scripts/iterate.zsh "{{ action }}" "{{ timeout }}" "{{ argument }}"

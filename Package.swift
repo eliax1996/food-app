@@ -13,9 +13,17 @@ let package = Package(
             name: "CaloriesCore",
             path: "count_calories/Nutrition"
         ),
+        .target(
+            name: "ReminderCore",
+            path: "count_calories/Reminders"
+        ),
+        .target(
+            name: "TrackingCore",
+            path: "count_calories/Tracking"
+        ),
         .testTarget(
             name: "CaloriesCoreTests",
-            dependencies: ["CaloriesCore"],
+            dependencies: ["CaloriesCore", "ReminderCore", "TrackingCore"],
             path: "count_caloriesTests"
         )
     ]

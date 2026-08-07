@@ -35,17 +35,5 @@ final class BarcodeScannerTests: XCTestCase {
         XCTAssertEqual(scannedBarcodes, ["3017620422003"])
     }
 
-    func testPlateEntryStoresFractionalQuantityAndVolumeUnit() {
-        let entry = PlateEntry(
-            foodName: "La Nostra Limonata",
-            calories: 44,
-            weightGrams: 275,
-            quantity: 0.25,
-            servingUnit: .milliliters
-        )
-
-        XCTAssertEqual(entry.portionCount, 0.25)
-        XCTAssertEqual(entry.servingUnitRawValue, NutritionUnit.milliliters.rawValue)
-    }
 }
 #endif

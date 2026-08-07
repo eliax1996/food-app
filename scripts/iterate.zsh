@@ -147,6 +147,24 @@ terminate_simulator_app() {
     run_with_timeout 15 "$xcrun" simctl terminate "$SIMULATOR_ID" "$BUNDLE_ID" >/dev/null 2>&1 || true
 }
 
+stop_simulator() {
+    local device_list
+    device_list="$(/usr/bin/mktemp -t count-calories-devices.XXXXXX)"
+    if ! run_with_timeout 20 "$xcrun" simctl list devices > "$device_list"; then
+        /bin/rm -f "$device_list"
+        return 1
+    fi
+
+    if /usr/bin/grep -Fq "$SIMULATOR_ID) (Booted)" "$device_list"; then
+        /bin/rm -f "$device_list"
+        terminate_simulator_app
+        run_step "Shut down simulator" 30 "$xcrun" simctl shutdown "$SIMULATOR_ID"
+    else
+        /bin/rm -f "$device_list"
+        print -- "✓ Simulator already shut down"
+    fi
+}
+
 reset_simulator() {
     run_with_timeout 30 "$xcrun" simctl shutdown "$SIMULATOR_ID" >/dev/null 2>&1 || true
     ensure_simulator_ready
@@ -262,8 +280,8 @@ case "$action" in
         ;;
     test-ui)
         reset_simulator
-        run_simulator_tests "Functional UI smoke test" \
-            "-only-testing:count_caloriesUITests/CountCaloriesUITests/testAddingDefaultMealUpdatesToday"
+        run_simulator_tests "Functional UI smoke tests" \
+            "-skip-testing:count_caloriesUITests/CountCaloriesUITests/testLaunchPerformance"
         ;;
     test-app-unit)
         run_simulator_tests "App-hosted unit tests" "-only-testing:count_caloriesTests"
@@ -323,6 +341,9 @@ case "$action" in
             DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
             -allowProvisioningUpdates \
             -allowProvisioningDeviceRegistration
+        ;;
+    simulator-stop)
+        stop_simulator
         ;;
     simulator-reset)
         reset_simulator

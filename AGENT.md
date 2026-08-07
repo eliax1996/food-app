@@ -8,19 +8,30 @@ Prioritize a fast, dependable user experience. Preserve offline access for produ
 
 ## Structure
 
-- `count_calories/ContentView.swift`: app entry point, SwiftData models, and primary SwiftUI screens, including reminder controls.
-- `count_calories/ReminderNotifications.swift`: deterministic meal/water reminder planning, notification permission handling, and local-notification scheduling.
-- `count_calories/Nutrition/`: independent nutrition lookup domain.
-- `Package.swift`: hostless `CaloriesCore` package that compiles the production nutrition sources directly for fast macOS tests.
-- `FoodNutrition.swift`: normalized, Codable nutrition data per 100 g/ml plus serving amount and unit.
-- `OpenFoodFactsClient.swift`: Open Food Facts barcode API client and response decoding.
-- `NutritionCache.swift`: persistent, byte-bounded LRU cache and cache-first lookup service.
+- `count_calories/App/`: app entry point, root tab/deep-link composition, and shared seeded preview data.
+- `count_calories/Features/`: feature-owned SwiftUI screens and components for Counter, History, Config, and Scanner. Primary screens and independently useful portions each own previews.
+- `count_calories/Models/`: shared SwiftData persistence models.
+- `count_calories/Services/`: app-wide logging, notification, Live Activity, and widget-summary integrations.
+- `count_calories/Tracking/`: deterministic calorie math, daily-history aggregation, meal-time suggestions, and deep-link parsing shared with hostless tests.
+- `count_calories/Reminders/ReminderSchedule.swift`: deterministic meal/water reminder planning shared with hostless tests.
+- `count_calories/Nutrition/`: independent nutrition lookup domain, including normalized food data, Open Food Facts decoding, and persistent LRU caching.
+- `Package.swift`: hostless `CaloriesCore`, `ReminderCore`, and `TrackingCore` targets that compile production logic directly for fast macOS tests.
 - `count_caloriesWidget/`: WidgetKit extension and shared widget summary storage.
-- `CaloriesActivityAttributes.swift`: Live Activity attributes shared by the app and widget.
-- `count_caloriesTests/`: XCTest coverage for nutrition lookup, decoding, persistence, and eviction.
+- `CaloriesActivityAttributes.swift`: Live Activity attributes shared by app and widget.
+- `count_caloriesTests/`: XCTest coverage for tracking rules, model compatibility, reminders, barcode scanning, and nutrition lookup/caching.
 - `justfile`: supported build, install, launch, and simulator operations.
 
 The app is a SwiftUI and SwiftData project targeting iOS 17+. Xcode filesystem-synchronized groups automatically include Swift files created beneath target source directories.
+
+Prefer a feature-first source hierarchy as the app grows:
+
+- `App/`: app entry point, root composition, and app-wide dependency setup;
+- `Features/<Feature>/`: feature screens, feature state, and feature-specific helpers, such as `Meals`, `Water`, `Weight`, `Today`, `Settings`, and `Scanner`;
+- `Models/`: persistence or domain models shared by multiple features;
+- `Services/`: app-wide integrations such as notifications, Live Activities, and widget synchronization;
+- domain directories such as `Tracking/`, `Nutrition/`, and `Reminders/`: independently testable domain logic.
+
+Keep feature-specific models and services with their feature; promote them to shared directories only when multiple features truly own the concept. Apply this direction incrementally—do not perform a broad relocation-only rewrite unrelated to the active change.
 
 ## Operations
 
@@ -28,11 +39,11 @@ Use `just` as the only entrypoint for project operations. Do not invoke `scripts
 
 - `just iterate`: preferred edit loop; run hostless core tests and incrementally compile the app without booting or installing.
 - `just check`: incrementally compile without tests, simulator boot, installation, or launch.
-- `just test-unit`: run deterministic nutrition tests directly on macOS against the production source files.
+- `just test-unit`: run deterministic nutrition, reminder-planning, and tracking tests directly on macOS against production source files.
 - `just test-one Class[/method]`: incrementally compile and run one hostless test filter.
 - `just test-rerun`: rerun the already-built hostless tests only when sources have not changed.
 - `just test-app-unit`: explicitly verify the duplicate app-hosted XCTest integration when needed.
-- `just test-ui`: run only the functional UI smoke test behind a clean simulator restart.
+- `just test-ui`: run functional UI smoke tests behind a clean simulator restart, excluding launch-performance measurement.
 - `just test-performance`: run launch measurement explicitly; performance tests never belong in the edit loop or correctness gate.
 - `just test`: run the automated correctness gate: hostless unit tests and an incremental app compile.
 - `just validate`: run unit tests, compile, install, and launch in the simulator. Xcode 27 UI-test hosting is intentionally explicit because it can stall before XCTest starts.
@@ -41,17 +52,24 @@ Use `just` as the only entrypoint for project operations. Do not invoke `scripts
 - `just device-test`, `just device-validate`: complete physical-iPhone validation operations.
 - `just provision`: explicitly allow Apple provisioning updates after a normal physical build reports a signing problem; normal iterations intentionally avoid provisioning network work.
 - `just doctor`: bounded checks for Xcode, the configured simulator, and the paired iPhone.
+- `just simulator-stop`: shut down the configured simulator without erasing its data or build caches.
 - `just simulator-reset`: restart the configured simulator without erasing its data or build caches.
 - `just clean`: remove the isolated simulator and device derived-data caches.
 - `just recover`: restart the simulator and clear derived data only after a genuinely stale build/test session.
 
 Keep `justfile` variables centralized for Xcode paths, bundle identifiers, device IDs, simulator IDs, timeouts, and derived data locations. Simulator and physical-device derived data are intentionally isolated under one root so switching SDKs cannot churn or lock the other destination's build database. Add a named recipe for new recurring tasks, including tests.
 
-Use `just check` for most app/UI edits, `just test-one` while changing one covered core behavior, and `just iterate` when an edit needs both core regression coverage and app compilation. Use `just simulator-run` only when visual or runtime behavior needs inspection. Before declaring implementation complete, validate the exact working tree with `just validate`; use `just device-validate` when simulator infrastructure is unavailable. Run `just test-ui` separately when UI behavior changes, but report Xcode test-host infrastructure failures independently from compilation or unit-test results. Documentation-only changes do not require validation.
+Use `just check` for most app/UI edits, `just test-one` while changing one covered core behavior, and `just iterate` when an edit needs both core regression coverage and app compilation. Rely primarily on narrow deterministic unit tests during the edit loop. Use `just simulator-run` only when visual or runtime behavior needs inspection.
+
+`just test-ui` is an expensive end-to-end check because it restarts and boots the full simulator runtime. Keep it out of the inner edit loop, but do not skip it: for every non-documentation feature or bug fix that changes app behavior, run it at least once near completion against the final working tree. When a product failure requires a fix, or a later edit changes the tested artifact, rerun `just test-ui` after the final fix. Add or extend stable UI tests when a critical user flow needs repeatable end-to-end proof that unit tests cannot provide. Report Xcode test-host infrastructure failures independently from product, compilation, or unit-test failures.
+
+Before declaring implementation complete, validate the exact working tree with `just validate`; use `just device-validate` when simulator infrastructure is unavailable, then perform the final `just test-ui` proof when simulator UI testing is available. Documentation-only changes do not require validation.
 
 Every potentially blocking external tool is protected by a process-group timeout. Defaults are 60 seconds for iteration, 90 seconds for validation/UI operations, and 30 seconds per ordinary XCTest method, with a 60-second hard per-test maximum. Override command deadlines with `ITERATION_TIMEOUT=...` or `VALIDATION_TIMEOUT=...`, or pass the timeout as the recipe's final positional argument. Do not remove or repeatedly increase the timeout while diagnosing a stall.
 
-Use this completion sequence for every implementation: inspect the affected code and existing tests, make the smallest correct change, add or update deterministic tests for changed observable behavior, then run `just validate` or `just device-validate`. Fix any failures or warnings and repeat validation after each subsequent code or build-affecting configuration edit. Report the command and its outcome when work is complete.
+Every `just` project operation also acquires one non-blocking cross-process lock. A concurrent invocation exits with status 75 instead of sharing the simulator or derived-data database. Wait for the active operation to finish, then retry.
+
+Use this completion sequence for every implementation: inspect the affected code, its conceptual file boundaries, and existing tests; make the smallest correct change; add or update deterministic unit tests for changed observable behavior; use narrow unit and compile checks during iteration; then run `just validate` or `just device-validate`. Near the end, run `just test-ui` once on the final app artifact as described above. Fix failures or warnings and rerun every final check invalidated by a subsequent code or build-affecting edit. Report each final command and outcome when work is complete.
 
 Keep this document current. When code, project operations, validation commands, architecture, product direction, or engineering practices change, update the affected `AGENT.md` guidance in the same change. Do not retain instructions that no longer describe the repository.
 
@@ -96,11 +114,15 @@ Before adding code, always ask: **Can this be done simpler and more direct?**
 When removing or replacing code, always ask: **Can some piece of code be written in a simpler way?**
 
 - Prefer standard Apple frameworks and existing app patterns over dependencies or abstractions.
-- Keep code in one type or function unless extracting it provides a concrete reuse or clarity benefit.
+- Keep tiny, tightly coupled implementation details local, but extract a cohesive concept when it owns distinct state, behavior, or reasons to change. Reuse is not required to justify a clear boundary.
 - Scope types, helpers, and extensions as narrowly as their use allows. Prefer `private` or `fileprivate` implementation details over expanding module-wide visibility.
-- Split files by coherent semantic meaning: keep closely related models, API decoding, cache behavior, and UI concerns together, while separating concepts that evolve independently.
-- Avoid both extremes: do not create one-file-per-tiny-type boilerplate, and do not mix unrelated layers or concepts in a large catch-all file. A file should provide useful context for one cohesive feature or domain responsibility.
-- Keep similarly abstract concepts together. Do not pollute a file's context by combining UI presentation, persistence mechanics, network transport, and unrelated business rules without a clear reason.
+- Organize app code hierarchically by feature and concept. Within a large feature, use focused files for views, models/state, and services only when those responsibilities evolve independently.
+- Keep app entry points and root views focused on composition. `App/ContentView.swift` owns tabs and deep-link routing only; place screens, persistence models, services, and domain rules in their semantic directories.
+- Keep feature coordinators cohesive. Extract independently previewable sections or independently changing behavior instead of growing a feature screen into another catch-all.
+- Split files by coherent semantic meaning: keep closely related types together while separating concepts that evolve independently. A file combining app lifecycle, several screens, persistence models, and services is too broad regardless of line count.
+- Avoid both extremes: do not create one-file-per-tiny-type boilerplate, and do not retain unrelated layers in a large catch-all file.
+- Keep similarly abstract concepts together. Do not combine UI presentation, persistence mechanics, network transport, and unrelated business rules without a clear reason.
+- Mirror production concepts in test names and test files so feature ownership remains obvious.
 - Use descriptive names and explicit data ownership.
 - Avoid speculative compatibility code and unused generalization.
 - Treat warnings as defects. Keep formatting and access control consistent with nearby code.
@@ -118,7 +140,14 @@ Design observable features. Add concise, structured `Logger` events at meaningfu
 
 ## Tests
 
-Write useful tests alongside behavior changes. Prefer deterministic unit and integration-style tests with mocked network responses over live network tests. Keep live API checks opt-in.
+Write useful tests alongside behavior changes. Unit tests are the primary proof during implementation: prefer deterministic unit and integration-style tests with mocked network responses over live network tests, and keep live API checks opt-in. Extract non-UI behavior from SwiftUI views into cohesive testable domain types when doing so creates a real conceptual boundary, not solely to expose private implementation details.
+
+Follow a testing pyramid:
+
+- add or update focused unit tests for domain rules, state transitions, persistence boundaries, decoding, and failure handling;
+- run `just test-one`, `just test-unit`, or `just iterate` frequently while coding;
+- add UI tests for critical user journeys and integration boundaries that unit tests cannot prove, rather than duplicating every unit-level branch through UI automation;
+- reserve expensive `just test-ui` execution for final proof near completion, and rerun it after fixes that change the final artifact.
 
 Before writing each test, ask:
 
@@ -129,6 +158,8 @@ If a test only restates private implementation steps, replace it with a test of 
 
 Reminder coverage should protect fixed meal windows, suppression after matching records, elapsed-time water scheduling, daily water-goal suppression, independent preferences, and the pending-notification limit.
 
+Tracking coverage should protect serving/portion calorie scaling, invalid amounts, meal suggestion windows, calendar-day aggregation and history limits, supported widget deep links, and legacy meal-model fallbacks.
+
 Nutrition coverage should protect at least:
 
 - Open Food Facts payload decoding into normalized nutrition, package/serving amount, and g/ml unit fields.
@@ -137,4 +168,4 @@ Nutrition coverage should protect at least:
 - Cache persistence across service/cache recreation.
 - LRU eviction when the configured byte budget is exceeded.
 
-Keep `just test` as the bounded automated correctness gate and keep UI/performance checks available as explicit recipes. Run the relevant tests before declaring work complete.
+Keep `just test` as the bounded automated correctness gate and keep UI/performance checks available as explicit recipes. A passing UI run complements unit coverage; it never replaces missing deterministic unit tests. Run narrow tests throughout implementation, then final validation and UI proof before declaring behavior-changing work complete.
