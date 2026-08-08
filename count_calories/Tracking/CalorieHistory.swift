@@ -1,16 +1,16 @@
 import Foundation
 
-struct CalorieRecord: Equatable, Sendable {
+nonisolated struct CalorieRecord: Equatable, Sendable {
     let date: Date
     let calories: Int
 }
 
-struct DailyCalorieSummary: Equatable, Sendable {
+nonisolated struct DailyCalorieSummary: Equatable, Sendable {
     let date: Date
     let calories: Int
 }
 
-enum CalorieHistory {
+nonisolated enum CalorieHistory {
     static func dailySummaries(
         for records: [CalorieRecord],
         calendar: Calendar = .current,

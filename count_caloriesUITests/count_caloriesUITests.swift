@@ -95,7 +95,7 @@ final class CountCaloriesUITests: XCTestCase {
         XCTContext.runActivity(named: "Open editor and inspect adjustment targets") { _ in
             addMealButton.tap()
             assertExists(mealEditor, identifier: "meal-editor", phase: "Open")
-            assertExactValue(selectedFoodName, expected: "Almond Milk", phase: "Open")
+            assertLabel(selectedFoodName, expected: "Almond Milk", phase: "Open")
             assertExactValue(amountField, expected: "100 grams", phase: "Open")
             assertExactValue(calculatedTotal, expected: "15 calories", phase: "Open")
             assertExists(servingField, identifier: "meal-quantity", phase: "Open")
@@ -157,6 +157,8 @@ final class CountCaloriesUITests: XCTestCase {
         let calculatedTotal = app.descendants(matching: .any)
             .matching(identifier: "calculated-total")
             .firstMatch
+        let amountField = app.textFields["meal-amount"]
+        let servingField = app.textFields["meal-quantity"]
         let cancelButton = app.buttons["cancel-meal"]
         let bananaMeal = app.descendants(matching: .any)
             .matching(identifier: "meal-entry-Banana")
@@ -209,6 +211,8 @@ final class CountCaloriesUITests: XCTestCase {
         }
 
         XCTContext.runActivity(named: "Verify draft total") { _ in
+            assertExactValue(amountField, expected: "100 grams", phase: "Total")
+            assertExactValue(servingField, expected: "1", phase: "Total")
             assertExists(calculatedTotal, identifier: "calculated-total", phase: "Total")
             assertExactValue(
                 calculatedTotal,
@@ -326,6 +330,62 @@ final class CountCaloriesUITests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testProgressWeightRecordingShowsTrend() throws {
+        let app = XCUIApplication()
+        let progressTab = app.tabBars.buttons["Progress"]
+        let metricPicker = app.segmentedControls["progress-metric-picker"]
+        let weightSegment = metricPicker.buttons["Weight"]
+        let emptyState = app.descendants(matching: .any)
+            .matching(identifier: "progress-weight-empty")
+            .firstMatch
+        let recordWeight = app.buttons["record-weight"]
+        let saveWeight = app.buttons["save-weight"]
+        let currentWeight = app.staticTexts["progress-weight-current"]
+        let trendChart = app.descendants(matching: .any)
+            .matching(identifier: "progress-weight-chart")
+            .firstMatch
+
+        XCTContext.runActivity(named: "Launch Progress") { _ in
+            app.launchArguments = ["-ui-testing"]
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertExists(progressTab, identifier: "Progress tab", phase: "Launch")
+            progressTab.tap()
+            assertExists(metricPicker, identifier: "progress-metric-picker", phase: "Progress")
+        }
+
+        XCTContext.runActivity(named: "Open empty Weight progress") { _ in
+            weightSegment.tap()
+            assertExists(emptyState, identifier: "progress-weight-empty", phase: "Weight empty")
+            assertExists(recordWeight, identifier: "record-weight", phase: "Weight empty")
+            assertLabel(recordWeight, expected: "Record weight", phase: "Weight empty")
+        }
+
+        XCTContext.runActivity(named: "Record default weight") { _ in
+            recordWeight.tap()
+            assertExists(saveWeight, identifier: "save-weight", phase: "Weight sheet")
+            assertExists(
+                app.descendants(matching: .any)
+                    .matching(identifier: "weight-draft-value")
+                    .firstMatch,
+                identifier: "weight-draft-value",
+                phase: "Weight sheet"
+            )
+            saveWeight.tap()
+        }
+
+        XCTContext.runActivity(named: "Verify saved Weight trend") { _ in
+            assertWeightLabel(currentWeight, phase: "Saved weight")
+            assertExists(trendChart, identifier: "progress-weight-chart", phase: "Saved weight")
+            assertExists(recordWeight, identifier: "record-weight", phase: "Saved weight")
+            assertLabel(recordWeight, expected: "Update today’s weight", phase: "Saved weight")
+        }
+    }
+
     private let uiTimeout: TimeInterval = 5
 
     private func assertExists(
@@ -356,6 +416,30 @@ final class CountCaloriesUITests: XCTestCase {
             XCTWaiter.wait(for: [targetSized], timeout: uiTimeout),
             .completed,
             "\(phase): \(identifier) target height < 44; \(diagnostic(for: element)), frame=\(element.frame)"
+        )
+    }
+
+    private func assertWeightLabel(_ element: XCUIElement, phase: String) {
+        assertExists(element, identifier: "progress-weight-current", phase: phase)
+        XCTAssertTrue(
+            element.label.hasPrefix("Current 70") && element.label.hasSuffix("kg"),
+            "\(phase): expected current 70 kg; \(diagnostic(for: element))"
+        )
+    }
+
+    private func assertLabel(
+        _ element: XCUIElement,
+        expected: String,
+        phase: String
+    ) {
+        let expectedLabel = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", expected),
+            object: element
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectedLabel], timeout: uiTimeout),
+            .completed,
+            "\(phase): expected label '\(expected)'; \(diagnostic(for: element))"
         )
     }
 

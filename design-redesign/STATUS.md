@@ -18,14 +18,15 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - FOOD-CREATE-001 / BARCODE-001 presentation: accepted attempt 04. Secondary large Form, visible disabled lookup, custom-food round trip verified.
 - FOOD-REMOTE-SEARCH-001: accepted attempt 02. Official flat Search-a-licious search, bounded persistent query cache, explicit load more, attribution, and selected-food persistence verified.
 - AMOUNT-EDITOR-001: accepted attempt 01. Prototype A inline amount controls, exact validation, g/ml semantics, accessibility layout, and keyboard-free correction verified.
+- HISTORY-001 / PROGRESS-001 / WEIGHT-001: **accepted attempt 02**. `History` is now `Progress`; target-aware seven-day calories, fourteen-reading weight trend, useful empty Weight action, and locale-safe Cancel/Save recording are verified.
 
 # Current component
 
-HISTORY-001 + PROGRESS-001 + WEIGHT-001 — next redesign phase.
+HISTORY-001 + PROGRESS-001 + WEIGHT-001 — **ACCEPTED, attempt 02**.
 
 # Next components
 
-1. HISTORY-001 + PROGRESS-001 + WEIGHT-001
+1. Separate user-requested research into splitting navigation among calorie tracker, weight recording, and analytics; no split is pre-decided.
 2. NAV-001 + SETTINGS-001 + REMINDERS-001
 3. empty/error/loading states
 4. global consistency, dark mode, Dynamic Type, small-device checks
@@ -51,7 +52,7 @@ HISTORY-001 + PROGRESS-001 + WEIGHT-001 — next redesign phase.
 
 - MUST HAVE: meal-grouped daily log — implemented.
 - MUST HAVE: remote API food search with persistent query/page LRU and explicit load-more semantics — implemented and accepted as FOOD-REMOTE-SEARCH-001 attempt 02.
-- HIGH VALUE: keyboard-free ±10/±1 amount editor — implemented and accepted; recent/frequent foods — recents implemented; target-aware calorie trend.
+- HIGH VALUE: keyboard-free ±10/±1 amount editor — implemented and accepted; recent/frequent foods — recents implemented; target-aware calorie trend — implemented and accepted in Progress analytics.
 - HIGH VALUE, data blocked: macro targets/summary.
 
 Detailed active backlog: `PRODUCT-BACKLOG.md`.
@@ -60,6 +61,7 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 
 - Best balance between one global Log Food action and per-meal add actions.
 - Whether automatic settings persistence is worth behavior change.
+- User-requested navigation split among calorie tracker, weight recording, and analytics; research only, with no design decision made in this milestone.
 
 # Technical debt discovered
 
@@ -69,25 +71,21 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 
 # Blockers
 
-- Final FOOD-REMOTE-SEARCH-001 UI attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
-- AMOUNT-EDITOR-001 diagnostic UI test was added; final attempts were blocked before XCTest because Application launch did not return a process handle after one recover. `just simulator-run` passed; UI suite is not green.
-- Terra quota exhausted after repeated microtasks; straightforward work now routes to Luna `max` per updated model matrix.
-- Large multi-image reviewer jobs time out; small evidence sets complete reliably.
+- Final Progress `just test-ui 300` timed out before XCTest and reset simulator. UI suite is not green; deterministic preview evidence and hostless results remain valid separately.
+- Navigation split is intentionally unresearched and undecided until next user-requested feature phase.
 
 # Last successful automated result
 
-`just check` passed. Current hostless aggregate is 90 pass / 2 opt-in skips; AMOUNT-EDITOR-001 focused rules: 5 pass. Timed-out partial search responses remain rejected rather than cached as terminal.
+`ProgressHistoryTests`: 16 pass. Aggregate: 106 pass / 2 opt-in skips. `just check` passed. Timed-out partial search responses remain rejected rather than cached as terminal.
 
 # Previous full-app result
 
-Full Xcode result: 52 passed, 0 failed, 2 opt-in live skips. Functional UI: 3/3 passed, including deterministic food-search/cancel journey. This is prior milestone evidence, not final remote-search UI-suite proof.
+Full Xcode result: 52 passed, 0 failed, 2 opt-in live skips. Functional UI: 3/3 passed, including deterministic food-search/cancel journey. This is prior milestone evidence, not final Progress UI-suite proof.
 
 # Last visual verification
 
-2026-08-08: AMOUNT-EDITOR-001 attempt 01 accepted. Almond Milk proof passed `100 g / 15 kcal` → `90 g / 14 kcal` → `100 g / 15 kcal`; Remote Oat Drink at `250 ml / 100 kcal` verified volume labels; Accessibility3 proof reached `90 g / 14 kcal` with serving `1`, readable menus, reachable total, and no clipping. Accepted screenshots are indexed in `SCREENSHOTS.md`.
-
-Prior visual verification: FOOD-REMOTE-SEARCH-001 attempt 02 selected Remote Oat Drink at 250 ml / 100 kcal, dismissed keyboard, increased daily total by exactly 100 kcal after save, and confirmed persisted local row.
+2026-08-08: HISTORY-001 / PROGRESS-001 / WEIGHT-001 attempt 02 accepted through deterministic iPhone 17 Pro preview evidence. Calories, populated Weight, empty Weight, and weight editor captures are indexed in `SCREENSHOTS.md`. Fresh Banana diagnosis passed `100 g / 1 / 89 kcal` with keyboard hidden. Attempt 01 calories capture remains retained as rejected evidence.
 
 # Next action
 
-Start HISTORY-001 + PROGRESS-001 + WEIGHT-001. Preserve AMOUNT-EDITOR-001 acceptance and its Xcode UI-host blocker as separate evidence.
+Start separate user-requested research into navigation split among calorie tracker, weight recording, and analytics. Do not pre-decide or redesign split in completed Progress milestone. Preserve attempt-02 acceptance, attempt-01 calories evidence, deterministic test results, and final UI-host timeout as separate evidence.

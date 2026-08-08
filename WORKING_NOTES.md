@@ -6,7 +6,7 @@ Keep calorie, water, weight, and nutrition recording fast while supporting opt-i
 
 ## Current Phase
 
-`HISTORY-001 + PROGRESS-001 + WEIGHT-001` — next redesign phase. `AMOUNT-EDITOR-001` is accepted at attempt 01; `FOOD-REMOTE-SEARCH-001` is accepted at attempt 02.
+`HISTORY-001 + PROGRESS-001 + WEIGHT-001` — **ACCEPTED at attempt 02**. Next work is separate user-requested research into splitting navigation among calorie tracker, weight recording, and analytics; this milestone makes no split decision. `AMOUNT-EDITOR-001` remains accepted at attempt 01; `FOOD-REMOTE-SEARCH-001` remains accepted at attempt 02.
 
 ## Completed Judge Feedback
 
@@ -36,6 +36,7 @@ Keep calorie, water, weight, and nutrition recording fast while supporting opt-i
 - Completed final three-reviewer nutrition pass: two approved; one suggested undocumented v2 `energy-kcal_100ml`, contradicted by official v2 schema and sampled beverage responses using `energy-kcal_100g`; no shared actionable finding remained.
 - Implemented and visually accepted `FOOD-REMOTE-SEARCH-001` attempt 02: official flat Search-a-licious hits, language fallback, useful-result pagination, valid-barcode deduplication, generation-safe snapshots, bounded persistent query cache, attribution, selected-food persistence without product refetch, and DEBUG fixture.
 - Implemented and accepted `AMOUNT-EDITOR-001` attempt 01: Prototype A inline `−10`, `−1`, `+1`, `+10` controls with exact finite amount rules, `0.01` minimum, decimal preservation, g/ml semantics, unchanged servings, secondary exact entry, and shared save validity.
+- Implemented and accepted `HISTORY-001` / `PROGRESS-001` / `WEIGHT-001` attempt 02: Progress tab/title, goal-aware seven-day calorie analytics, fourteen-reading weight trend, useful empty state, and Cancel/Save weight recording with rollback.
 
 ## FOOD-REMOTE-SEARCH-001 Validation Record
 
@@ -51,6 +52,17 @@ Keep calorie, water, weight, and nutrition recording fast while supporting opt-i
 - Accepted evidence: `design-redesign/screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png`, `attempt-01-adjusted.png`, `attempt-01-milliliters.png`, and `attempt-01-accessibility3.png`.
 - Focused amount tests: 5 pass. Aggregate: 90 pass / 2 opt-in skips. `just check` passed.
 - Diagnostic UI test was added. Final attempts were blocked before XCTest: Application launch did not return a process handle after one recover. `just simulator-run` passed; UI suite is not green.
+
+## HISTORY-001 / PROGRESS-001 / WEIGHT-001 Validation Record
+
+- Visible `History` became `Progress`. Calories use seven most recent recorded days, prominent recorded-day average, profile-goal relation, orange bars, goal rule, and seven compact actual day labels without bar annotations.
+- Weight uses current/change/target text, fourteen latest raw readings, linear line plus points, adaptive nonzero domain, and target rule. Empty Weight copy leads directly to Record Weight.
+- Record/update sheet uses Cancel/Save, locale-consistent wheels and header, save-only dismissal, and rollback on save failure. Domain filters, sorts, and limits; duplicate timestamps remain; invalid values are ignored; averages use `Double`.
+- Attempt 01 rejected for weak one-line gray summary, overlapping full month-day labels, and stale parent-computed sheet header. Attempt 01 calories screenshot remains retained.
+- Attempt 02 accepted through deterministic iPhone 17 Pro preview evidence: `design-redesign/screenshots/HISTORY-001/attempt-02-calories.png`, `design-redesign/screenshots/WEIGHT-001/attempt-02-populated.png`, `design-redesign/screenshots/WEIGHT-001/attempt-02-empty.png`, and `design-redesign/screenshots/WEIGHT-001/attempt-02-editor.png`.
+- `ProgressHistoryTests`: 16 pass. Aggregate: 106 pass / 2 opt-in skips. `just check` passed.
+- Diagnostic Progress weight UI test added. Label/locale test defects were corrected; fresh Banana diagnosis passed `100 g / 1 / 89 kcal` with keyboard hidden.
+- Final `just test-ui 300` timed out before XCTest and reset simulator. UI suite is not green.
 
 ## Required Validation
 

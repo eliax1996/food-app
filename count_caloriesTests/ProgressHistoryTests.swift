@@ -1,0 +1,210 @@
+import Foundation
+import XCTest
+#if SWIFT_PACKAGE
+@testable import TrackingCore
+#else
+@testable import count_calories
+#endif
+
+final class ProgressHistoryTests: XCTestCase {
+    func testEmptyProgressHasNoSummariesOrWeightValues() {
+        let calories = ProgressHistory.calorieProgress(summaries: [], dailyGoal: 1_700)
+        let weights = ProgressHistory.weightProgress(entries: [], targetWeight: 68)
+
+        XCTAssertEqual(calories, CalorieProgress(summaries: [], averageCalories: nil, goalDifference: nil))
+        XCTAssertEqual(weights.points, [])
+        XCTAssertNil(weights.current)
+        XCTAssertNil(weights.periodChange)
+        XCTAssertNil(weights.targetDistance)
+        XCTAssertNil(weights.domain)
+    }
+
+    func testCalorieAverageIsAboveGoal() {
+        let progress = ProgressHistory.calorieProgress(
+            summaries: [summary(day: 1, calories: 200), summary(day: 2, calories: 300)],
+            dailyGoal: 200
+        )
+
+        XCTAssertEqual(progress.averageCalories, 250)
+        XCTAssertEqual(progress.goalDifference, 50)
+    }
+
+    func testCalorieAverageIsBelowGoal() {
+        let progress = ProgressHistory.calorieProgress(
+            summaries: [summary(day: 1, calories: 100), summary(day: 2, calories: 200)],
+            dailyGoal: 200
+        )
+
+        XCTAssertEqual(progress.averageCalories, 150)
+        XCTAssertEqual(progress.goalDifference, -50)
+    }
+
+    func testCalorieAverageCanEqualGoal() {
+        let progress = ProgressHistory.calorieProgress(
+            summaries: [summary(day: 1, calories: 150), summary(day: 2, calories: 250)],
+            dailyGoal: 200
+        )
+
+        XCTAssertEqual(progress.averageCalories, 200)
+        XCTAssertEqual(progress.goalDifference, 0)
+    }
+
+    func testCaloriesAreSortedAndLimitedToMostRecentSevenDays() {
+        let progress = ProgressHistory.calorieProgress(
+            summaries: (1...9).reversed().map { summary(day: $0, calories: $0 * 100) },
+            dailyGoal: nil
+        )
+
+        XCTAssertEqual(progress.summaries.map(\.date), (3...9).map { date(day: $0) })
+        XCTAssertEqual(progress.summaries.map(\.calories), (3...9).map { $0 * 100 })
+    }
+
+    func testNegativeCalorieSummariesAreIgnored() {
+        let progress = ProgressHistory.calorieProgress(
+            summaries: [
+                summary(day: 1, calories: -100),
+                summary(day: 2, calories: 200),
+                summary(day: 3, calories: 300)
+            ],
+            dailyGoal: 200
+        )
+
+        XCTAssertEqual(progress.summaries.map(\.calories), [200, 300])
+        XCTAssertEqual(progress.averageCalories, 250)
+        XCTAssertEqual(progress.goalDifference, 50)
+    }
+
+    func testInvalidCalorieLimitProducesEmptyProgress() {
+        let progress = ProgressHistory.calorieProgress(
+            summaries: [summary(day: 1, calories: 200)],
+            dailyGoal: 200,
+            limit: 0
+        )
+
+        XCTAssertEqual(progress, CalorieProgress(summaries: [], averageCalories: nil, goalDifference: nil))
+    }
+
+    func testCalorieAverageUsesDoubleBeforeSumming() {
+        let progress = ProgressHistory.calorieProgress(
+            summaries: [
+                summary(day: 1, calories: Int.max),
+                summary(day: 2, calories: Int.max)
+            ],
+            dailyGoal: nil
+        )
+
+        XCTAssertEqual(progress.averageCalories, Double(Int.max))
+    }
+
+    func testWeightProgressSortsAndKeepsMostRecentFourteen() {
+        let entries = (1...16).reversed().map { day in
+            WeightProgressPoint(date: date(day: day), kilograms: Double(day))
+        }
+
+        let progress = ProgressHistory.weightProgress(entries: entries, targetWeight: 20)
+
+        XCTAssertEqual(progress.points.map(\.kilograms), (3...16).map(Double.init))
+        XCTAssertEqual(progress.current, 16)
+        XCTAssertEqual(progress.periodChange, 13)
+    }
+
+    func testWeightProgressRetainsDuplicateTimestampsWithoutWeightTieBreakers() {
+        let duplicateDate = date(day: 1)
+        let progress = ProgressHistory.weightProgress(
+            entries: [
+                WeightProgressPoint(date: duplicateDate, kilograms: 72),
+                WeightProgressPoint(date: duplicateDate, kilograms: 70),
+                point(day: 2, kilograms: 71)
+            ],
+            targetWeight: nil
+        )
+
+        XCTAssertEqual(progress.points.map(\.date), [duplicateDate, duplicateDate, date(day: 2)])
+        XCTAssertEqual(progress.points.map(\.kilograms), [72, 70, 71])
+    }
+
+    func testRisingWeightHasPositiveChange() {
+        let progress = ProgressHistory.weightProgress(
+            entries: [point(day: 1, kilograms: 70), point(day: 2, kilograms: 71.2)],
+            targetWeight: 68
+        )
+
+        XCTAssertEqual(progress.periodChange ?? .nan, 1.2, accuracy: 0.0001)
+    }
+
+    func testFallingWeightHasNegativeChange() {
+        let progress = ProgressHistory.weightProgress(
+            entries: [point(day: 1, kilograms: 71.2), point(day: 2, kilograms: 70)],
+            targetWeight: 68
+        )
+
+        XCTAssertEqual(progress.periodChange ?? .nan, -1.2, accuracy: 0.0001)
+    }
+
+    func testSingleWeightHasCurrentWithoutPeriodChange() {
+        let progress = ProgressHistory.weightProgress(
+            entries: [point(day: 1, kilograms: 70)],
+            targetWeight: 68
+        )
+
+        XCTAssertEqual(progress.current, 70)
+        XCTAssertNil(progress.periodChange)
+    }
+
+    func testInvalidWeightsAndTargetAreIgnored() {
+        let progress = ProgressHistory.weightProgress(
+            entries: [
+                point(day: 1, kilograms: .nan),
+                point(day: 2, kilograms: .infinity),
+                point(day: 3, kilograms: -2),
+                point(day: 4, kilograms: 70)
+            ],
+            targetWeight: .infinity
+        )
+
+        XCTAssertEqual(progress.points.map(\.kilograms), [70])
+        XCTAssertEqual(progress.current, 70)
+        XCTAssertNil(progress.targetDistance)
+        XCTAssertEqual(progress.domain, 69.5...70.5)
+    }
+
+    func testTargetDistanceUsesTargetMinusCurrentWeight() {
+        let progress = ProgressHistory.weightProgress(
+            entries: [point(day: 1, kilograms: 70)],
+            targetWeight: 68
+        )
+
+        XCTAssertEqual(progress.targetDistance, -2)
+    }
+
+    func testAdaptiveWeightDomainIncludesValuesWithoutForcingZero() {
+        let domain = ProgressHistory.adaptiveWeightDomain(values: [69.8, 70.2, 70])
+
+        XCTAssertEqual(domain, 69.3...70.7)
+        XCTAssertGreaterThan(domain!.lowerBound, 0)
+    }
+
+    private func summary(day: Int, calories: Int) -> DailyCalorieSummary {
+        DailyCalorieSummary(date: date(day: day), calories: calories)
+    }
+
+    private func point(day: Int, kilograms: Double) -> WeightProgressPoint {
+        WeightProgressPoint(date: date(day: day), kilograms: kilograms)
+    }
+
+    private func date(day: Int) -> Date {
+        DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 8,
+            day: day
+        ).date!
+    }
+
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+}

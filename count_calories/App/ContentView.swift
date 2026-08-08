@@ -19,7 +19,7 @@ struct ContentView: View {
 
             HistoryView()
                 .tabItem {
-                    Label("History", systemImage: "chart.xyaxis.line")
+                    Label("Progress", systemImage: "chart.xyaxis.line")
                 }
                 .tag(AppTab.history)
 

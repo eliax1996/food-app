@@ -17,7 +17,7 @@ enum DesignReviewState: String, CaseIterable {
 
 @MainActor
 enum PreviewData {
-    static func makeContainer() -> ModelContainer {
+    static func makeContainer(state: DesignReviewState = .normal) -> ModelContainer {
         let schema = Schema([
             Food.self,
             PlateEntry.self,
@@ -29,7 +29,7 @@ enum PreviewData {
 
         do {
             let container = try ModelContainer(for: schema, configurations: [configuration])
-            try seed(container.mainContext, state: .normal)
+            try seed(container.mainContext, state: state)
             return container
         } catch {
             fatalError("Could not create preview data: \(error)")

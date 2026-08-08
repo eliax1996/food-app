@@ -34,6 +34,14 @@ Empirical strengths, weaknesses, quota behavior, and policy changes are tracked 
 
 Use Xcode MCP once to explore or visually inspect a flow. If the same flow must be repeated to prove behavior—or it protects a critical journey—promote it to deterministic XCTest UI coverage before another manual proof. UI tests may cost CPU, but replace repeated agent navigation and save tokens/time. Test-authoring subagents must add step diagnostics and run/fix the created tests to green with a higher bounded timeout (`just test-ui 240` by default), not stop after generating code or the first failure. Keep tests isolated from live network, camera, permissions, wall clock, and uncontrolled persisted state.
 
+## Completed Progress analytics milestone
+
+`HISTORY-001` / `PROGRESS-001` / `WEIGHT-001` are **ACCEPTED — attempt 02**. Visible `History` became `Progress`. Calories show seven most recent recorded days, recorded-day average, profile-goal relation, orange bars, compact actual-day labels, and goal rule. Weight shows current/change/target text, fourteen raw readings, linear points, adaptive nonzero domain, and target rule. Empty Weight state leads directly to Record Weight; record/update sheet uses locale-consistent wheels plus Cancel/Save and save-only dismissal with rollback on failure.
+
+Evidence: deterministic iPhone 17 Pro previews in `design-redesign/screenshots/HISTORY-001/attempt-02-calories.png`, `design-redesign/screenshots/WEIGHT-001/attempt-02-populated.png`, `design-redesign/screenshots/WEIGHT-001/attempt-02-empty.png`, and `design-redesign/screenshots/WEIGHT-001/attempt-02-editor.png`. `ProgressHistoryTests`: 16 pass. Aggregate: 106 pass / 2 opt-in skips. `just check` passed. Final `just test-ui 300` timed out before XCTest and reset simulator; UI suite is not green.
+
+Next work is separate user-requested research on splitting navigation among calorie tracker, weight recording, and analytics. No split is pre-decided by this milestone.
+
 ## Active product redesign
 
 Screenshot-driven redesign state and evidence live under `design-redesign/`:

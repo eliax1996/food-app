@@ -226,6 +226,8 @@ Reminder coverage should protect fixed meal windows, suppression after matching 
 
 Tracking coverage should protect serving/portion calorie scaling, invalid amounts, meal suggestion windows, calendar-day aggregation and history limits, supported widget deep links, and legacy meal-model fallbacks.
 
+Progress analytics coverage should protect most-recent-seven recorded calorie days, recorded-day `Double` averages and profile-goal relation, most-recent-fourteen valid weight readings with timestamp ties retained, invalid-value filtering, and adaptive nonzero chart domains.
+
 Amount-entry coverage should protect finite exact deltas, the `0.01` minimum and floating-boundary tolerance, decimal preservation, gram/ml labels, immediate calorie scaling, unchanged servings, and shared save validity.
 
 Nutrition coverage should protect at least:

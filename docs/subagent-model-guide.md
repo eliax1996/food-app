@@ -206,6 +206,28 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Weakness: Xcode test hosting remained unavailable after bounded recovery; parent had to separate runtime launch success from UI-suite proof.
 - Policy effect: keep Luna `max` for bounded arithmetic/UI/test work; report MCP evidence and XCTest-host status separately, never as one green UI result.
 
+### 2026-08-08 — Terra `high`: Progress analytics broad slice
+
+- Shape: bounded but cross-cutting Progress milestone spanning tab/title composition, calorie and weight SwiftUI presentation, tracking/domain rules, previews, tests, and diagnostic UI coverage.
+- Outcome: delivered initial seven-day calorie and fourteen-reading weight analytics, target-aware summaries/charts, empty Weight action, and weight record/update flow. Broad pass exposed visual defects: weak one-line gray summary, overlapping full month-day labels, and stale parent-computed sheet header.
+- Validation: broad implementation established focused `ProgressHistoryTests` and diagnostic Progress weight UI coverage; parent review rejected attempt 01 and required focused correction.
+- Instruction-following: handled wider integration boundary, but broad visual pass was not acceptance-ready until hierarchy, labels, and sheet-header ownership were corrected.
+- Strength: effective at connecting production UI, persistence-facing state, domain filtering/limits, and deterministic evidence in one bounded slice.
+- Weakness: first pass under-specified visual density and localized sheet state; parent visual review was necessary.
+- Token/quota note: Terra `high` was justified by cross-file integration scope; use narrower model for correction once defect boundary is known.
+- Policy effect: accept broad Terra integration only after explicit visual review and domain-rule checks; split follow-up into focused corrections rather than repeating broad pass.
+
+### 2026-08-08 — Luna `max`: Progress focused correction and diagnosis
+
+- Shape: focused correction after Terra broad slice: summary hierarchy, compact actual-day labels, locale-consistent wheel/header behavior, label/locale test defects, and bounded UI diagnosis.
+- Outcome: attempt 02 accepted for `HISTORY-001` / `PROGRESS-001` / `WEIGHT-001` with deterministic iPhone 17 Pro preview evidence. Fresh Banana diagnosis passed `100 g / 1 / 89 kcal` with keyboard hidden.
+- Validation: `ProgressHistoryTests` 16 pass; aggregate 106 pass / 2 opt-in skips; `just check` passed. Final `just test-ui 300` timed out before XCTest and reset simulator; UI suite remains not green.
+- Instruction-following: preserved accepted/rejected screenshot distinction, corrected test defects instead of weakening assertions, and reported XCTest-host timeout separately from product evidence.
+- Strength: efficient at precise visual correction and focused diagnosis after broad integration supplied concrete failures.
+- Weakness: could not obtain final XCTest proof because simulator test hosting timed out; manual/preview evidence and automated domain results remained separable.
+- Token/quota note: Luna `max` fit focused correction and diagnosis without another broad-model pass.
+- Policy effect: route similar post-review UI corrections and bounded diagnostic flows to Luna `max`; keep deterministic tests and host status separate in acceptance records.
+
 ## Record template
 
 ```md

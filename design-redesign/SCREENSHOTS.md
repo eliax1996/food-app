@@ -93,17 +93,40 @@ Attempts:
 Accepted: attempt 01.
 Reason: Prototype A keeps common corrections keyboard-free, preserves serving separation, exposes g/ml semantics, and adapts controls to measured normal and Accessibility3 targets without clipping.
 
-## HISTORY-001 / PROGRESS-001
+## HISTORY-001 / PROGRESS-001 / WEIGHT-001 analytics milestone
+
+Device evidence: deterministic iPhone 17 Pro preview, portrait, light appearance.
+
+### HISTORY-001 / PROGRESS-001
 
 Baseline: `screenshots/baseline/history-calories.png`
-Attempts: pending
-Accepted: pending
 
-## WEIGHT-001
+Attempts:
+
+- `screenshots/HISTORY-001/attempt-01-calories.png` — retained rejected attempt. Weak one-line gray summary and full month-day labels overlapped.
+- `screenshots/HISTORY-001/attempt-02-calories.png` — accepted calorie Progress preview: recorded-day average, profile-goal relation, orange seven-day bars, goal rule, and compact actual day labels without bar annotations.
+
+Accepted: `screenshots/HISTORY-001/attempt-02-calories.png`
+
+Status: **ACCEPTED — attempt 02** for `HISTORY-001` and `PROGRESS-001`.
+
+### WEIGHT-001
 
 Baseline: `screenshots/baseline/history-weight-empty.png`
-Attempts: pending
-Accepted: pending
+
+Attempts:
+
+- `screenshots/WEIGHT-001/attempt-02-populated.png` — current/change/target summary and fourteen-reading line/point trend with target rule.
+- `screenshots/WEIGHT-001/attempt-02-empty.png` — useful empty copy with direct Record Weight action.
+- `screenshots/WEIGHT-001/attempt-02-editor.png` — locale-consistent wheel/header record/update sheet with Cancel and Save.
+
+Accepted:
+
+- `screenshots/WEIGHT-001/attempt-02-populated.png`
+- `screenshots/WEIGHT-001/attempt-02-empty.png`
+- `screenshots/WEIGHT-001/attempt-02-editor.png`
+
+Status: **ACCEPTED — attempt 02** for `WEIGHT-001`. The shared analytics milestone is accepted for all three IDs.
 
 ## SETTINGS-001
 

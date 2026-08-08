@@ -241,53 +241,72 @@ Amount rules require finite exact values, preserve decimal remainders, normalize
 
 **ACCEPTED — ATTEMPT 01**
 
-Reason: Prototype A meets keyboard-free correction, exact-entry fallback, domain-boundary, unit, serving-separation, measured-target, and Accessibility3 evidence requirements. Current next: `HISTORY-001 + PROGRESS-001 + WEIGHT-001`.
+Reason: Prototype A meets keyboard-free correction, exact-entry fallback, domain-boundary, unit, serving-separation, measured-target, and Accessibility3 evidence requirements. Completed next milestone: `HISTORY-001 + PROGRESS-001 + WEIGHT-001` attempt 02. Next work is separate user-requested navigation-split research.
 
-## [HISTORY-001] Progress and weight
+## [HISTORY-001 / PROGRESS-001 / WEIGHT-001] Progress analytics
 
 ### Purpose
 
 Explain calorie adherence and weight direction over time, then support quick weight recording.
 
-### Current implementation
+### Accepted implementation
 
-Segmented Calories/Weight List with one generic histogram component and a Current Weight button row.
+Visible `History` became `Progress` in tab and navigation title. A segmented Calories/Weight view remains native and task-focused.
 
-### Current strengths
+Calories use seven most recent recorded days. Summary makes recorded-day average prominent and states relation to profile goal. Chart uses orange bars, one goal `RuleMark`, seven compact actual day labels, and no bar annotations.
 
-Native Charts, simple metric switcher, orange/blue semantic distinction, explicit empty state.
+Weight uses current, change, and target text above a line chart. Chart plots latest fourteen raw readings with linear `LineMark` plus points, an adaptive nonzero domain, and target `RuleMark`. Duplicate timestamps remain in input order; valid readings are filtered, sorted, and limited to fourteen. Invalid values are ignored. Calorie summaries filter invalid values, sort and limit to seven, and average with `Double`.
 
-### Problems
-
-Calories lack goal/average context; annotations become noisy; weight incorrectly shares zero-based bar language; Record Weight affordance is weak.
+Empty Weight state explains value of recording and exposes direct `Record weight` action. Record/update sheet uses `Cancel` and `Save`, locale-consistent wheel values and header, save-only dismissal, and `modelContext.rollback()` on save failure.
 
 ### Competitive comparison
 
-Foodnoms and Cronometer interpret values against targets. Strong category products expose trend/balance rather than raw history alone.
+Foodnoms and Cronometer interpret values against targets. Strong category products expose trend/balance rather than raw history alone. This implementation keeps that interpretation in concise native summaries instead of adding dashboard-card chrome.
 
 ### Native iOS comparison
 
-Chart is appropriate, but semantic mark type should match data: bars for daily intake, line/points for weight. Standard RuleMark can show profile target without custom chart chrome.
-
-### Missing opportunities
-
-Seven-day average, goal rule, days near target, period weight change, and explicit empty-state recording action.
-
-### Proposed direction
-
-Rename destination Progress; add concise summary above target-aware chart; use a weight line chart; keep recording native and prominent.
+Charts use semantic marks: bars for daily intake, line/points for continuous weight data, and standard `RuleMark` target guidance. `List`, segmented Picker, native sheet, wheel Pickers, and toolbar Cancel/Save preserve platform conventions.
 
 ### Success criteria
 
-Trend and goal relationship understood in under three seconds; readable axes; no zero-based weight distortion; empty state leads directly to recording; Dynamic Type remains usable.
-
-### Hypothesis
-
-Target-aware summaries and data-appropriate charts will convert stored history into actionable feedback.
+Trend and goal relationship understood in under three seconds; readable axes; no zero-based weight distortion; empty state leads directly to recording; locale and Dynamic Type remain usable.
 
 ### Attempts
 
-Baseline documented in `experiments/HISTORY-001.md`; implementation follows higher-priority search/amount backlog.
+#### Attempt 01 — rejected
+
+Retained calories evidence: `../screenshots/HISTORY-001/attempt-01-calories.png`.
+
+Rejected for weak one-line gray summary, full month-day labels overlapping, and stale parent-computed sheet header. Keep screenshot as rejected evidence; do not present it as accepted design.
+
+#### Attempt 02 — accepted
+
+Deterministic iPhone 17 Pro preview evidence:
+
+- `../screenshots/HISTORY-001/attempt-02-calories.png`
+- `../screenshots/WEIGHT-001/attempt-02-populated.png`
+- `../screenshots/WEIGHT-001/attempt-02-empty.png`
+- `../screenshots/WEIGHT-001/attempt-02-editor.png`
+
+Attempt 02 fixes hierarchy, actual-day labeling, localized wheel/header rendering, and weight recording affordance. It satisfies `HISTORY-001`, `PROGRESS-001`, and `WEIGHT-001` analytics requirements.
+
+### Evidence and validation
+
+- `ProgressHistoryTests`: 16 pass.
+- Aggregate: 106 pass / 2 opt-in skips.
+- `just check` passed.
+- Diagnostic Progress weight UI test was added. Label/locale test defects were corrected. Fresh Banana diagnosis passed `100 g / 1 / 89 kcal` with keyboard hidden.
+- Final `just test-ui 300` timed out before XCTest and reset simulator. UI suite is not green; deterministic preview and hostless evidence are reported separately.
+
+### Decision
+
+**ACCEPTED — ATTEMPT 02** for `HISTORY-001`, `PROGRESS-001`, and `WEIGHT-001`.
+
+Reason: target-aware calorie interpretation, data-appropriate weight trend, useful empty recording path, robust domain rules, and native locale-safe save flow are evidenced without overstating UI-test-host status.
+
+### Next work
+
+Separate user-requested feature: research possible navigation split among calorie tracker, weight recording, and analytics. Do not pre-decide or design that split in this completed milestone.
 
 ## [FOOD-TOOLS-001] Barcode and custom food tools
 
