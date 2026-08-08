@@ -137,3 +137,76 @@ Logging often means nudging a default amount from 100 g/ml to a nearby value. Op
 - 2026-08-08: Backlog created from direct user feedback. Competitive pattern research pending.
 - 2026-08-08: Research completed; A approved for first prototype with B as inline-review fallback. Unit, VoiceOver, Dynamic Type, deterministic test, and MCP-to-UI promotion plan recorded in `docs/amount-entry-pattern-assessment.md`.
 - 2026-08-08: Prototype A implemented and accepted in attempt 01. Focused amount tests passed 5/5; final UI attempts remained blocked before XCTest by process-handle failure after one recover, while `just simulator-run` passed.
+
+---
+
+## Priority 3 — [TRACKING-IA-001] Tracking navigation and weight-log information architecture
+
+**Status:** RESEARCH COMPLETE / ARCHITECTURE APPROVED
+**Priority:** HIGH VALUE
+**Origin:** User-requested navigation split research covering calorie tracking, weight recording, and analytics.
+**Implementation:** NOT STARTED. Approval records architecture only.
+
+### User problem
+
+Current root labels and combined Progress behavior do not clearly separate daily action, analytics, and raw weight history. Current Progress also owns direct weight recording. A four-tab or generic journal solution would make sparse weight data a top-level peer of daily calories and would mix incompatible history semantics.
+
+### Approved decision
+
+1. Keep exactly three primary tabs: `Today | Progress | Settings`.
+2. Rename `Counter` → `Today` and `Config` → `Settings`.
+3. Make Progress analytics-only. Its Weight segment links to dedicated Weight Log; it does not own weight CRUD.
+4. Build Weight Log as pushed destination: newest-first native grouped list, `+ Record Weight`, row edit, independent date/time backdating, multiple same-day raw entries, explicit delete confirmation, and undo. No chart in log. No in-content Today shortcut initially.
+5. Keep weight chart/trend analytics in Progress.
+6. Settings removes current-weight recording field but retains target weight, age, calorie goal, target date, and reminders.
+7. Defer historical calorie CRUD. Future calorie history is a separate date-first day diary with meal-grouped food rows, never a generic mixed Calories/Water/Weight table.
+
+Full decision, evidence labels, exact source URLs, and access date: `docs/tracking-navigation-assessment.md` (all external sources accessed 2026-08-08).
+
+### Requirements
+
+- Root tab bar exposes only `Today`, `Progress`, and `Settings`; obsolete user-facing `Counter` and `Config` labels are removed.
+- Today remains current-day calorie/food/water action surface.
+- Progress exposes calorie and weight analytics only. Weight analytics has clear `View Weight Log` route.
+- Weight Log uses native SwiftUI grouped sections by local calendar date, newest section first, newest rows first.
+- `+ Record Weight` defaults to now and allows independent date/time backdating.
+- Row tap opens editor for value/date/time; updates one raw record only.
+- Same-day measurements remain separate and visible; no daily overwrite or collapse.
+- Delete requires explicit confirmation and offers undo; accidental swipe cannot silently destroy data.
+- Weight Log has no chart and no in-content Today shortcut initially.
+- Settings retains target weight, age, daily calorie goal, target date, and reminders; removes current-weight recording.
+- Do not add historical calorie CRUD in this milestone. `PlateEntry` snapshot integrity and preview aggregate behavior require a separate future day-diary design.
+- Do not create generic mixed history table. Keep food history date/meal semantics separate from weight measurement semantics.
+- Preserve native accessibility: Dynamic Type, VoiceOver date/time/value labels and actions, localized formatting, 44-point targets, and non-color-only meaning.
+
+### Rejected options
+
+- **Four tabs: `Today | Weight | Progress | Settings`:** sparse weight gets equal root status and one domain is split across Weight/Progress. Reviewed nutrition apps instead nest weight capture/history beneath broad daily-log or analytics destinations.
+- **`Today | Log | Trends | Settings` with generic journal:** Log duplicates Today for current-day food work and creates one table with incompatible row density, aggregation, editing, and deletion rules. Calories history must become a separate day diary later, never this journal.
+
+### Tests / success criteria
+
+Implementation not started; these are acceptance gates.
+
+- UI test confirms exactly three tabs and labels `Today`, `Progress`, `Settings`; `Counter`/`Config` absent.
+- UI test confirms Progress Weight has analytics and Weight Log route but no direct weight create/edit/delete controls.
+- UI test confirms Weight Log has no chart and no in-content Today shortcut.
+- Seed multiple dates/times; verify grouped newest-first sections and rows after reload.
+- Save backdated weight with explicit date and time; verify exact displayed placement.
+- Edit row value/date/time; verify only selected raw record changes.
+- Save two same-day values; verify both survive persistence and analytics processing.
+- Cancel deletion; verify record remains. Confirm deletion; verify only selected record disappears. Trigger undo; verify restoration.
+- Verify destructive actions never silently replace another same-day entry.
+- Settings test confirms target weight, age, calorie goal, target date, and reminders remain; current-weight recording field is absent.
+- Architecture/UI review confirms no generic Calories/Water/Weight table and no historical calorie CRUD claim.
+- Accessibility review covers Dynamic Type, VoiceOver, localization, and touch targets for navigation, list, editor, and destructive confirmation.
+
+### Evidence and result log
+
+- 2026-08-08: Reviewed nonempty `/tmp/navigation-weight-research.txt`; Apple Health, Happy Scale, Withings, Monitor Your Weight, Weight Diary Lite, and Weigh In evidence separated recording, chronological history, and analytics, with source caveats recorded.
+- 2026-08-08: Broad `/tmp/navigation-nutrition-research.txt` timed out empty; bounded `/tmp/navigation-nutrition-focused-research.txt` then verified MacroFactor, Foodnoms, MyFitnessPal, and Cronometer placement. Daily-log/analytics destinations are broad; weight is nested or globally added, not a top-level Weight tab.
+- 2026-08-08: Reviewed `/tmp/nutrition-history-research.txt`; date-first meal diaries and separate weight histories supported metric-specific flows rather than a generic table.
+- 2026-08-08: Reviewed `/tmp/weight-history-research.txt`; native newest-first list, row edit/delete, date handling, raw-entry preservation, and accessibility patterns supported Weight Log architecture. Verified findings and inferences were kept distinct in assessment.
+- 2026-08-08: Repository baseline reviewed: current `Counter | Progress | Config`, combined Progress weight recording, `PlateEntry` snapshots, and calendar-day calorie aggregation. No code changed during research.
+- 2026-08-08: Four-tab recommendation rejected because it gives sparse weight equal root status and splits domain. Generic Today/Log/Trends journal rejected because it duplicates Today and creates unsafe mixed history.
+- 2026-08-08: TRACKING-IA-001 marked **RESEARCH COMPLETE / ARCHITECTURE APPROVED**. Implementation is next; no UI or test result is claimed yet.

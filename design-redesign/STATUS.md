@@ -22,14 +22,13 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 
 # Current component
 
-HISTORY-001 + PROGRESS-001 + WEIGHT-001 — **ACCEPTED, attempt 02**.
+TRACKING-IA-001 — **RESEARCH COMPLETE / ARCHITECTURE APPROVED**. Implementation not started. HISTORY-001 + PROGRESS-001 + WEIGHT-001 attempt 02 remains accepted pre-TRACKING baseline; its Progress Weight editor is not final Weight Log architecture.
 
 # Next components
 
-1. Separate user-requested research into splitting navigation among calorie tracker, weight recording, and analytics; no split is pre-decided.
-2. NAV-001 + SETTINGS-001 + REMINDERS-001
-3. empty/error/loading states
-4. global consistency, dark mode, Dynamic Type, small-device checks
+1. NAV-001 + SETTINGS-001 + REMINDERS-001 — implement approved TRACKING-IA-001 navigation and Weight Log.
+2. empty/error/loading states
+3. global consistency, dark mode, Dynamic Type, small-device checks
 
 # Accepted design principles
 
@@ -42,7 +41,11 @@ HISTORY-001 + PROGRESS-001 + WEIGHT-001 — **ACCEPTED, attempt 02**.
 
 # Accepted design decisions
 
-- Keep three primary tabs.
+- Keep exactly three primary tabs: `Today`, `Progress`, and `Settings`; rename `Counter` → `Today` and `Config` → `Settings`.
+- Progress is analytics-only; its Weight segment links to dedicated Weight Log.
+- Weight Log is a newest-first native grouped list with `+ Record Weight`, row edit, date/time backdating, multiple same-day raw entries, and delete safety. No chart or in-content Today shortcut initially.
+- Settings removes current-weight recording but retains target weight, age, calorie goal, target date, and reminders.
+- Defer calorie historical CRUD to future separate day diary; never use generic mixed history table.
 - Preserve all existing functionality and offline behavior.
 - Move custom-food/barcode tools out of dashboard hierarchy, not remove them.
 - Use DEBUG-only in-memory design-review states.
@@ -61,18 +64,19 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 
 - Best balance between one global Log Food action and per-meal add actions.
 - Whether automatic settings persistence is worth behavior change.
-- User-requested navigation split among calorie tracker, weight recording, and analytics; research only, with no design decision made in this milestone.
+- Exact Weight Log row metadata and undo presentation during implementation.
 
 # Technical debt discovered
 
 - Dashboard owns food library, scanner, persistence, widget, activity, reminders, and presentation state.
 - No reusable semantic accessibility summary for daily status.
 - Nutrition macros are not persisted on `Food`/`PlateEntry`.
+- Current WeightEntry/Progress flow assumes today's weight update; raw same-day entries and date/time backdating remain pending TRACKING implementation.
 
 # Blockers
 
 - Final Progress `just test-ui 300` timed out before XCTest and reset simulator. UI suite is not green; deterministic preview evidence and hostless results remain valid separately.
-- Navigation split is intentionally unresearched and undecided until next user-requested feature phase.
+- TRACKING-IA-001 implementation is intentionally pending; research approval is not UI acceptance. Weight Log raw-entry migration must precede implementation acceptance.
 
 # Last successful automated result
 
@@ -88,4 +92,4 @@ Full Xcode result: 52 passed, 0 failed, 2 opt-in live skips. Functional UI: 3/3 
 
 # Next action
 
-Start separate user-requested research into navigation split among calorie tracker, weight recording, and analytics. Do not pre-decide or redesign split in completed Progress milestone. Preserve attempt-02 acceptance, attempt-01 calories evidence, deterministic test results, and final UI-host timeout as separate evidence.
+Implement approved TRACKING-IA-001 through NAV-001 + SETTINGS-001 + REMINDERS-001. Move weight CRUD from Progress into Weight Log, preserve raw same-day entries/backdated date-time, then run backlog acceptance gates. Keep research approval and implementation acceptance separate; preserve attempt-02 baseline and existing test/timeout evidence.
