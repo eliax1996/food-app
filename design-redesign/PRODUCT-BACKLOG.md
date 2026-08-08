@@ -75,7 +75,7 @@ This is hypothesis, not approved architecture. Research and tests must justify i
 
 ## Priority 2 — [AMOUNT-EDITOR-001] Human-friendly amount adjustment
 
-**Status:** COMPETITIVE RESEARCH / INTERACTION DESIGN REQUIRED
+**Status:** RESEARCH COMPLETE / PROTOTYPE A APPROVED
 **Priority:** HIGH VALUE
 **Origin:** User found keyboard-first amount editing clunky and requested ±10 and ±1 controls.
 
@@ -95,22 +95,14 @@ Logging often means nudging a default amount from 100 g/ml to a nearby value. Op
 8. Keep serving-count presets conceptually separate from amount-unit adjustment.
 9. Support VoiceOver labels/values, 44-point targets, repeat use, Dynamic Type, localization, and dark mode.
 
-### Research questions
+### Decisions
 
-- Do MyFitnessPal, MacroFactor, Cronometer, Foodnoms, Lose It, Lifesum, or YAZIO use keypad, steppers, preset chips, wheels, calculators, or +/- controls for grams/servings?
-- Are four inline actions clearer than an amount-edit sheet, popover, Stepper plus long-press, or calculator-style control?
-- Should press-and-hold repeat? Should ±10 accelerate after hold?
-- Should amount snap to whole units only, or preserve decimals for ml/g values returned by APIs?
-- Best native SwiftUI composition without creating a bespoke decorative control.
-- How to retain exact direct entry as secondary escape hatch.
-
-### Initial interaction hypotheses to prototype
-
-A. Inline amount row with displayed value/unit and four 44-point bordered buttons beneath.
-B. Tap Amount to open compact native sheet with large value and `−10 −1 +1 +10`, plus secondary “Enter exact amount.”
-C. Native Stepper for ±1 plus explicit ±10 actions.
-
-Do not choose solely from source code or judge score. Compare actual screenshots and repeated interaction cost.
+- Public evidence shows MacroFactor search results with direct actions and serving metadata, MyFitnessPal food-specific portion labels with a log action, and Foodnoms accessibility/unit claims. No inspected public source proves competitor keypad, Stepper, ±10/±1, or hold-repeat behavior; do not present those as competitor patterns.
+- Approve A first: amount/value row plus `−10`, `−1`, `+1`, `+10`; one horizontal row at normal sizes, 2 × 2 at accessibility sizes, every target at least 44 pt.
+- Derive unit from food (`g` or `ml`); no unit toggle. Preserve decimal remainder. Enforce `0.01` minimum and disable any decrement that would cross it. No hold-repeat.
+- Keep exact entry secondary and servings/presets separate. Reuse normalized calorie math and update total immediately.
+- Use compact-sheet B only if inline A fails visual review. Compare screenshots and repeated interaction cost; C is not first implementation.
+- Verify VoiceOver, units, bounds, calorie scaling, 44-point targets, Dynamic Type, and separate servings with deterministic tests. Use MCP for bounded visual review, then promote repeated behavior to UI tests; MCP is not regression proof. Full assessment: `docs/amount-entry-pattern-assessment.md`.
 
 ### Success criteria
 
@@ -127,3 +119,4 @@ Do not choose solely from source code or judge score. Compare actual screenshots
 ### Evidence and result log
 
 - 2026-08-08: Backlog created from direct user feedback. Competitive pattern research pending.
+- 2026-08-08: Research completed; A approved for first prototype with B as inline-review fallback. Unit, VoiceOver, Dynamic Type, deterministic test, and MCP-to-UI promotion plan recorded in `docs/amount-entry-pattern-assessment.md`.
