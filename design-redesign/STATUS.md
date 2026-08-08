@@ -16,19 +16,19 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - MEAL-001: accepted attempt 03. Explicit Add/Save, search/scanner, exact amount/servings, presets, live total, adaptive Accessibility Menu rows.
 - FOOD-SEARCH-001: accepted attempt 02. Recents, top search, full catalog, reliable full-row selection.
 - FOOD-CREATE-001 / BARCODE-001 presentation: accepted attempt 04. Secondary large Form, visible disabled lookup, custom-food round trip verified.
+- FOOD-REMOTE-SEARCH-001: accepted attempt 02. Official flat Search-a-licious search, bounded persistent query cache, explicit load more, attribution, and selected-food persistence verified.
 
 # Current component
 
-FOOD-REMOTE-SEARCH-001 — official endpoint/rate-limit/cache/pagination research.
+AMOUNT-EDITOR-001 — implement approved Prototype A for keyboard-free ±10/±1 amount control.
 
 # Next components
 
-1. FOOD-REMOTE-SEARCH-001 — API-backed query search, pagination, 90-day terminal knowledge, persistent large LRU
-2. AMOUNT-EDITOR-001 — competitor research and keyboard-free ±10/±1 amount control
-3. HISTORY-001 + PROGRESS-001 + WEIGHT-001
-4. NAV-001 + SETTINGS-001 + REMINDERS-001
-5. empty/error/loading states
-6. global consistency, dark mode, Dynamic Type, small-device checks
+1. AMOUNT-EDITOR-001 — inline amount adjustment, focused tests, and visual review
+2. HISTORY-001 + PROGRESS-001 + WEIGHT-001
+3. NAV-001 + SETTINGS-001 + REMINDERS-001
+4. empty/error/loading states
+5. global consistency, dark mode, Dynamic Type, small-device checks
 
 # Accepted design principles
 
@@ -50,7 +50,7 @@ FOOD-REMOTE-SEARCH-001 — official endpoint/rate-limit/cache/pagination researc
 # Feature opportunities
 
 - MUST HAVE: meal-grouped daily log — implemented.
-- MUST HAVE: remote API food search with persistent query/page LRU and explicit load-more semantics.
+- MUST HAVE: remote API food search with persistent query/page LRU and explicit load-more semantics — implemented and accepted as FOOD-REMOTE-SEARCH-001 attempt 02.
 - HIGH VALUE: keyboard-free ±10/±1 amount editor; recent/frequent foods — recents implemented; target-aware calorie trend.
 - HIGH VALUE, data blocked: macro targets/summary.
 
@@ -69,17 +69,22 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 
 # Blockers
 
+- Final FOOD-REMOTE-SEARCH-001 UI attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
 - Terra quota exhausted after repeated microtasks; straightforward work now routes to Luna `max` per updated model matrix.
 - Large multi-image reviewer jobs time out; small evidence sets complete reliably.
 
-# Last successful build
+# Last successful automated result
 
-Full Xcode result: 52 passed, 0 failed, 2 opt-in live skips. Functional UI: 3/3 passed, including deterministic food-search/cancel journey.
+`just check` passed. Current hostless aggregate is 85 pass / 2 opt-in skips; focused suites are client 11, cache 6, service 15, and coordinator 8. Timed-out partial search responses are rejected rather than cached as terminal.
+
+# Previous full-app result
+
+Full Xcode result: 52 passed, 0 failed, 2 opt-in live skips. Functional UI: 3/3 passed, including deterministic food-search/cancel journey. This is prior milestone evidence, not final remote-search UI-suite proof.
 
 # Last visual verification
 
-2026-08-08 12:29: Food Tools custom-food create/search/select/cancel passed; daily total unchanged. Disabled barcode affordance fixed afterward and full app/UI suite passed.
+2026-08-08: FOOD-REMOTE-SEARCH-001 attempt 02 accepted. Manual Xcode flow selected Remote Oat Drink at 250 ml / 100 kcal, dismissed keyboard, increased daily total by exactly 100 kcal after save, and confirmed persisted local row. Accepted screenshots are indexed in `SCREENSHOTS.md`.
 
 # Next action
 
-Research official remote food-search API and competitor amount-entry patterns; update `PRODUCT-BACKLOG.md` before architecture/implementation.
+Implement and visually verify AMOUNT-EDITOR-001 Prototype A; preserve remote-search acceptance and UI-host blocker as separate evidence.

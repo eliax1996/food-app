@@ -148,6 +148,27 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Token/quota note: max effort appears capable but can over-execute; prompts should avoid false expected values and request a strict capture budget.
 - Policy effect: Luna `max` remains default for straightforward MCP. Parent must validate domain expectations; cap retries/captures explicitly. Repeated behavioral flows must become UI tests instead of another MCP run.
 
+### 2026-08-08 — Terra `high`: FOOD-REMOTE-SEARCH-001 broad implementation slices
+
+- Shape: broad multi-file search-client, cache, service, coordinator, and UI integration work.
+- Outcome: handled broad slices effectively, but parent caught speculative nested schema assumptions, missing page-size/TTL/snapshot details, and an Xcode UI-host blocker. Focused follow-up iterations corrected schema and policy gaps; final UI-host attempts remained infrastructure-blocked before XCTest.
+- Instruction-following: parent review was required to narrow architecture and separate product behavior from UI-host failure.
+- Strength: covered broad architecture quickly.
+- Weakness: broad pass left important contract details and host diagnosis unresolved.
+- Token/quota note: broader model was justified for integration, but focused corrections were cheaper than another broad pass.
+- Policy effect: use Terra `high` for bounded integration after Luna failure or when broad context is required; require explicit schema, pagination, TTL, snapshot, and host-evidence checks.
+
+### 2026-08-08 — Luna `max`: FOOD-REMOTE-SEARCH-001 coordinator refactor/test and strict MCP visual flows
+
+- Shape: focused coordinator refactor/test plus hierarchy-driven Xcode MCP interaction and visual evidence capture.
+- Outcome: succeeded. Coordinator behavior and focused tests were completed; strict visual flow selected Remote Oat Drink, verified 250 ml / 100 kcal, keyboard dismissal, an exact 100 kcal daily-total increase, persistence, and concise accepted screenshot evidence.
+- Validation: used exact requested `just` commands and returned concise evidence. Final UI-test-host failures were reported separately rather than called green.
+- Instruction-following: respected focused ownership, deterministic fixture boundaries, and strict MCP interaction requirements.
+- Strength: precise state-transition work and disciplined visual proof.
+- Weakness: final XCTest proof remained dependent on external Xcode host availability.
+- Token/quota note: Luna `max` fit focused refactor, test, and MCP work without broad-model cost.
+- Policy effect: default similar focused coordinator/test or strict MCP tasks to Luna `max`; preserve separate reporting for manual proof and XCTest-host blockers.
+
 ## Criteria change log
 
 ### 2026-08-08 v1

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MealEditorView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -12,6 +13,8 @@ struct MealEditorView: View {
     @Binding var amount: Double
     @Binding var portionCount: Double
     let calories: Int
+    let remoteSearch: RemoteFoodSearchCoordinator?
+    let onSelectRemoteFood: (FoodNutrition) -> Bool
     let onCancel: () -> Void
     let onScanBarcode: () -> Void
     let onSave: () -> Void
@@ -88,7 +91,9 @@ struct MealEditorView: View {
                             recentFoods: recentFoods,
                             selectedFood: $selectedFood,
                             searchText: $searchText,
-                            amount: $amount
+                            amount: $amount,
+                            remoteSearch: remoteSearch,
+                            onSelectRemoteFood: onSelectRemoteFood
                         )
                     } label: {
                         VStack(alignment: .leading, spacing: 3) {
@@ -218,15 +223,22 @@ struct MealEditorView: View {
 
 private struct FoodSearchView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismissSearch) private var dismissSearch
 
     let foods: [Food]
     let recentFoods: [Food]
     @Binding var selectedFood: Food?
     @Binding var searchText: String
     @Binding var amount: Double
+    let remoteSearch: RemoteFoodSearchCoordinator?
+    let onSelectRemoteFood: (FoodNutrition) -> Bool
 
     private var trimmedSearch: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var normalizedSearch: String {
+        FoodSearchQuery.normalize(searchText)
     }
 
     private var filteredFoods: [Food] {
@@ -236,11 +248,19 @@ private struct FoodSearchView: View {
         }
     }
 
+    private var localCandidates: [FoodSearchLocalCandidate] {
+        filteredFoods.map { FoodSearchLocalCandidate(barcode: $0.barcode) }
+    }
+
     private var uniqueRecentFoods: [Food] {
         var seenNames = Set<String>()
         return recentFoods.filter { food in
             seenNames.insert(food.name.lowercased()).inserted
         }
+    }
+
+    private var canSearchRemote: Bool {
+        normalizedSearch.count >= 3
     }
 
     var body: some View {
@@ -253,13 +273,64 @@ private struct FoodSearchView: View {
                 }
             }
 
-            Section(trimmedSearch.isEmpty ? "All foods" : "Results") {
-                if filteredFoods.isEmpty {
+            Section(trimmedSearch.isEmpty ? "All foods" : "Saved foods") {
+                if filteredFoods.isEmpty, canSearchRemote {
+                    Text("No saved foods match.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else if filteredFoods.isEmpty {
                     ContentUnavailableView.search(text: trimmedSearch)
                 } else {
                     ForEach(filteredFoods) { food in
                         foodButton(food)
                     }
+                }
+            }
+
+            if canSearchRemote, let remoteSearch {
+                Section("Open Food Facts") {
+                    if remoteSearch.foods.isEmpty, !remoteSearch.isLoading, remoteSearch.errorMessage == nil {
+                        Text("Search Open Food Facts for matching products.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(remoteSearch.foods) { food in
+                        remoteFoodButton(food)
+                    }
+
+                    if remoteSearch.isLoading {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Searching Open Food Facts")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityLabel("Searching Open Food Facts")
+                    }
+
+                    if let errorMessage = remoteSearch.errorMessage {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(errorMessage)
+                                .font(.subheadline)
+                                .foregroundStyle(.red)
+                            Button("Retry Open Food Facts") {
+                                remoteSearch.loadMore(query: searchText, localCandidates: localCandidates)
+                            }
+                            .accessibilityIdentifier("retry-open-food-facts")
+                        }
+                    }
+
+                    Button(remoteSearch.foods.isEmpty ? "Search Open Food Facts" : "Load more from Open Food Facts") {
+                        remoteSearch.loadMore(query: searchText, localCandidates: localCandidates)
+                    }
+                    .disabled(remoteSearch.isLoading)
+                    .accessibilityIdentifier("search-open-food-facts")
+
+                    Link("Data from Open Food Facts", destination: URL(string: "https://world.openfoodfacts.org")!)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Open Food Facts attribution")
                 }
             }
         }
@@ -270,23 +341,76 @@ private struct FoodSearchView: View {
             placement: .navigationBarDrawer(displayMode: .always),
             prompt: "Search foods"
         )
+        .onAppear {
+            remoteSearch?.update(query: searchText, localCandidates: localCandidates)
+        }
+        .onChange(of: searchText) { _, newValue in
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            let candidates = foods
+                .filter { food in
+                    trimmed.isEmpty || food.name.localizedCaseInsensitiveContains(trimmed)
+                }
+                .map { FoodSearchLocalCandidate(barcode: $0.barcode) }
+            remoteSearch?.update(query: newValue, localCandidates: candidates)
+        }
+        .onDisappear {
+            remoteSearch?.cancel()
+        }
     }
 
     private func foodButton(_ food: Food) -> some View {
         Button {
             selectedFood = food
             amount = food.servingGrams
-            dismiss()
+            finishSelection()
         } label: {
             FoodSelectionRow(
                 food: food,
                 isSelected: selectedFood.map { $0 === food } ?? false
             )
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("food-result-\(food.name)")
+    }
+
+    private func finishSelection() {
+        dismissSearch()
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(100))
+            dismiss()
+        }
+    }
+
+    private func remoteFoodButton(_ food: FoodNutrition) -> some View {
+        Button {
+            if onSelectRemoteFood(food) {
+                finishSelection()
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(food.name)
+                    .foregroundStyle(.primary)
+                Text("\(Int(food.caloriesPer100.rounded())) kcal / 100 \(food.defaultAmount.unit.rawValue) · \(food.defaultAmount.value.formatted(.number.precision(.fractionLength(0...2)))) \(food.defaultAmount.unit.rawValue) serving")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(food.name), Open Food Facts result")
+        .accessibilityValue(
+            "\(Int(food.calories(for: food.defaultAmount.value).rounded())) calories per \(food.defaultAmount.value.formatted(.number.precision(.fractionLength(0...2)))) \(food.defaultAmount.unit.rawValue) serving"
+        )
+        .accessibilityIdentifier("remote-food-result-\(food.barcode)")
     }
 }
 
@@ -330,6 +454,8 @@ private struct MealEditorPreview: View {
             amount: $amount,
             portionCount: $portionCount,
             calories: calories,
+            remoteSearch: nil,
+            onSelectRemoteFood: { _ in false },
             onCancel: {},
             onScanBarcode: {},
             onSave: {}

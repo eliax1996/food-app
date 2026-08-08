@@ -174,6 +174,48 @@ Recents plus full catalog search will make repeated foods faster without hiding 
 
 Attempt 02 accepted after Banana search/select functional pass. Full evidence: `experiments/FOOD-SEARCH-001.md`.
 
+## [FOOD-REMOTE-SEARCH-001] Remote food search
+
+### Purpose
+
+Find valid foods absent from local/saved data without delaying local results, wasting duplicate requests, or losing offline selections.
+
+### Current implementation
+
+Search-a-licious official flat `hits` run separately from barcode product lookup. Query state uses current language plus `en` fallback, minimum 3 graphemes, 750 ms debounce, and page size 5. Useful local, cached, and remote foods merge by valid barcode; fewer than five useful results auto-fetch one page, while explicit load more requests further work. Final snapshots and query/page generations prevent stale work from replacing newer state.
+
+Positive data has 30-day freshness; empty-terminal knowledge has 90-day freshness. A rolling process limiter allows 10 requests per minute. Persistent query state uses one JSON LRU bounded at 2,048 queries / 32 MiB, with no write on read. Open Food Facts attribution is visible. Selected food persists normalized data without product refetch, and DEBUG uses deterministic responses.
+
+### Attempt 01
+
+Screenshot: `../screenshots/FOOD-REMOTE-SEARCH-001/attempt-01-results.png`
+
+Full `ContentUnavailableView` for empty Saved foods consumed 234 pt and pushed remote controls beneath the keyboard.
+
+Decision: **REJECTED**.
+
+### Attempt 02
+
+Screenshots:
+
+- `../screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-results.png`
+- `../screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-selected.png`
+- `../screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-persisted.png`
+
+Replaced full unavailable state with compact `Saved foods` empty row. Manual Xcode flow selected Remote Oat Drink at 250 ml / 100 kcal, dismissed keyboard, increased daily total by exactly 100 kcal after save, and confirmed persisted local row. Attempt 02 is visually accepted.
+
+### Evidence and validation
+
+- Measurement: 64 representative one-page five-hit queries = 65,841 bytes; 2,048 projected = 2,106,912 bytes (about 2.01 MiB). Count cap governs typical data; 32 MiB guards long/multipage outliers.
+- Focused suites: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate: 85 pass / 2 opt-in skips. Timed-out partial search responses are rejected rather than cached as terminal.
+- UI suite before final focus fix: 2 pass / 2 fail from lingering keyboard. Focus fix passed manual review. Later attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
+
+### Decision
+
+**ACCEPTED — ATTEMPT 02**
+
+Reason: compact empty-state treatment preserves hierarchy and keyboard-safe remote interaction; architecture, persistence, manual behavior, and accepted screenshots meet feature requirements. Next phase: `AMOUNT-EDITOR-001`.
+
 ## [HISTORY-001] Progress and weight
 
 ### Purpose

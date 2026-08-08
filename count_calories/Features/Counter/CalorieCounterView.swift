@@ -35,6 +35,8 @@ struct CalorieCounterView: View {
     @State private var showingBarcodeScanner = false
     @State private var showingFoodTools = false
     @State private var errorMessage: String?
+    @State private var remoteFoodSearch: RemoteFoodSearchService?
+    @State private var remoteSearchCoordinator: RemoteFoodSearchCoordinator?
 
     init(
         addMealRequestID: Binding<UUID?>,
@@ -174,7 +176,19 @@ struct CalorieCounterView: View {
                     }
                 }
             }
-            .onAppear(perform: prepareLocalData)
+            .onAppear {
+                prepareLocalData()
+                if remoteFoodSearch == nil {
+                    let service = FoodSearchServiceFactory.make()
+                    remoteFoodSearch = service
+                    remoteSearchCoordinator = service.map {
+                        RemoteFoodSearchCoordinator(
+                            service: $0,
+                            languages: FoodSearchServiceFactory.preferredLanguages
+                        )
+                    }
+                }
+            }
             .onChange(of: addMealRequestID) { _, requestID in
                 guard requestID != nil else { return }
                 prepareMealSheetForAdd()
@@ -199,6 +213,8 @@ struct CalorieCounterView: View {
                     amount: $weightGrams,
                     portionCount: $quantity,
                     calories: selectedCalories,
+                    remoteSearch: remoteSearchCoordinator,
+                    onSelectRemoteFood: selectRemoteFood,
                     onCancel: {
                         showingAddMeal = false
                         resetMealSheet()
@@ -360,6 +376,40 @@ struct CalorieCounterView: View {
         searchText = ""
         quantity = 1
         weightGrams = 100
+    }
+
+    private func selectRemoteFood(_ nutrition: FoodNutrition) -> Bool {
+        let servingAmount = nutrition.defaultAmount.value
+        let servingUnit = nutrition.defaultAmount.unit
+        let servingCalories = Int(nutrition.calories(for: servingAmount).rounded())
+        let food = foods.first { $0.barcode == nutrition.barcode } ?? Food(
+            name: nutrition.name,
+            calories: servingCalories,
+            servingGrams: servingAmount,
+            servingUnit: servingUnit,
+            barcode: nutrition.barcode
+        )
+        let isNewFood = !foods.contains { $0 === food }
+        if isNewFood {
+            modelContext.insert(food)
+        }
+        food.name = nutrition.name
+        food.calories = servingCalories
+        food.servingGrams = servingAmount
+        food.servingUnitRawValue = servingUnit.rawValue
+        food.barcode = nutrition.barcode
+
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            AppLogger.persistence.error("Failed to save remote search food: \(error.localizedDescription, privacy: .public)")
+            errorMessage = "Your food could not be saved. Please try again."
+            return false
+        }
+        selectedFood = food
+        weightGrams = servingAmount
+        return true
     }
 
     private func addFood() {

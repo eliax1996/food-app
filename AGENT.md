@@ -14,7 +14,7 @@ Prioritize a fast, dependable user experience. Preserve offline access for produ
 - `count_calories/Services/`: app-wide logging, notification, Live Activity, and widget-summary integrations.
 - `count_calories/Tracking/`: deterministic calorie math, daily-history aggregation, meal-time suggestions, and deep-link parsing shared with hostless tests.
 - `count_calories/Reminders/ReminderSchedule.swift`: deterministic meal/water reminder planning shared with hostless tests.
-- `count_calories/Nutrition/`: independent nutrition lookup domain, including nonoptional normalized food data, Open Food Facts v3.6 primary/v2 fallback clients, hedged timeout coordination, and persistent LRU caching.
+- `count_calories/Nutrition/`: independent nutrition lookup domain, including nonoptional normalized food data, Open Food Facts v3.6 primary/v2 fallback clients, official flat Search-a-licious search, hedged timeout coordination, and persistent JSON LRU caching.
 - `docs/open-food-facts-api-assessment.md`: sampled API-schema, optionality, rate-limit, fallback, timeout, and official Swift SDK assessment.
 - `Package.swift`: hostless `CaloriesCore`, `ReminderCore`, and `TrackingCore` targets that compile production logic directly for fast macOS tests.
 - `count_caloriesWidget/`: WidgetKit extension and shared widget summary storage.
@@ -233,6 +233,7 @@ Nutrition coverage should protect at least:
 - Delayed fallback hedging, immediate incomplete/error fallback, definitive-not-found short circuit, six-second overall timeout, loser cancellation, and no new fallback after shared-limit HTTP 429/503.
 - Valid zero-calorie products, unknown products, and malformed or invalid barcodes.
 - Cache-first behavior, legacy optional-cache migration, persistence across recreation, corrupt-cache recovery, and LRU eviction.
+- Remote search coverage should protect official flat Search-a-licious `hits`, current-language-plus-`en` query keys, 3-grapheme/750ms/page-5 policy, useful-result auto-fetch versus explicit load-more, valid-barcode deduplication, final snapshots and generation isolation, 30-day positive and 90-day empty-terminal freshness, the rolling 10/minute limiter, persistent JSON-LRU count/byte bounds with no-write-on-read, selection persistence without product refetch, and DEBUG fixture behavior.
 - Opt-in live v3.6 and v2 checks through `RUN_OPEN_FOOD_FACTS_LIVE_TEST=1 just test-one OpenFoodFactsLiveTests`; never include live network calls in normal gates.
 
 Keep `just test` as the bounded automated correctness gate and keep UI/performance checks available as explicit recipes. A passing UI run complements unit coverage; it never replaces missing deterministic unit tests. Run narrow tests throughout implementation, then final validation and UI proof before declaring behavior-changing work complete.

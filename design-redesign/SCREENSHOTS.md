@@ -67,6 +67,20 @@ Attempts:
 Accepted: `screenshots/FOOD-TOOLS-001/attempt-04.png`
 Reason: secondary native sheet, keyboard-safe layout, visible disabled lookup, verified custom-food round trip.
 
+## FOOD-REMOTE-SEARCH-001
+
+Baseline: local/saved-food selector with no remote discovery evidence.
+
+Attempts:
+
+- `screenshots/FOOD-REMOTE-SEARCH-001/attempt-01-results.png` — retained rejected attempt. Full `ContentUnavailableView` consumed 234 pt and pushed remote controls beneath keyboard.
+- `screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-results.png`
+- `screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-selected.png`
+- `screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-persisted.png`
+
+Accepted: attempt 02 evidence above.
+Reason: compact `Saved foods` empty row preserves local context and keeps remote results/controls keyboard-safe. Manual flow selected Remote Oat Drink at 250 ml / 100 kcal, increased daily total by exactly 100 kcal after save, and confirmed persisted local row.
+
 ## HISTORY-001 / PROGRESS-001
 
 Baseline: `screenshots/baseline/history-calories.png`

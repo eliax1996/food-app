@@ -4,6 +4,10 @@
 
 Keep calorie, water, weight, and nutrition recording fast while supporting opt-in, independently controlled meal and water reminders.
 
+## Current Phase
+
+`AMOUNT-EDITOR-001` — implement and verify approved Prototype A. `FOOD-REMOTE-SEARCH-001` is accepted at attempt 02; no further remote-search implementation is pending.
+
 ## Completed Judge Feedback
 
 - Added actionable SwiftData save error handling and logging.
@@ -30,6 +34,14 @@ Keep calorie, water, weight, and nutrition recording fast while supporting opt-i
 - Replaced nullable nutrition domain fields with nonoptional `FoodNutrition` and explicit found/incomplete/not-found results; retained legacy cache decoding.
 - Sampled 14 barcodes against both API versions, documented field presence/rate-limit evidence and SDK assessment, and added deterministic plus opt-in live API tests.
 - Completed final three-reviewer nutrition pass: two approved; one suggested undocumented v2 `energy-kcal_100ml`, contradicted by official v2 schema and sampled beverage responses using `energy-kcal_100g`; no shared actionable finding remained.
+- Implemented and visually accepted `FOOD-REMOTE-SEARCH-001` attempt 02: official flat Search-a-licious hits, language fallback, useful-result pagination, valid-barcode deduplication, generation-safe snapshots, bounded persistent query cache, attribution, selected-food persistence without product refetch, and DEBUG fixture.
+
+## FOOD-REMOTE-SEARCH-001 Validation Record
+
+- Cache measurement: 64 representative one-page five-hit queries encoded to 65,841 bytes; 2,048 projected to 2,106,912 bytes (about 2.01 MiB). Query count governs typical data; 32 MiB guards long/multipage outliers.
+- Focused suites: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate is 85 pass / 2 opt-in skips; timed-out partial search responses are rejected rather than cached as terminal.
+- Manual Xcode flow passed Remote Oat Drink at 250 ml / 100 kcal. Keyboard dismissed; saving increased daily total by exactly 100 kcal; selected food persisted as local row.
+- UI suite reached XCTest before final focus fix with 2 pass / 2 fail from lingering keyboard. Focus fix passed manual Xcode review. Later attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
 
 ## Required Validation
 

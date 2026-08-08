@@ -4,7 +4,7 @@ Persistent prioritized backlog. Read with `STATUS.md` before each redesign phase
 
 ## Priority 1 — [FOOD-REMOTE-SEARCH-001] Remote food search and query cache
 
-**Status:** RESEARCH / DESIGN REQUIRED
+**Status:** IMPLEMENTED / ACCEPTED — ATTEMPT 02
 **Priority:** MUST HAVE
 **Origin:** User observed that typing a food absent from the local database produces no result.
 
@@ -25,16 +25,15 @@ Local seeded/saved foods are finite. A valid food can appear absent even though 
 9. Merge and deduplicate local, cached, and remote results without replacing different barcode products merely because names match.
 10. Preserve useful cached results offline and surface remote failures without erasing local matches.
 
-### Trigger interpretation to validate before implementation
+### Approved trigger and pagination interpretation
 
-User wording mentions both `> 5` and “if smaller than 5 search.” Working interpretation:
-
-- auto-search remotely after debounce when fewer than 5 useful local/cached results exist;
-- if 5 or more useful results exist, defer network work until explicit load-more/scroll-bottom intent;
-- fresh cached terminal metadata suppresses automatic repeat for the same normalized literal query;
-- explicit load-more always queries the next page or revalidates terminal state.
-
-Validate this interpretation against API pagination/rate limits and prototype behavior before locking code. Record any correction here.
+- Query key is trimmed, case-folded, internal-whitespace-collapsed query plus current language and `en` fallback when different.
+- Require 3 graphemes; debounce 750ms; request page size 5.
+- Merge local/cached/remote results and count useful foods. Fewer than 5 auto-fetches one page; 5 or more defers network work.
+- Nonterminal state fetches next missing page. Short/empty raw page only sets terminal knowledge.
+- Fresh terminal state suppresses automatic retry; stale terminal state revalidates. Fresh/stale terminal revalidation restarts page 1 and replaces old generation.
+- Explicit bottom permits an attempt, including fresh terminal state, but obeys the 10/min search budget.
+- Positive TTL is 30d; terminal TTL is 90d.
 
 ### Research questions
 
@@ -47,11 +46,18 @@ Validate this interpretation against API pagination/rate limits and prototype be
 - LRU capacity by item count and encoded bytes; migration/corruption recovery.
 - Ranking and deduplication across local/cached/remote products.
 
-### Initial technical hypothesis
+### Approved architecture
 
-Separate search client/protocol from barcode product lookup. Use deterministic coordinator with debounced query tasks, cancellation, in-flight request coalescing, paginated result state, and persistent Codable LRU entries containing normalized query, pages, terminal flag, timestamps, and last access. Keep raw DTO optionality at API boundary; expose only usable normalized search foods.
+Use separate Search-a-licious client/protocol from barcode product lookup. Search consumes official flat `hits`; deterministic coordinator owns debounce, cancellation, in-flight coalescing, paginated state, final snapshots, generation checks, and a process-memory rolling limiter. Query policy is current language plus `en` fallback, minimum 3 graphemes, 750 ms debounce, and page size 5. Merge useful local/cached/remote foods; fewer than 5 auto-fetches one page, while explicit load more requests further work. Persistent single-JSON LRU stores query pages, terminal state, fetch times, and normalized keys; defaults are max 2,048 queries and 32 MiB, with no write on read. Positive data is fresh for 30 days; empty-terminal knowledge is fresh for 90 days. Raw DTO optionals stay at API boundary; valid barcodes define identity and deduplication. Selecting a search hit persists it without an additional product request; explicit barcode lookup remains v3.6-primary/v2-fallback. Attribute Open Food Facts and use a deterministic DEBUG fixture with MCP-to-UI promotion.
 
-This is hypothesis, not approved architecture. Research and tests must justify it.
+### Implementation outcome
+
+- Attempt 01 was rejected: full `ContentUnavailableView` consumed 234 pt and pushed remote controls beneath the keyboard.
+- Attempt 02 replaced it with a compact `Saved foods` empty row and was visually accepted. Evidence: `screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-results.png`, `attempt-02-selected.png`, and `attempt-02-persisted.png`; `attempt-01-results.png` remains retained for comparison.
+- Cache measurement covered 64 representative one-page five-hit queries at 65,841 bytes; 2,048 projected to 2,106,912 bytes (about 2.01 MiB). Count cap governs typical data; 32 MiB guards long/multipage outliers.
+- Focused tests: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate is 85 pass / 2 opt-in skips. Timed-out partial search responses are rejected rather than cached as terminal.
+- Manual Xcode flow passed Remote Oat Drink at 250 ml / 100 kcal, dismissed keyboard, increased daily total by exactly 100 kcal after save, and persisted local row without product refetch.
+- UI suite had 2 pass / 2 fail before the final focus fix due to lingering keyboard. Focus fix passed manual review. Later attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
 
 ### Success criteria
 
@@ -70,6 +76,8 @@ This is hypothesis, not approved architecture. Research and tests must justify i
 ### Evidence and result log
 
 - 2026-08-08: Backlog created from user observation. No endpoint or architecture selected yet.
+- 2026-08-08: Official API introduction, v2 reference, Search-a-licious OpenAPI, license guidance, Swift package artifacts, current Nutrition code, and one live `almond milk` page reviewed. Search-a-licious `GET /search` selected for full-text search; 10/min conservative rolling limit, page/terminal TTLs, query/page LRU, valid-barcode identity, and UI fixture/test promotion approved. Full evidence: `docs/open-food-facts-search-assessment.md`.
+- 2026-08-08: Implemented and accepted attempt 02 after compacting the Saved foods empty state. Manual Xcode proof passed Remote Oat Drink selection/persistence and an exact 100 kcal daily-total increase; final UI-host attempts remained blocked before XCTest and are not reported green. Experiment record: `experiments/FOOD-REMOTE-SEARCH-001.md`.
 
 ---
 

@@ -1,6 +1,6 @@
 # Count Calories
 
-Native SwiftUI calorie tracker for daily food, water, weight, goals, reminders, barcode nutrition lookup, widgets, and Live Activities.
+Native SwiftUI calorie tracker for daily food, water, weight, goals, reminders, barcode and remote nutrition lookup with offline query caching, widgets, and Live Activities.
 
 ## Development
 

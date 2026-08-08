@@ -17,9 +17,7 @@ struct OpenFoodFactsHTTPClient: Sendable {
     }
 
     func data(from url: URL, barcodeLength: Int) async throws -> Data? {
-        var request = URLRequest(url: url)
-        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        var request = configuredRequest(url: url)
         request.timeoutInterval = timeout
 
         let data: Data
@@ -46,6 +44,40 @@ struct OpenFoodFactsHTTPClient: Sendable {
             throw FoodNutritionFetchError.serverError(httpResponse.statusCode)
         }
         return data
+    }
+
+    func searchData(from url: URL, queryLength: Int, page: Int) async throws -> Data {
+        let request = configuredRequest(url: url)
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            Self.logger.error(
+                "Food search transport failed query length \(queryLength, privacy: .public) page \(page, privacy: .public)"
+            )
+            throw error
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw FoodSearchError.invalidResponse
+        }
+        Self.logger.info(
+            "Food search response query length \(queryLength, privacy: .public) page \(page, privacy: .public) status \(httpResponse.statusCode, privacy: .public)"
+        )
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw FoodSearchError.serverError(httpResponse.statusCode)
+        }
+        return data
+    }
+
+    private func configuredRequest(url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = timeout
+        return request
     }
 }
 
@@ -104,34 +136,50 @@ struct OpenFoodFactsProductMetadata: Decodable, Sendable {
         self.packageAmounts = packageAmounts
     }
 
+    nonisolated func foodNutrition(
+        caloriesPer100: Double?,
+        structuredServing: NutritionAmount? = nil,
+        referenceUnit: NutritionUnit? = nil,
+        requestedBarcode: String? = nil
+    ) -> FoodNutrition? {
+        guard
+            !name.isEmpty,
+            let caloriesPer100,
+            caloriesPer100.isFinite,
+            caloriesPer100 >= 0,
+            let barcode = normalizedFoodBarcodeIfValid(code) ?? requestedBarcode
+        else {
+            return nil
+        }
+
+        let standardUnit = referenceUnit == .milliliters ? NutritionUnit.milliliters : inferredUnit
+        let amount = structuredServing
+            ?? servingAmounts.first
+            ?? packageAmounts.first
+            ?? NutritionAmount(value: 100, unit: standardUnit)
+        return FoodNutrition(
+            barcode: barcode,
+            name: name,
+            defaultAmount: amount,
+            caloriesPer100: caloriesPer100
+        )
+    }
+
     nonisolated func result(
         requestedBarcode: String,
         caloriesPer100: Double?,
         structuredServing: NutritionAmount? = nil,
         referenceUnit: NutritionUnit? = nil
     ) -> FoodNutritionFetchResult {
-        guard
-            !name.isEmpty,
-            let caloriesPer100,
-            caloriesPer100.isFinite,
-            caloriesPer100 >= 0
-        else {
+        guard let nutrition = foodNutrition(
+            caloriesPer100: caloriesPer100,
+            structuredServing: structuredServing,
+            referenceUnit: referenceUnit,
+            requestedBarcode: requestedBarcode
+        ) else {
             return .incompleteProduct
         }
-
-        let barcode = (8...14).contains(code.count) ? code : requestedBarcode
-        // OFF can report beverages as `100g`; explicit liquid metadata stays stronger. `100ml` is unambiguous.
-        let standardUnit = referenceUnit == .milliliters ? NutritionUnit.milliliters : inferredUnit
-        let amount = structuredServing
-            ?? servingAmounts.first
-            ?? packageAmounts.first
-            ?? NutritionAmount(value: 100, unit: standardUnit)
-        return .found(FoodNutrition(
-            barcode: barcode,
-            name: name,
-            defaultAmount: amount,
-            caloriesPer100: caloriesPer100
-        ))
+        return .found(nutrition)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -148,6 +196,165 @@ struct OpenFoodFactsProductMetadata: Decodable, Sendable {
     }
 }
 
+struct OpenFoodFactsProduct: Decodable, Sendable {
+    let metadata: OpenFoodFactsProductMetadata
+    let structuredNutrition: V3NutritionData
+    let legacyCaloriesPer100: Double?
+
+    init(from decoder: Decoder) throws {
+        metadata = try OpenFoodFactsProductMetadata(from: decoder)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        structuredNutrition = try container.decodeIfPresent(V3NutritionData.self, forKey: .nutrition) ?? .empty
+        if let nutrients = try? container.nestedContainer(keyedBy: NutrientCodingKeys.self, forKey: .nutriments) {
+            legacyCaloriesPer100 = nutrients.decodeFlexibleDoubleIfPresent(forKey: .energyKcalPer100)
+        } else {
+            legacyCaloriesPer100 = nil
+        }
+    }
+
+    nonisolated func result(requestedBarcode: String) -> FoodNutritionFetchResult {
+        metadata.result(
+            requestedBarcode: requestedBarcode,
+            caloriesPer100: structuredNutrition.caloriesPer100 ?? legacyCaloriesPer100,
+            structuredServing: structuredNutrition.servingAmount,
+            referenceUnit: structuredNutrition.referenceUnit
+        )
+    }
+
+    nonisolated func searchNutrition() -> FoodNutrition? {
+        metadata.foodNutrition(
+            caloriesPer100: structuredNutrition.caloriesPer100 ?? legacyCaloriesPer100,
+            structuredServing: structuredNutrition.servingAmount,
+            referenceUnit: structuredNutrition.referenceUnit
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case nutrition
+        case nutriments
+    }
+
+    private enum NutrientCodingKeys: String, CodingKey {
+        case energyKcalPer100 = "energy-kcal_100g"
+    }
+}
+
+struct V3NutritionData: Decodable, Sendable {
+    static let empty = V3NutritionData(aggregatedSet: .empty, inputSets: [])
+
+    let aggregatedSet: V3NutrientSet
+    let inputSets: [V3NutrientSet]
+
+    nonisolated var caloriesPer100: Double? {
+        if let aggregateCalories = aggregatedSet.calories,
+           aggregatedSet.basis == "100g" || aggregatedSet.basis == "100ml" {
+            return aggregateCalories
+        }
+
+        for set in inputSets where set.preparation != "prepared" {
+            guard let calories = set.calories else { continue }
+            switch set.basis {
+            case "100g", "100ml":
+                return calories
+            case "serving":
+                guard let amount = NutritionAmount.normalized(value: set.perQuantity, unitDescription: set.perUnit) else {
+                    continue
+                }
+                return calories * 100 / amount.value
+            default:
+                continue
+            }
+        }
+        return nil
+    }
+
+    nonisolated var referenceUnit: NutritionUnit? {
+        let basis = aggregatedSet.basis.isEmpty
+            ? inputSets.first(where: { $0.basis == "100ml" || $0.basis == "100g" })?.basis
+            : aggregatedSet.basis
+        switch basis {
+        case "100ml": return .milliliters
+        case "100g": return .grams
+        default: return nil
+        }
+    }
+
+    nonisolated var servingAmount: NutritionAmount? {
+        for set in inputSets where set.basis == "serving" && set.preparation != "prepared" {
+            if let amount = NutritionAmount.normalized(value: set.perQuantity, unitDescription: set.perUnit) {
+                return amount
+            }
+        }
+        return nil
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        aggregatedSet = try container.decodeIfPresent(V3NutrientSet.self, forKey: .aggregatedSet) ?? .empty
+        inputSets = try container.decodeIfPresent([V3NutrientSet].self, forKey: .inputSets) ?? []
+    }
+
+    private init(aggregatedSet: V3NutrientSet, inputSets: [V3NutrientSet]) {
+        self.aggregatedSet = aggregatedSet
+        self.inputSets = inputSets
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case aggregatedSet = "aggregated_set"
+        case inputSets = "input_sets"
+    }
+}
+
+struct V3NutrientSet: Decodable, Sendable {
+    static let empty = V3NutrientSet(calories: nil, basis: "", perQuantity: 0, perUnit: "", preparation: "")
+
+    let calories: Double?
+    let basis: String
+    let perQuantity: Double
+    let perUnit: String
+    let preparation: String
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let nutrients = try? container.nestedContainer(keyedBy: NutrientCodingKeys.self, forKey: .nutrients),
+           let calorieValue = try? nutrients.nestedContainer(keyedBy: NutrientValueCodingKeys.self, forKey: .energyKcal) {
+            calories = calorieValue.decodeFlexibleDoubleIfPresent(forKey: .value)
+                ?? calorieValue.decodeFlexibleDoubleIfPresent(forKey: .computedValue)
+        } else {
+            calories = nil
+        }
+        basis = container.decodeLossyString(forKey: .basis)
+        perQuantity = container.decodeFlexibleDoubleIfPresent(forKey: .perQuantity) ?? 0
+        perUnit = container.decodeLossyString(forKey: .perUnit)
+        preparation = container.decodeLossyString(forKey: .preparation)
+    }
+
+    private init(calories: Double?, basis: String, perQuantity: Double, perUnit: String, preparation: String) {
+        self.calories = calories
+        self.basis = basis
+        self.perQuantity = perQuantity
+        self.perUnit = perUnit
+        self.preparation = preparation
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case nutrients
+        case basis = "per"
+        case perQuantity = "per_quantity"
+        case perUnit = "per_unit"
+        case preparation
+    }
+
+    private enum NutrientCodingKeys: String, CodingKey {
+        case energyKcal = "energy-kcal"
+    }
+
+    private enum NutrientValueCodingKeys: String, CodingKey {
+        case value
+        case computedValue = "value_computed"
+    }
+}
+
 nonisolated func normalizedFoodBarcode(_ barcode: String) throws -> String {
     let normalizedBarcode = barcode.filter(\.isNumber)
     guard (8...14).contains(normalizedBarcode.count) else {
@@ -156,15 +363,12 @@ nonisolated func normalizedFoodBarcode(_ barcode: String) throws -> String {
     return normalizedBarcode
 }
 
-nonisolated func openFoodFactsProductURL(
-    baseURL: URL,
-    barcode: String,
-    fields: String
-) throws -> URL {
-    guard var components = URLComponents(
-        url: baseURL.appending(path: barcode),
-        resolvingAgainstBaseURL: false
-    ) else {
+nonisolated func normalizedFoodBarcodeIfValid(_ barcode: String) -> String? {
+    try? normalizedFoodBarcode(barcode)
+}
+
+nonisolated func openFoodFactsProductURL(baseURL: URL, barcode: String, fields: String) throws -> URL {
+    guard var components = URLComponents(url: baseURL.appending(path: barcode), resolvingAgainstBaseURL: false) else {
         throw FoodNutritionFetchError.invalidResponse
     }
     components.queryItems = [URLQueryItem(name: "fields", value: fields)]

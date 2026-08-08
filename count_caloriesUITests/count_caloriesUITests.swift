@@ -122,6 +122,7 @@ final class CountCaloriesUITests: XCTestCase {
                 .completed,
                 "Select: selected food did not become Banana; \(diagnostic(for: selectedFoodName))"
             )
+            assertKeyboardDismissed(app, phase: "Select")
         }
 
         XCTContext.runActivity(named: "Verify draft total") { _ in
@@ -162,6 +163,86 @@ final class CountCaloriesUITests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testRemoteFoodSearchFixturePersistsSelectedFood() throws {
+        let app = XCUIApplication()
+        let addMealButton = app.buttons["add-meal"]
+        let chooseFoodButton = app.buttons["choose-food"]
+        let searchField = app.searchFields.firstMatch
+        let remoteResult = app.buttons["remote-food-result-1234567890123"]
+        let selectedFoodName = app.staticTexts["selected-food-name"]
+        let calculatedTotal = app.descendants(matching: .any)
+            .matching(identifier: "calculated-total")
+            .firstMatch
+        let saveMealButton = app.buttons["save-meal"]
+        let calorieTotal = app.staticTexts["daily-calorie-total"]
+        let persistedFood = app.buttons["food-result-Remote Oat Drink"]
+
+        XCTContext.runActivity(named: "Launch deterministic remote search") { _ in
+            app.launchArguments = ["-ui-testing"]
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertExists(addMealButton, identifier: "add-meal", phase: "Launch")
+        }
+
+        XCTContext.runActivity(named: "Find fixture food") { _ in
+            addMealButton.tap()
+            assertExists(chooseFoodButton, identifier: "choose-food", phase: "Open")
+            chooseFoodButton.tap()
+            assertExists(searchField, identifier: "food search field", phase: "Search")
+            searchField.tap()
+            searchField.typeText("zzremote")
+            XCTAssertEqual(
+                searchField.value as? String,
+                "zzremote",
+                "Search: query did not become zzremote; \(diagnostic(for: searchField))"
+            )
+            assertExists(
+                remoteResult,
+                identifier: "remote-food-result-1234567890123",
+                phase: "Fixture search"
+            )
+        }
+
+        XCTContext.runActivity(named: "Select persisted remote food") { _ in
+            remoteResult.tap()
+            let selectedRemoteFood = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label == %@", "Remote Oat Drink"),
+                object: selectedFoodName
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(for: [selectedRemoteFood], timeout: uiTimeout),
+                .completed,
+                "Select: selected food did not become Remote Oat Drink; \(diagnostic(for: selectedFoodName))"
+            )
+            assertKeyboardDismissed(app, phase: "Select")
+            assertExactValue(calculatedTotal, expected: "100 calories", phase: "Select")
+        }
+
+        XCTContext.runActivity(named: "Save remote meal") { _ in
+            assertExists(saveMealButton, identifier: "save-meal", phase: "Save")
+            saveMealButton.tap()
+            assertDailyTotal(calorieTotal, eaten: 100, phase: "Save")
+        }
+
+        XCTContext.runActivity(named: "Verify persisted food catalog entry") { _ in
+            addMealButton.tap()
+            assertExists(chooseFoodButton, identifier: "choose-food", phase: "Persistence")
+            chooseFoodButton.tap()
+            assertExists(searchField, identifier: "food search field", phase: "Persistence")
+            searchField.tap()
+            searchField.typeText("Remote Oat Drink")
+            assertExists(
+                persistedFood,
+                identifier: "food-result-Remote Oat Drink",
+                phase: "Persistence"
+            )
+        }
+    }
+
     private let uiTimeout: TimeInterval = 5
 
     private func assertExists(
@@ -198,6 +279,19 @@ final class CountCaloriesUITests: XCTestCase {
     ) {
         let expected = "\(eaten.formatted()) eaten, \((1700 - eaten).formatted()) kcal remaining, daily goal \(1700.formatted())"
         assertExactValue(element, expected: expected, phase: phase)
+    }
+
+    private func assertKeyboardDismissed(_ app: XCUIApplication, phase: String) {
+        let keyboard = app.keyboards.firstMatch
+        let dismissed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: keyboard
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [dismissed], timeout: uiTimeout),
+            .completed,
+            "\(phase): search keyboard remained visible; \(diagnostic(for: keyboard))"
+        )
     }
 
     private func diagnostic(for element: XCUIElement) -> String {
