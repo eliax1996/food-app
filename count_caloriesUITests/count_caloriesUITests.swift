@@ -16,38 +16,193 @@ final class CountCaloriesUITests: XCTestCase {
     @MainActor
     func testAddingDefaultMealUpdatesToday() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing"]
-        app.launch()
-
         let addMealButton = app.buttons["add-meal"]
-        XCTAssertTrue(addMealButton.waitForExistence(timeout: 5), "Add meal button did not appear.")
-        addMealButton.tap()
-
+        let mealEditor = app.descendants(matching: .any)
+            .matching(identifier: "meal-editor")
+            .firstMatch
         let saveMealButton = app.buttons["save-meal"]
-        XCTAssertTrue(saveMealButton.waitForExistence(timeout: 5), "Save meal button did not appear.")
-        let saveEnabled = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "enabled == true"),
-            object: saveMealButton
-        )
-        XCTAssertEqual(
-            XCTWaiter.wait(for: [saveEnabled], timeout: 5),
-            .completed,
-            "Save meal button never became enabled."
-        )
-        saveMealButton.tap()
-
         let calorieTotal = app.staticTexts["daily-calorie-total"]
-        XCTAssertTrue(calorieTotal.waitForExistence(timeout: 5), "Today's calorie total did not appear.")
+        XCTContext.runActivity(named: "Launch app") { _ in
+            app.launchArguments = ["-ui-testing"]
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertExists(addMealButton, identifier: "add-meal", phase: "Launch")
+            assertExists(calorieTotal, identifier: "daily-calorie-total", phase: "Launch")
+            assertDailyTotal(calorieTotal, eaten: 0, phase: "Launch")
+        }
 
-        let updatedTotal = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label CONTAINS '15'"),
-            object: calorieTotal
+        XCTContext.runActivity(named: "Open meal editor") { _ in
+            XCTAssertTrue(
+                addMealButton.isEnabled,
+                "Open: add-meal control is disabled; \(diagnostic(for: addMealButton))"
+            )
+            addMealButton.tap()
+            assertExists(mealEditor, identifier: "meal-editor", phase: "Open")
+            assertExists(saveMealButton, identifier: "save-meal", phase: "Open")
+
+            let saveEnabled = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "enabled == true"),
+                object: saveMealButton
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(for: [saveEnabled], timeout: uiTimeout),
+                .completed,
+                "Open: save-meal did not become enabled; \(diagnostic(for: saveMealButton))"
+            )
+        }
+
+        XCTContext.runActivity(named: "Verify saved total") { _ in
+            saveMealButton.tap()
+            assertDailyTotal(calorieTotal, eaten: 15, phase: "Total")
+        }
+    }
+
+    @MainActor
+    func testSearchingFoodAndCancellingDoesNotLogMeal() throws {
+        let app = XCUIApplication()
+        let addMealButton = app.buttons["add-meal"]
+        let mealEditor = app.descendants(matching: .any)
+            .matching(identifier: "meal-editor")
+            .firstMatch
+        let chooseFoodButton = app.buttons["choose-food"]
+        let searchField = app.searchFields.firstMatch
+        let bananaResult = app.buttons["food-result-Banana"]
+        let selectedFoodName = app.staticTexts["selected-food-name"]
+        let calculatedTotal = app.descendants(matching: .any)
+            .matching(identifier: "calculated-total")
+            .firstMatch
+        let cancelButton = app.buttons["cancel-meal"]
+        let bananaMeal = app.descendants(matching: .any)
+            .matching(identifier: "meal-entry-Banana")
+            .firstMatch
+        let calorieTotal = app.staticTexts["daily-calorie-total"]
+
+        XCTContext.runActivity(named: "Launch app") { _ in
+            app.launchArguments = ["-ui-testing"]
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertExists(addMealButton, identifier: "add-meal", phase: "Launch")
+            assertExists(calorieTotal, identifier: "daily-calorie-total", phase: "Launch")
+            assertDailyTotal(calorieTotal, eaten: 0, phase: "Launch")
+        }
+
+        XCTContext.runActivity(named: "Open meal editor") { _ in
+            addMealButton.tap()
+            assertExists(mealEditor, identifier: "meal-editor", phase: "Open")
+            assertExists(chooseFoodButton, identifier: "choose-food", phase: "Open")
+            chooseFoodButton.tap()
+            assertExists(searchField, identifier: "food search field", phase: "Open")
+        }
+
+        XCTContext.runActivity(named: "Search for Banana") { _ in
+            searchField.tap()
+            searchField.typeText("Banana")
+            XCTAssertEqual(
+                searchField.value as? String,
+                "Banana",
+                "Search: query did not become Banana; \(diagnostic(for: searchField))"
+            )
+            assertExists(bananaResult, identifier: "food-result-Banana", phase: "Search")
+        }
+
+        XCTContext.runActivity(named: "Select Banana") { _ in
+            bananaResult.tap()
+            let selectedBanana = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "label == %@", "Banana"),
+                object: selectedFoodName
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(for: [selectedBanana], timeout: uiTimeout),
+                .completed,
+                "Select: selected food did not become Banana; \(diagnostic(for: selectedFoodName))"
+            )
+        }
+
+        XCTContext.runActivity(named: "Verify draft total") { _ in
+            assertExists(calculatedTotal, identifier: "calculated-total", phase: "Total")
+            assertExactValue(
+                calculatedTotal,
+                expected: "89 calories",
+                phase: "Total"
+            )
+        }
+
+        XCTContext.runActivity(named: "Cancel meal") { _ in
+            assertExists(cancelButton, identifier: "cancel-meal", phase: "Cancel")
+            XCTAssertTrue(
+                cancelButton.isEnabled,
+                "Cancel: cancel-meal control is disabled; \(diagnostic(for: cancelButton))"
+            )
+            cancelButton.tap()
+
+            let editorDismissed = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "exists == false"),
+                object: mealEditor
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(for: [editorDismissed], timeout: uiTimeout),
+                .completed,
+                "Cancel: meal editor did not dismiss; \(diagnostic(for: mealEditor))"
+            )
+        }
+
+        XCTContext.runActivity(named: "Verify final state") { _ in
+            XCTAssertFalse(
+                bananaMeal.exists,
+                "Final-state: Banana meal row exists after cancellation; \(diagnostic(for: bananaMeal))"
+            )
+            assertExists(calorieTotal, identifier: "daily-calorie-total", phase: "Final-state")
+            assertDailyTotal(calorieTotal, eaten: 0, phase: "Final-state")
+        }
+    }
+
+    private let uiTimeout: TimeInterval = 5
+
+    private func assertExists(
+        _ element: XCUIElement,
+        identifier: String,
+        phase: String
+    ) {
+        XCTAssertTrue(
+            element.waitForExistence(timeout: uiTimeout),
+            "\(phase): expected \(identifier) to exist; \(diagnostic(for: element))"
+        )
+    }
+
+    private func assertExactValue(
+        _ element: XCUIElement,
+        expected: String,
+        phase: String
+    ) {
+        let expectedValue = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", expected),
+            object: element
         )
         XCTAssertEqual(
-            XCTWaiter.wait(for: [updatedTotal], timeout: 5),
+            XCTWaiter.wait(for: [expectedValue], timeout: uiTimeout),
             .completed,
-            "Today's calorie total did not update after saving the meal."
+            "\(phase): expected value '\(expected)'; \(diagnostic(for: element))"
         )
+    }
+
+    private func assertDailyTotal(
+        _ element: XCUIElement,
+        eaten: Int,
+        phase: String
+    ) {
+        let expected = "\(eaten.formatted()) eaten, \((1700 - eaten).formatted()) kcal remaining, daily goal \(1700.formatted())"
+        assertExactValue(element, expected: expected, phase: phase)
+    }
+
+    private func diagnostic(for element: XCUIElement) -> String {
+        let value = element.value.map { String(describing: $0) } ?? "<nil>"
+        return "exists=\(element.exists), enabled=\(element.isEnabled), label='\(element.label)', value='\(value)'"
     }
 
     @MainActor

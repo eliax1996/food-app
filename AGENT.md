@@ -74,9 +74,46 @@ Use this completion sequence for every implementation: inspect the affected code
 
 Keep this document current. When code, project operations, validation commands, architecture, product direction, or engineering practices change, update the affected `AGENT.md` guidance in the same change. Do not retain instructions that no longer describe the repository.
 
+## Milestone commits
+
+Once a feature/component is accepted and its relevant compile/tests are green, create a focused local commit to keep the remaining diff reviewable. Parent may commit directly or assign a bounded commit task to a subagent, but parent must first inspect the diff, verify test evidence, and define exact included paths.
+
+- Commit production code, tests, accepted screenshots/experiments, and durable docs needed for that completed feature together.
+- Do not include unrelated edits, unfinished backlog work, temporary artifacts, or `.TASK_NOTES.md`.
+- If completed work depends on inseparable shared infrastructure, include that infrastructure and state why; otherwise split logical milestones.
+- Run `git diff --check` and relevant `just` gates before committing. Inspect staged diff before `git commit`.
+- Use concise imperative commit messages. Do not amend, squash, rebase, push, or rewrite existing commits unless the user asks.
+- Keep incomplete redesign status explicit after each milestone commit so subsequent agents know what remains.
+
+## Delegation and model selection
+
+Assess delegation before doing each substantive subtask. Once a task has a clear boundary, end state, and independent validation, prefer delegating it instead of retaining execution in the parent. Consider context-transfer cost, expected token use, risk, ambiguity, file overlap, and validation cost. Parent owns decomposition, integration, and final judgment.
+
+Choose model and effort from current evidence:
+
+- **GPT-5.6 Luna at `max` only** (`openai-codex/gpt-5.6-luna`): default for small through medium well-defined work. Use for one or a few exclusively owned files, focused SwiftUI refinements, deterministic tests, documentation, read-only review, and straightforward Xcode MCP/simulator sequences.
+- **GPT-5.6 Terra at `high` or above only** (`openai-codex/gpt-5.6-terra`): use for medium through large bounded work needing broader context, multi-file integration, nontrivial debugging, or a follow-up after Luna leaves a significant defect. Start at `high`; raise effort only when evidence justifies the extra tokens.
+- **GPT-5.6 Sol at any effort** (`openai-codex/gpt-5.6-sol`): use for ambiguous, cross-cutting, architecture-heavy, high-risk, or repeatedly failing work. Match effort to difficulty: low/medium for narrow analysis, high for complex implementation, max only for the hardest synthesis or diagnosis.
+
+Do not use Luna below `max` or Terra below `high`. Do not automatically select the strongest model. Prefer the least costly allowed configuration likely to complete the bounded task correctly. Upgrade after one well-scoped failed attempt, when the defect is major, or when the task proves broader than its prompt. Downgrade future similar tasks when a cheaper model repeatedly succeeds.
+
+Give every implementation subagent the goal, required end state, relevant constraints, exclusive files or worktree, prohibited unrelated edits, exact `just` validation command, and concise report format. Never let parent and subagent edit overlapping files concurrently. For any created or modified UI test, explicitly require the subagent to run that test with a higher bounded timeout, diagnose failures, add enough development diagnostics, iterate, and return only after it passes or a verified external blocker remains. Give every MCP subagent the exact interaction session key, required skill, flow, bounded capture/retry budget, expected screenshots/hierarchy/log evidence, and instruction not to guess coordinates or retain the session. State invariants rather than brittle expected values when app state depends on time, locale, or seeded scenario.
+
+Limit token use deliberately:
+
+- provide only files, screenshots, failed output, and context needed for the assigned boundary;
+- ask for the smallest complete change and a concise result instead of broad repository narration;
+- use one implementation agent at a time unless scopes are truly independent;
+- request another iteration only for an identifiable defect, with the prior result and exact correction;
+- stop after repeated low-value iterations, integrate the best result, or escalate model/effort.
+
+Parent remains accountable. Inspect every diff or evidence set, rerun the exact required validation when a subagent used the wrong command, and evaluate acceptance criteria, regressions, and scope drift. Fix small obvious defects directly. If review requires many edits, changes test architecture, or exposes a major defect, return it to a focused subagent with concrete findings and require another passing loop. Never accept a subagent's claim without checking its output.
+
+Maintain empirical selection guidance in `docs/subagent-model-guide.md`. After meaningful delegated work, record model, effort, task shape, outcome, instruction-following, token/quota behavior, strengths, weaknesses, and any resulting policy adjustment. Update this section when repeated evidence changes the best model or effort for a task class.
+
 ## Escalation
 
-When the same implementation problem remains unresolved after three or four focused edit-and-validate iterations, launch a `general` subagent using GPT-5.6 Sol at default effort. Begin its prompt with a clear statement of the problem, the required end state, relevant constraints, failed attempts, and validation failures. Ask it to diagnose and implement the smallest complete fix, then independently verify it. Do not escalate routine failures that have an obvious next correction.
+Escalate by task evidence, not a fixed retry count. A failed Luna `max` task normally moves to Terra `high`; a failed or unexpectedly broad Terra task moves to Sol at an effort matched to ambiguity and risk. When the same problem survives three or four focused edit-and-validate iterations, use Sol `high` or `max` with failed attempts, exact diagnostics, constraints, and required end state. Do not escalate routine failures with an obvious small correction.
 
 ## Xcode MCP Bridge
 
@@ -89,7 +126,9 @@ Use the persistent local XcodeBridge service for agent access to Xcode and the i
 - OpenCode connects through `~/.local/share/XcodeBridge/build/Build/Products/Release/XcodeBridge.app/Contents/Resources/xcbridge connect`. Do not replace this with a direct `xcrun mcpbridge` configuration, because doing so reintroduces the repeated Xcode permission prompt.
 - The bridge uses Xcode beta through `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer`. The stable Xcode command-line tools are not currently selected.
 - After changing OpenCode MCP configuration, restart OpenCode before attempting Xcode operations.
-- For exploratory end-to-end verification, use the Xcode MCP tools to build and launch on a simulator, inspect the accessibility hierarchy, then interact only using coordinates from the latest hierarchy. Turn stable, important workflows into XCTest UI tests; MCP interaction is a verification aid, not a replacement for committed test coverage.
+- For exploratory end-to-end verification, delegate bounded Xcode MCP sequences using the model matrix above. Start straightforward launch/navigation/capture flows with Luna `max`; use Terra `high+` for longer integration flows or Luna failures; reserve Sol for ambiguous Xcode/runtime diagnosis. Build and launch on a simulator, inspect the accessibility hierarchy, then interact only using coordinates from the latest hierarchy. Parent evaluates returned screenshots, hierarchy, logs, and behavior. Every MCP report must classify the flow as a UI-test candidate or explain why automation would not provide durable proof.
+- Treat MCP as exploration, not repeated regression proof. Before repeating an MCP flow to prove the same behavior, add or extend a deterministic XCTest UI test and ask a bounded implementation subagent to do it. Promote a critical journey after its first exploratory proof when recurrence or regression impact is likely. CPU cost is acceptable when the test replaces future agent navigation, saves tokens/time, and provides stable QA.
+- UI tests promoted from MCP must avoid live network, camera input, wall-clock assumptions, permissions, and uncontrolled persisted state. Add DEBUG/test-only launch configuration, dependency seams, fixtures, or accessibility identifiers when needed; never ship mock behavior into production. Keep MCP screenshot review for visual quality, transient platform behavior, or one-off diagnosis that assertions cannot judge.
 - For repeatable meal-entry verification, load `/skill:count-calories-meal-flow`; its project runbook is `.pi/skills/count-calories-meal-flow/SKILL.md`.
 
 ## Continuity
@@ -159,7 +198,22 @@ Follow a testing pyramid:
 - add or update focused unit tests for domain rules, state transitions, persistence boundaries, decoding, and failure handling;
 - run `just test-one`, `just test-unit`, or `just iterate` frequently while coding;
 - add UI tests for critical user journeys and integration boundaries that unit tests cannot prove, rather than duplicating every unit-level branch through UI automation;
-- reserve expensive `just test-ui` execution for final proof near completion, and rerun it after fixes that change the final artifact.
+- when an MCP journey is repeated to prove behavior, promote it to a deterministic UI test before another manual proof; require MCP subagents to report test candidacy and ask an implementation subagent to add the test;
+- reserve expensive full-suite `just test-ui` execution for final proof near completion, except while authoring or repairing UI tests, when the responsible subagent must run and iterate on the created tests immediately;
+- rerun UI proof after fixes that change the tested artifact.
+
+### UI-test authoring loop
+
+A subagent that creates or modifies a UI test owns the complete green loop, not only test source generation:
+
+1. Run every created/changed test immediately. Use `just test-ui 240` as the normal authoring timeout; choose a higher explicit timeout when build plus the flow cannot reasonably fit, while retaining an overall bound. If focused UI execution becomes recurring, add a supported `just` recipe rather than calling Xcode tools directly.
+2. Add enough deterministic diagnostics to locate the failing step: stable accessibility identifiers, descriptive assertion messages, `XCTContext.runActivity` phases, relevant result attachments/screenshots, and concise app `Logger` events at integration boundaries. Never log sensitive food/profile input or add render-loop noise.
+3. On failure, inspect `just test-results`, XCTest output, hierarchy/screenshots, and app logs. Classify product defect, test defect, or Xcode test-host infrastructure before editing.
+4. Fix the responsible code/test and rerun the created tests. Continue this diagnose–fix–run loop within the task until they pass; do not return immediately after the first red run or weaken assertions to manufacture green.
+5. If XCTest never starts, use the documented bounded infrastructure recovery once, then rerun with the higher timeout. Report a blocker only when product/test defects are resolved and external test hosting still cannot execute after recovery.
+6. Parent reviews the final diff and passing result. Parent handles a tiny obvious correction; broad edits or major defects go back to the subagent for another complete green loop.
+
+Use expectations and predicates, not arbitrary sleeps. Keep launch state in-memory/deterministic and mock external integration boundaries so UI tests remain faster and more reliable than repeated MCP proof.
 
 Before writing each test, ask:
 

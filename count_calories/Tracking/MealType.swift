@@ -8,6 +8,19 @@ enum MealType: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var systemImage: String {
+        switch self {
+        case .breakfast:
+            "sunrise.fill"
+        case .lunch:
+            "sun.max.fill"
+        case .dinner:
+            "moon.stars.fill"
+        case .snack:
+            "takeoutbag.and.cup.and.straw.fill"
+        }
+    }
+
     static var suggestedForCurrentTime: MealType {
         suggested(at: .now)
     }

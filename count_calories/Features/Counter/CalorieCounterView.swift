@@ -9,6 +9,7 @@ struct CalorieCounterView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: \Food.name) private var foods: [Food]
     @Query(sort: \PlateEntry.date, order: .reverse) private var entries: [PlateEntry]
     @Query(sort: \WaterDay.date, order: .reverse) private var waterDays: [WaterDay]
@@ -22,7 +23,6 @@ struct CalorieCounterView: View {
     @State private var selectedFood: Food?
     @State private var selectedMeal = MealType.suggestedForCurrentTime
     @State private var searchText = ""
-    @State private var showingFoodFilter = false
     @State private var weightGrams = 100.0
     @State private var quantity = 1.0
     @State private var newFoodName = ""
@@ -30,8 +30,10 @@ struct CalorieCounterView: View {
     @State private var newFoodServingGrams = 100.0
     @State private var barcode = ""
     @State private var pendingScannedBarcode: String?
+    @State private var pendingBarcodeMealType: MealType?
     @State private var isLookingUpBarcode = false
     @State private var showingBarcodeScanner = false
+    @State private var showingFoodTools = false
     @State private var errorMessage: String?
 
     init(
@@ -58,6 +60,38 @@ struct CalorieCounterView: View {
         profiles.first?.dailyCalorieGoal ?? defaultCalorieGoal
     }
 
+    private var isDesignReview: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-design-review")
+#else
+        false
+#endif
+    }
+
+    private func todaysEntries(for mealType: MealType) -> [PlateEntry] {
+        todaysEntries.filter { entry in
+            (MealType(rawValue: entry.mealType ?? "") ?? .snack) == mealType
+        }
+    }
+
+    private func calories(for mealType: MealType) -> Int {
+        todaysEntries(for: mealType).reduce(0) { $0 + $1.calories }
+    }
+
+    private var recentFoods: [Food] {
+        var seenNames = Set<String>()
+        return entries.compactMap { entry in
+            guard seenNames.insert(entry.foodName.lowercased()).inserted else {
+                return nil
+            }
+            return foods.first {
+                $0.name.localizedCaseInsensitiveCompare(entry.foodName) == .orderedSame
+            }
+        }
+        .prefix(5)
+        .map { $0 }
+    }
+
     private var selectedCalories: Int {
         guard let selectedFood else { return 0 }
         return CalorieCalculator.calories(
@@ -74,86 +108,72 @@ struct CalorieCounterView: View {
                 Section {
                     DailyProgressHeader(
                         calories: todaysCalories,
-                        calorieGoal: dailyCalorieGoal,
-                        waterGlasses: todaysWater?.glasses ?? 0,
-                        waterGoal: waterGoal
+                        calorieGoal: dailyCalorieGoal
                     )
                     .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-                }
 
-                Section("Water") {
-                    Stepper("Glasses today: \(todaysWater?.glasses ?? 0)", value: waterBinding, in: 0...30)
+                    WaterTrackerRow(
+                        glasses: waterBinding,
+                        goal: waterGoal
+                    )
                 }
 
                 Section("Meals") {
                     Button {
                         prepareMealSheetForAdd()
                     } label: {
-                        Label("Add meal", systemImage: "plus.circle.fill")
+                        Label("Log food", systemImage: "plus.circle.fill")
                     }
                     .accessibilityIdentifier("add-meal")
 
-                    if todaysEntries.isEmpty {
-                        ContentUnavailableView("No meals yet", systemImage: "fork.knife.circle")
-                    } else {
-                        ForEach(todaysEntries) { entry in
-                            MealEntryRow(entry: entry)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        deletePlate(entry)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
+                    ForEach(MealType.allCases) { mealType in
+                        let mealEntries = todaysEntries(for: mealType)
 
-                                    Button {
-                                        prepareMealSheetForEdit(entry)
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-                                    .tint(.blue)
-                                }
+                        NavigationLink {
+                            MealDetailView(
+                                mealType: mealType,
+                                entries: mealEntries,
+                                onAdd: {
+                                    prepareMealSheetForAdd(mealType: mealType)
+                                },
+                                onEdit: prepareMealSheetForEdit,
+                                onDelete: deletePlate
+                            )
+                        } label: {
+                            MealSummaryRow(
+                                mealType: mealType,
+                                entries: mealEntries,
+                                calories: calories(for: mealType)
+                            )
                         }
                     }
                 }
 
-                Section("New food") {
-                    TextField("Name", text: $newFoodName)
-                    TextField("Calories", value: $newFoodCalories, format: .number)
-                        .keyboardType(.numberPad)
-                    TextField("Serving size in grams", value: $newFoodServingGrams, format: .number)
-                        .keyboardType(.decimalPad)
-                    Button("Save food", action: addFood)
-                        .disabled(newFoodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || newFoodCalories <= 0 || newFoodServingGrams <= 0)
-                }
-
-                Section("Barcode lookup") {
-                    HStack {
-                        TextField("Barcode", text: $barcode)
-                            .keyboardType(.numberPad)
-
-                        Button {
-                            Task { await lookupBarcode(barcode) }
-                        } label: {
-                            Label("Look up barcode", systemImage: "magnifyingglass")
-                                .labelStyle(.iconOnly)
-                        }
-                        .disabled(barcode.filter(\.isNumber).count < 8 || isLookingUpBarcode)
-
+            }
+            .listSectionSpacing(16)
+            .navigationTitle("Today")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
                         Button {
                             pendingScannedBarcode = nil
+                            pendingBarcodeMealType = nil
                             showingBarcodeScanner = true
                         } label: {
-                            Label("Scan", systemImage: "barcode.viewfinder")
+                            Label("Scan barcode", systemImage: "barcode.viewfinder")
                         }
                         .disabled(isLookingUpBarcode)
-                    }
 
-                    if isLookingUpBarcode {
-                        ProgressView("Looking up product")
+                        Button {
+                            showingFoodTools = true
+                        } label: {
+                            Label("Enter barcode or create food", systemImage: "square.and.pencil")
+                        }
+                    } label: {
+                        Label("More logging options", systemImage: "ellipsis.circle")
                     }
                 }
             }
-            .navigationTitle("Calories")
             .onAppear(perform: prepareLocalData)
             .onChange(of: addMealRequestID) { _, requestID in
                 guard requestID != nil else { return }
@@ -171,11 +191,11 @@ struct CalorieCounterView: View {
             .sheet(isPresented: $showingAddMeal, onDismiss: resetMealSheet) {
                 MealEditorView(
                     foods: foods,
+                    recentFoods: recentFoods,
                     isEditing: editingEntry != nil,
                     selectedMeal: $selectedMeal,
                     selectedFood: $selectedFood,
                     searchText: $searchText,
-                    showingFoodFilter: $showingFoodFilter,
                     amount: $weightGrams,
                     portionCount: $quantity,
                     calories: selectedCalories,
@@ -183,7 +203,20 @@ struct CalorieCounterView: View {
                         showingAddMeal = false
                         resetMealSheet()
                     },
+                    onScanBarcode: scanBarcodeFromMealEditor,
                     onSave: savePlate
+                )
+                .environment(\.dynamicTypeSize, dynamicTypeSize)
+            }
+            .sheet(isPresented: $showingFoodTools) {
+                FoodToolsView(
+                    barcode: $barcode,
+                    foodName: $newFoodName,
+                    calories: $newFoodCalories,
+                    servingAmount: $newFoodServingGrams,
+                    isLookingUpBarcode: isLookingUpBarcode,
+                    onLookupBarcode: lookupEnteredBarcode,
+                    onSaveFood: addFood
                 )
             }
             .sheet(isPresented: $showingBarcodeScanner, onDismiss: lookupScannedBarcode) {
@@ -255,14 +288,19 @@ struct CalorieCounterView: View {
     }
 
     private func createTodayWaterDay() -> WaterDay {
+        if let storedDays = try? modelContext.fetch(FetchDescriptor<WaterDay>()),
+           let existingDay = storedDays.first(where: { Calendar.current.isDateInToday($0.date) }) {
+            return existingDay
+        }
+
         let day = WaterDay(date: .now)
         modelContext.insert(day)
         return day
     }
 
-    private func prepareMealSheetForAdd() {
+    private func prepareMealSheetForAdd(mealType: MealType? = nil) {
         editingEntry = nil
-        selectedMeal = MealType.suggestedForCurrentTime
+        selectedMeal = mealType ?? MealType.suggestedForCurrentTime
         selectedFood = selectedFood ?? foods.first
         searchText = ""
         quantity = 1
@@ -320,14 +358,18 @@ struct CalorieCounterView: View {
     private func resetMealSheet() {
         editingEntry = nil
         searchText = ""
-        showingFoodFilter = false
         quantity = 1
         weightGrams = 100
     }
 
     private func addFood() {
+        let trimmedName = newFoodName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty, newFoodCalories >= 0, newFoodServingGrams > 0 else {
+            return
+        }
+
         let food = Food(
-            name: newFoodName.trimmingCharacters(in: .whitespacesAndNewlines),
+            name: trimmedName,
             calories: newFoodCalories,
             servingGrams: newFoodServingGrams
         )
@@ -337,16 +379,43 @@ struct CalorieCounterView: View {
             newFoodName = ""
             newFoodCalories = 120
             newFoodServingGrams = 100
+            showingFoodTools = false
+        }
+    }
+
+    private func lookupEnteredBarcode() {
+        let enteredBarcode = barcode
+        pendingBarcodeMealType = nil
+        showingFoodTools = false
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            await lookupBarcode(enteredBarcode)
+        }
+    }
+
+    private func scanBarcodeFromMealEditor() {
+        pendingBarcodeMealType = selectedMeal
+        pendingScannedBarcode = nil
+        showingAddMeal = false
+
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            showingBarcodeScanner = true
         }
     }
 
     private func lookupScannedBarcode() {
-        guard let scannedBarcode = pendingScannedBarcode else { return }
+        guard let scannedBarcode = pendingScannedBarcode else {
+            pendingBarcodeMealType = nil
+            return
+        }
         pendingScannedBarcode = nil
         Task { await lookupBarcode(scannedBarcode) }
     }
 
     private func lookupBarcode(_ barcodeToLookup: String) async {
+        let requestedMealType = pendingBarcodeMealType
+        pendingBarcodeMealType = nil
         isLookingUpBarcode = true
         defer { isLookingUpBarcode = false }
 
@@ -399,13 +468,14 @@ struct CalorieCounterView: View {
             }
             selectedFood = food
             barcode = ""
-            prepareMealSheetForAdd()
+            prepareMealSheetForAdd(mealType: requestedMealType)
         } catch {
             errorMessage = "The product lookup failed. Check your connection and try again."
         }
     }
 
     private func synchronizeWaterFromWidgetStore() {
+        guard !isDesignReview else { return }
         guard
             let summary = WidgetDailySummaryStore.load(),
             Calendar.current.isDateInToday(summary.date)
@@ -429,6 +499,8 @@ struct CalorieCounterView: View {
     }
 
     private func mirrorTodayToWidgetStore() {
+        guard !isDesignReview else { return }
+
         let calories = todaysCalories
         let waterGlasses = todaysWater?.glasses ?? 0
 
