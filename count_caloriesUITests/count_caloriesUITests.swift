@@ -61,6 +61,89 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testAmountAdjustmentsKeepServingCountAndAvoidKeyboard() throws {
+        let app = XCUIApplication()
+        let addMealButton = app.buttons["add-meal"]
+        let mealEditor = app.descendants(matching: .any)
+            .matching(identifier: "meal-editor")
+            .firstMatch
+        let selectedFoodName = app.staticTexts["selected-food-name"]
+        let amountField = app.textFields["meal-amount"]
+        let servingField = app.textFields["meal-quantity"]
+        let calculatedTotal = app.descendants(matching: .any)
+            .matching(identifier: "calculated-total")
+            .firstMatch
+        let adjustmentControls = [
+            ("amount-decrease-10", app.buttons["amount-decrease-10"]),
+            ("amount-decrease-1", app.buttons["amount-decrease-1"]),
+            ("amount-increase-1", app.buttons["amount-increase-1"]),
+            ("amount-increase-10", app.buttons["amount-increase-10"])
+        ]
+        var initialServingValue = ""
+
+        XCTContext.runActivity(named: "Launch default Almond Milk editor") { _ in
+            app.launchArguments = ["-ui-testing"]
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertExists(addMealButton, identifier: "add-meal", phase: "Launch")
+            assertKeyboardDismissed(app, phase: "Launch")
+        }
+
+        XCTContext.runActivity(named: "Open editor and inspect adjustment targets") { _ in
+            addMealButton.tap()
+            assertExists(mealEditor, identifier: "meal-editor", phase: "Open")
+            assertExactValue(selectedFoodName, expected: "Almond Milk", phase: "Open")
+            assertExactValue(amountField, expected: "100 grams", phase: "Open")
+            assertExactValue(calculatedTotal, expected: "15 calories", phase: "Open")
+            assertExists(servingField, identifier: "meal-quantity", phase: "Open")
+            initialServingValue = String(describing: servingField.value ?? "")
+            XCTAssertFalse(
+                initialServingValue.isEmpty,
+                "Open: serving count has no accessibility value; \(diagnostic(for: servingField))"
+            )
+
+            for (identifier, button) in adjustmentControls {
+                assertButtonTarget(button, identifier: identifier, phase: "Open")
+            }
+            assertKeyboardDismissed(app, phase: "Open")
+        }
+
+        XCTContext.runActivity(named: "Decrease amount by ten") { _ in
+            adjustmentControls[0].1.tap()
+            assertExactValue(amountField, expected: "90 grams", phase: "−10")
+            assertExactValue(calculatedTotal, expected: "14 calories", phase: "−10")
+            assertExactValue(servingField, expected: initialServingValue, phase: "−10")
+            assertKeyboardDismissed(app, phase: "−10")
+        }
+
+        XCTContext.runActivity(named: "Restore amount by ten") { _ in
+            adjustmentControls[3].1.tap()
+            assertExactValue(amountField, expected: "100 grams", phase: "+10")
+            assertExactValue(calculatedTotal, expected: "15 calories", phase: "+10")
+            assertExactValue(servingField, expected: initialServingValue, phase: "+10")
+            assertKeyboardDismissed(app, phase: "+10")
+        }
+
+        XCTContext.runActivity(named: "Increase amount by one") { _ in
+            adjustmentControls[2].1.tap()
+            assertExactValue(amountField, expected: "101 grams", phase: "+1")
+            assertExactValue(servingField, expected: initialServingValue, phase: "+1")
+            assertKeyboardDismissed(app, phase: "+1")
+        }
+
+        XCTContext.runActivity(named: "Restore amount by one") { _ in
+            adjustmentControls[1].1.tap()
+            assertExactValue(amountField, expected: "100 grams", phase: "−1")
+            assertExactValue(calculatedTotal, expected: "15 calories", phase: "−1")
+            assertExactValue(servingField, expected: initialServingValue, phase: "−1")
+            assertKeyboardDismissed(app, phase: "−1")
+        }
+    }
+
+    @MainActor
     func testSearchingFoodAndCancellingDoesNotLogMeal() throws {
         let app = XCUIApplication()
         let addMealButton = app.buttons["add-meal"]
@@ -253,6 +336,26 @@ final class CountCaloriesUITests: XCTestCase {
         XCTAssertTrue(
             element.waitForExistence(timeout: uiTimeout),
             "\(phase): expected \(identifier) to exist; \(diagnostic(for: element))"
+        )
+    }
+
+    private func assertButtonTarget(
+        _ element: XCUIElement,
+        identifier: String,
+        phase: String
+    ) {
+        assertExists(element, identifier: identifier, phase: phase)
+        let targetSized = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let button = object as? XCUIElement else { return false }
+                return button.exists && button.frame.height >= 44
+            },
+            object: element
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [targetSized], timeout: uiTimeout),
+            .completed,
+            "\(phase): \(identifier) target height < 44; \(diagnostic(for: element)), frame=\(element.frame)"
         )
     }
 

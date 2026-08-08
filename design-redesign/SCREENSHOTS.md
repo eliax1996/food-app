@@ -81,6 +81,18 @@ Attempts:
 Accepted: attempt 02 evidence above.
 Reason: compact `Saved foods` empty row preserves local context and keeps remote results/controls keyboard-safe. Manual flow selected Remote Oat Drink at 250 ml / 100 kcal, increased daily total by exactly 100 kcal after save, and confirmed persisted local row.
 
+## AMOUNT-EDITOR-001
+
+Attempts:
+
+- `screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png` — Almond Milk normal layout, 100 g / 15 kcal.
+- `screenshots/AMOUNT-EDITOR-001/attempt-01-adjusted.png` — Almond Milk after −10, 90 g / 14 kcal.
+- `screenshots/AMOUNT-EDITOR-001/attempt-01-milliliters.png` — Remote Oat Drink volume layout, 250 ml / 100 kcal.
+- `screenshots/AMOUNT-EDITOR-001/attempt-01-accessibility3.png` — Accessibility3 adjusted state, 90 g / 14 kcal.
+
+Accepted: attempt 01.
+Reason: Prototype A keeps common corrections keyboard-free, preserves serving separation, exposes g/ml semantics, and adapts controls to measured normal and Accessibility3 targets without clipping.
+
 ## HISTORY-001 / PROGRESS-001
 
 Baseline: `screenshots/baseline/history-calories.png`

@@ -1,7 +1,8 @@
 # AMOUNT-EDITOR-001: amount-entry pattern assessment
 
 **Date:** 2026-08-08
-**Decision:** Approve prototype A for first implementation. Research only; no source files changed.
+**Decision:** Prototype A approved for first implementation; implementation accepted in attempt 01.
+**Disposition:** IMPLEMENTED / ACCEPTED — ATTEMPT 01. Research evidence below is preserved; competitor sources do not support claims beyond stated observations.
 
 ## Evidence reviewed
 

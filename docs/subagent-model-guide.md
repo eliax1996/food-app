@@ -196,6 +196,16 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Luna can author UI tests; Terra `high` handles persistent Xcode host/bootstrap escalation.
 - Parent checks repository lock and orphaned processes after subagent timeout.
 
+### 2026-08-08 — Luna `max`: AMOUNT-EDITOR-001 bounded arithmetic, UI, and tests
+
+- Shape: bounded amount-adjustment implementation, focused rules, diagnostic UI coverage, and strict MCP visual flow.
+- Outcome: Luna `max` handled bounded arithmetic/UI/tests with exact `just` commands; product compiled/unit green; host blocker properly isolated.
+- Validation: focused amount tests 5 pass; aggregate 90 pass / 2 opt-in skips; `just check` passed. Final attempts were blocked before XCTest because Application launch did not return a process handle after one recover; `just simulator-run` passed. UI suite is not green.
+- Instruction-following: strict Luna MCP flow delivered useful measured evidence, though parent cleanup found interaction session already invalid/closed.
+- Strength: efficient bounded implementation and useful normal, milliliter, and Accessibility3 evidence without overstating XCTest status.
+- Weakness: Xcode test hosting remained unavailable after bounded recovery; parent had to separate runtime launch success from UI-suite proof.
+- Policy effect: keep Luna `max` for bounded arithmetic/UI/test work; report MCP evidence and XCTest-host status separately, never as one green UI result.
+
 ## Record template
 
 ```md

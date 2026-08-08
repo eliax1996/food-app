@@ -6,7 +6,7 @@ Keep calorie, water, weight, and nutrition recording fast while supporting opt-i
 
 ## Current Phase
 
-`AMOUNT-EDITOR-001` — implement and verify approved Prototype A. `FOOD-REMOTE-SEARCH-001` is accepted at attempt 02; no further remote-search implementation is pending.
+`HISTORY-001 + PROGRESS-001 + WEIGHT-001` — next redesign phase. `AMOUNT-EDITOR-001` is accepted at attempt 01; `FOOD-REMOTE-SEARCH-001` is accepted at attempt 02.
 
 ## Completed Judge Feedback
 
@@ -35,6 +35,7 @@ Keep calorie, water, weight, and nutrition recording fast while supporting opt-i
 - Sampled 14 barcodes against both API versions, documented field presence/rate-limit evidence and SDK assessment, and added deterministic plus opt-in live API tests.
 - Completed final three-reviewer nutrition pass: two approved; one suggested undocumented v2 `energy-kcal_100ml`, contradicted by official v2 schema and sampled beverage responses using `energy-kcal_100g`; no shared actionable finding remained.
 - Implemented and visually accepted `FOOD-REMOTE-SEARCH-001` attempt 02: official flat Search-a-licious hits, language fallback, useful-result pagination, valid-barcode deduplication, generation-safe snapshots, bounded persistent query cache, attribution, selected-food persistence without product refetch, and DEBUG fixture.
+- Implemented and accepted `AMOUNT-EDITOR-001` attempt 01: Prototype A inline `−10`, `−1`, `+1`, `+10` controls with exact finite amount rules, `0.01` minimum, decimal preservation, g/ml semantics, unchanged servings, secondary exact entry, and shared save validity.
 
 ## FOOD-REMOTE-SEARCH-001 Validation Record
 
@@ -42,6 +43,14 @@ Keep calorie, water, weight, and nutrition recording fast while supporting opt-i
 - Focused suites: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate is 85 pass / 2 opt-in skips; timed-out partial search responses are rejected rather than cached as terminal.
 - Manual Xcode flow passed Remote Oat Drink at 250 ml / 100 kcal. Keyboard dismissed; saving increased daily total by exactly 100 kcal; selected food persisted as local row.
 - UI suite reached XCTest before final focus fix with 2 pass / 2 fail from lingering keyboard. Focus fix passed manual Xcode review. Later attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
+
+## AMOUNT-EDITOR-001 Validation Record
+
+- Normal controls are one row with measured actual targets about `78 × 58 pt`; Accessibility3 uses a 2 × 2 grid with `−10`, `−1` above `+1`, `+10`, measured at `163 × 62 pt` each. Stable identifiers and VoiceOver labels expose actions, g/ml units, and current value; common controls do not open keyboard.
+- Manual proof passed: Almond Milk `100 g / 15 kcal` → `−10` → `90 g / 14 kcal` → `+10` → `100 g / 15 kcal`. Remote Oat Drink `250 ml / 100 kcal` verified volume labels. Accessibility3 reached `90 g / 14 kcal`, serving `1`; menus were readable, total reachable, and no clipping appeared.
+- Accepted evidence: `design-redesign/screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png`, `attempt-01-adjusted.png`, `attempt-01-milliliters.png`, and `attempt-01-accessibility3.png`.
+- Focused amount tests: 5 pass. Aggregate: 90 pass / 2 opt-in skips. `just check` passed.
+- Diagnostic UI test was added. Final attempts were blocked before XCTest: Application launch did not return a process handle after one recover. `just simulator-run` passed; UI suite is not green.
 
 ## Required Validation
 

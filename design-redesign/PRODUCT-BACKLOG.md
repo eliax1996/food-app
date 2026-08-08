@@ -83,7 +83,7 @@ Use separate Search-a-licious client/protocol from barcode product lookup. Searc
 
 ## Priority 2 — [AMOUNT-EDITOR-001] Human-friendly amount adjustment
 
-**Status:** RESEARCH COMPLETE / PROTOTYPE A APPROVED
+**Status:** IMPLEMENTED / ACCEPTED — ATTEMPT 01
 **Priority:** HIGH VALUE
 **Origin:** User found keyboard-first amount editing clunky and requested ±10 and ±1 controls.
 
@@ -112,6 +112,14 @@ Logging often means nudging a default amount from 100 g/ml to a nearby value. Op
 - Use compact-sheet B only if inline A fails visual review. Compare screenshots and repeated interaction cost; C is not first implementation.
 - Verify VoiceOver, units, bounds, calorie scaling, 44-point targets, Dynamic Type, and separate servings with deterministic tests. Use MCP for bounded visual review, then promote repeated behavior to UI tests; MCP is not regression proof. Full assessment: `docs/amount-entry-pattern-assessment.md`.
 
+### Implementation outcome
+
+- Prototype A is implemented and accepted in attempt 01. Domain minimum is `0.01`; adjustments require finite values, apply exact deltas, preserve decimal remainders, and use floating-boundary tolerance.
+- Exact TextField remains secondary. Save uses same amount validity. Four controls are `−10`, `−1`, `+1`, `+10`; normal layout uses one row, Accessibility3 uses a 2 × 2 grid. Amount controls do not change servings, and common adjustment flow opens no keyboard.
+- Normal Almond Milk proof: `100 g / 15 kcal` → `−10` → `90 g / 14 kcal` → `+10` → `100 g / 15 kcal`. Remote Oat Drink at `250 ml / 100 kcal` verifies volume labels. Accessibility3 proof reached `90 g / 14 kcal` with serving `1`; menus were readable, total reachable, and no clipping appeared.
+- Accepted evidence: `screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png`, `attempt-01-adjusted.png`, `attempt-01-milliliters.png`, and `attempt-01-accessibility3.png`.
+- Focused amount tests: 5 pass. Aggregate: 90 pass / 2 opt-in skips; `just check` passed. A diagnostic UI test was added, but final attempts were blocked before XCTest because Application launch did not return a process handle after one recover. `just simulator-run` passed; UI suite is not green.
+
 ### Success criteria
 
 - Default amount can move from 100 to 90, 99, 101, or 110 in one tap.
@@ -128,3 +136,4 @@ Logging often means nudging a default amount from 100 g/ml to a nearby value. Op
 
 - 2026-08-08: Backlog created from direct user feedback. Competitive pattern research pending.
 - 2026-08-08: Research completed; A approved for first prototype with B as inline-review fallback. Unit, VoiceOver, Dynamic Type, deterministic test, and MCP-to-UI promotion plan recorded in `docs/amount-entry-pattern-assessment.md`.
+- 2026-08-08: Prototype A implemented and accepted in attempt 01. Focused amount tests passed 5/5; final UI attempts remained blocked before XCTest by process-handle failure after one recover, while `just simulator-run` passed.

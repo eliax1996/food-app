@@ -21,8 +21,104 @@ struct MealEditorView: View {
 
     private let commonServingCounts = [0.5, 1, 1.5, 2]
 
+    private struct AmountAdjustment: Identifiable {
+        let title: String
+        let delta: Double
+        let identifier: String
+
+        var id: String { identifier }
+    }
+
+    private let amountAdjustments = [
+        AmountAdjustment(title: "−10", delta: -10, identifier: "amount-decrease-10"),
+        AmountAdjustment(title: "−1", delta: -1, identifier: "amount-decrease-1"),
+        AmountAdjustment(title: "+1", delta: 1, identifier: "amount-increase-1"),
+        AmountAdjustment(title: "+10", delta: 10, identifier: "amount-increase-10")
+    ]
+
     private var amountUnit: NutritionUnit {
         selectedFood?.nutritionUnit ?? .grams
+    }
+
+    private var amountNoun: String {
+        amountUnit == .milliliters ? "volume" : "amount"
+    }
+
+    private var amountUnitSingular: String {
+        amountUnit == .milliliters ? "milliliter" : "gram"
+    }
+
+    private var amountAccessibilityValue: String {
+        let formattedAmount = amount.formatted(
+            .number.precision(.fractionLength(0...2))
+        )
+        return "\(formattedAmount) \(amountUnitName(for: amount))"
+    }
+
+    private var canSave: Bool {
+        selectedFood != nil
+            && FoodAmountAdjustment.isValid(amount)
+            && portionCount.isFinite
+            && portionCount > 0
+    }
+
+    private func amountUnitName(for value: Double) -> String {
+        abs(value) == 1 ? amountUnitSingular : "\(amountUnitSingular)s"
+    }
+
+    private func amountAdjustmentAccessibilityLabel(
+        for adjustment: AmountAdjustment
+    ) -> String {
+        let action = adjustment.delta < 0 ? "Decrease" : "Increase"
+        let magnitude = abs(adjustment.delta)
+        let formattedMagnitude = magnitude.formatted(
+            .number.precision(.fractionLength(0...2))
+        )
+        return "\(action) \(amountNoun) by \(formattedMagnitude) \(amountUnitName(for: magnitude))"
+    }
+
+    @ViewBuilder
+    private var amountAdjustmentControls: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 12),
+                    GridItem(.flexible(), spacing: 12)
+                ],
+                spacing: 12
+            ) {
+                ForEach(amountAdjustments) { adjustment in
+                    amountAdjustmentButton(adjustment)
+                }
+            }
+        } else {
+            HStack(spacing: 8) {
+                ForEach(amountAdjustments) { adjustment in
+                    amountAdjustmentButton(adjustment)
+                }
+            }
+        }
+    }
+
+    private func amountAdjustmentButton(_ adjustment: AmountAdjustment) -> some View {
+        let result = FoodAmountAdjustment.result(for: amount, delta: adjustment.delta)
+
+        return Button {
+            guard let result = FoodAmountAdjustment.result(for: amount, delta: adjustment.delta) else {
+                return
+            }
+            amount = result
+        } label: {
+            Text(adjustment.title)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .disabled(result == nil)
+        .accessibilityLabel(amountAdjustmentAccessibilityLabel(for: adjustment))
+        .accessibilityValue("Current \(amountAccessibilityValue)")
+        .accessibilityHint("Changes \(amountNoun) only; serving count stays unchanged.")
+        .accessibilityIdentifier(adjustment.identifier)
     }
 
     private var servingDescription: String {
@@ -126,11 +222,15 @@ struct MealEditorView: View {
                             .textFieldStyle(.roundedBorder)
                             .frame(minWidth: 88)
                             .accessibilityLabel(amountUnit == .milliliters ? "Volume in milliliters" : "Amount in grams")
+                            .accessibilityValue(amountAccessibilityValue)
+                            .accessibilityIdentifier("meal-amount")
 
                             Text(amountUnit.rawValue)
                                 .foregroundStyle(Color.primary.opacity(0.65))
                         }
                     }
+
+                    amountAdjustmentControls
 
                     LabeledContent("Servings") {
                         TextField(
@@ -210,9 +310,12 @@ struct MealEditorView: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Add", action: onSave)
-                        .disabled(selectedFood == nil || amount <= 0 || portionCount <= 0)
-                        .accessibilityIdentifier("save-meal")
+                    Button(isEditing ? "Save" : "Add") {
+                        guard canSave else { return }
+                        onSave()
+                    }
+                    .disabled(!canSave)
+                    .accessibilityIdentifier("save-meal")
                 }
             }
         }

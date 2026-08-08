@@ -14,7 +14,7 @@ Prioritize a fast, dependable user experience. Preserve offline access for produ
 - `count_calories/Services/`: app-wide logging, notification, Live Activity, and widget-summary integrations.
 - `count_calories/Tracking/`: deterministic calorie math, daily-history aggregation, meal-time suggestions, and deep-link parsing shared with hostless tests.
 - `count_calories/Reminders/ReminderSchedule.swift`: deterministic meal/water reminder planning shared with hostless tests.
-- `count_calories/Nutrition/`: independent nutrition lookup domain, including nonoptional normalized food data, Open Food Facts v3.6 primary/v2 fallback clients, official flat Search-a-licious search, hedged timeout coordination, and persistent JSON LRU caching.
+- `count_calories/Nutrition/`: independent nutrition lookup domain, including nonoptional normalized food data, Open Food Facts v3.6 primary/v2 fallback clients, official flat Search-a-licious search, hedged timeout coordination, persistent JSON LRU caching, and exact food-amount adjustment rules.
 - `docs/open-food-facts-api-assessment.md`: sampled API-schema, optionality, rate-limit, fallback, timeout, and official Swift SDK assessment.
 - `Package.swift`: hostless `CaloriesCore`, `ReminderCore`, and `TrackingCore` targets that compile production logic directly for fast macOS tests.
 - `count_caloriesWidget/`: WidgetKit extension and shared widget summary storage.
@@ -225,6 +225,8 @@ If a test only restates private implementation steps, replace it with a test of 
 Reminder coverage should protect fixed meal windows, suppression after matching records, elapsed-time water scheduling, daily water-goal suppression, independent preferences, and the pending-notification limit.
 
 Tracking coverage should protect serving/portion calorie scaling, invalid amounts, meal suggestion windows, calendar-day aggregation and history limits, supported widget deep links, and legacy meal-model fallbacks.
+
+Amount-entry coverage should protect finite exact deltas, the `0.01` minimum and floating-boundary tolerance, decimal preservation, gram/ml labels, immediate calorie scaling, unchanged servings, and shared save validity.
 
 Nutrition coverage should protect at least:
 

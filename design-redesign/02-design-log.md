@@ -216,6 +216,33 @@ Replaced full unavailable state with compact `Saved foods` empty row. Manual Xco
 
 Reason: compact empty-state treatment preserves hierarchy and keyboard-safe remote interaction; architecture, persistence, manual behavior, and accepted screenshots meet feature requirements. Next phase: `AMOUNT-EDITOR-001`.
 
+## [AMOUNT-EDITOR-001] Human-friendly amount adjustment
+
+### Purpose
+
+Make common corrections to food-derived gram/ml amounts fast without making keyboard entry primary.
+
+### Accepted implementation
+
+Prototype A adds `−10`, `−1`, `+1`, `+10` in one normal-size row and a 2 × 2 Accessibility3 grid. Normal measured controls are about `78 × 58 pt`; Accessibility3 controls are `163 × 62 pt`, ordered `−10`, `−1` above `+1`, `+10`. Controls adjust amount only; servings remain separate. Stable identifiers and VoiceOver labels expose actions, g/ml units, and current value. Common adjustment flow opens no keyboard; exact TextField remains secondary.
+
+Amount rules require finite exact values, preserve decimal remainders, normalize floating-point boundary results at minimum `0.01`, and use same validity for exact entry and Save.
+
+### Evidence
+
+- Almond Milk manual proof: `100 g / 15 kcal` → `−10` → `90 g / 14 kcal` → `+10` → `100 g / 15 kcal`.
+- Remote Oat Drink at `250 ml / 100 kcal` verifies volume labels.
+- Accessibility3 proof reached `90 g / 14 kcal`, serving `1`; menus were readable, total reachable, and no clipping appeared.
+- Screenshots: `../screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png`, `attempt-01-adjusted.png`, `attempt-01-milliliters.png`, `attempt-01-accessibility3.png`.
+- Focused amount tests: 5 pass. Aggregate: 90 pass / 2 opt-in skips. `just check` passed.
+- Diagnostic UI test was added. Final attempts were blocked before XCTest because Application launch did not return a process handle after one recover; `just simulator-run` passed. UI suite is not green.
+
+### Decision
+
+**ACCEPTED — ATTEMPT 01**
+
+Reason: Prototype A meets keyboard-free correction, exact-entry fallback, domain-boundary, unit, serving-separation, measured-target, and Accessibility3 evidence requirements. Current next: `HISTORY-001 + PROGRESS-001 + WEIGHT-001`.
+
 ## [HISTORY-001] Progress and weight
 
 ### Purpose
