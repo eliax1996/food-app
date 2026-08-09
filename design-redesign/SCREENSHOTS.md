@@ -2,10 +2,39 @@
 
 Device unless noted: iPhone 17 Pro, iOS 27.0, portrait, light appearance.
 
-## NAV-001
+## NAV-001 / TRACKING-IA-001
 
 Baseline: all files under `screenshots/baseline/`
-Accepted: pending
+
+Final root order shown by `screenshots/TRACKING-IA-001/attempt-01-four-tabs.png`:
+
+```text
+Today | Weight | Progress | Settings
+```
+
+Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**.
+
+Accepted TRACKING-IA-001 visual files are only these attempt-01 files under `screenshots/TRACKING-IA-001/`:
+
+- `attempt-01-four-tabs.png` — four root tabs in final order.
+- `attempt-01-weight-populated.png` — Weight Log title, current/recent-seven/target summary, compact raw-seven-reading line + points, target rule, endpoint dates, and grouped newest-first measurements.
+- `attempt-01-weight-empty.png` — useful empty Weight Log state with Record Weight action.
+- `attempt-01-weight-accessibility3.png` — large-text Weight Log stress capture.
+- `attempt-01-weight-dark.png` — dark appearance Weight Log capture.
+Superseded three-tab captures retained as historical implementation evidence only:
+
+- `superseded-three-tab-two-same-day.png`
+- `superseded-three-tab-backdated.png`
+- `superseded-three-tab-editor.png`
+- `superseded-three-tab-delete-confirmation.png`
+
+Rejected evidence retained:
+
+- `rejected-one-reading-chart.png` — rejected because single point makes dead chart with no useful trend. Final behavior replaces it with a useful prompt until at least two readings.
+
+Explicit UI target: **6/6 passed**, covering four tabs; one-reading prompt → two-reading chart; two same-day readings; backdated date regrouping; edit; delete cancel/confirm/undo; Settings; and direct `View full trends` → `Progress` / `Weight`.
+
+Validation: `just validate 300` **passed**; hostless **125 passed / 2 opt-in live skips**; simulator build/install/launch **passed**. `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`. App-hosted persistence tests passed after final duplicate-profile/future-row correctness fixes and again in an integrated run. One later standalone `just test-app-unit 300` timed out before XCTest due to external Xcode 27 host instability; not a red product gate.
 
 ## HOME-001
 
@@ -126,13 +155,15 @@ Accepted:
 - `screenshots/WEIGHT-001/attempt-02-empty.png`
 - `screenshots/WEIGHT-001/attempt-02-editor.png`
 
-Status: **ACCEPTED — attempt 02** for `WEIGHT-001`. The shared analytics milestone is accepted for all three IDs.
+Status: **ACCEPTED — attempt 02** for `WEIGHT-001`. This is pre-TRACKING baseline; final Weight root evidence is indexed above.
 
 ## SETTINGS-001
 
 Baseline: `screenshots/baseline/config-top.png`
-Attempts: pending
-Accepted: pending
+
+Visual root-tab evidence: `screenshots/TRACKING-IA-001/attempt-01-four-tabs.png`
+
+Status: implemented and complete in TRACKING attempt 01. Settings retains target weight, age, calorie goal, target date, and reminders; no current-weight field.
 
 ## REMINDERS-001
 

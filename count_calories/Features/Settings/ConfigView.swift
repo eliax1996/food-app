@@ -16,7 +16,6 @@ struct ConfigView: View {
     @AppStorage(ReminderPreferenceKey.dinner) private var dinnerReminderEnabled = false
     @AppStorage(ReminderPreferenceKey.water) private var waterReminderEnabled = false
 
-    @State private var currentWeight = 70.0
     @State private var targetWeight = 68.0
     @State private var age = 30
     @State private var dailyGoal = 1700
@@ -33,14 +32,7 @@ struct ConfigView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Body") {
-                    HStack {
-                        TextField("Weight", value: $currentWeight, format: .number.precision(.fractionLength(1)))
-                            .keyboardType(.decimalPad)
-                        Text("kg")
-                            .foregroundStyle(.secondary)
-                    }
-
+                Section("Profile") {
                     Stepper("Age: \(age)", value: $age, in: 1...120)
                 }
 
@@ -116,11 +108,11 @@ struct ConfigView: View {
                 }
 
                 Section {
-                    Button("Save configuration", action: saveConfiguration)
-                        .disabled(currentWeight <= 0 || targetWeight <= 0 || age <= 0 || dailyGoal <= 0)
+                    Button("Save settings", action: saveSettings)
+                        .disabled(targetWeight <= 0 || age <= 0 || dailyGoal <= 0)
                 }
             }
-            .navigationTitle("Config")
+            .navigationTitle("Settings")
             .onAppear {
                 loadProfile()
                 synchronizeReminders(requestAuthorization: false)
@@ -204,7 +196,6 @@ struct ConfigView: View {
 
     private func loadProfile() {
         let currentProfile = profile ?? createProfile()
-        currentWeight = currentProfile.currentWeight
         targetWeight = currentProfile.targetWeight
         age = currentProfile.age
         dailyGoal = currentProfile.dailyCalorieGoal
@@ -218,9 +209,8 @@ struct ConfigView: View {
         return newProfile
     }
 
-    private func saveConfiguration() {
+    private func saveSettings() {
         let currentProfile = profile ?? createProfile()
-        currentProfile.currentWeight = currentWeight
         currentProfile.targetWeight = targetWeight
         currentProfile.age = age
         currentProfile.dailyCalorieGoal = dailyGoal
@@ -232,14 +222,14 @@ struct ConfigView: View {
         do {
             try modelContext.save()
         } catch {
-            AppLogger.persistence.error("Failed to save configuration: \(error.localizedDescription, privacy: .public)")
-            errorMessage = "Your configuration could not be saved. Please try again."
+            AppLogger.persistence.error("Failed to save settings: \(error.localizedDescription, privacy: .public)")
+            errorMessage = "Your settings could not be saved. Please try again."
         }
     }
 }
 
 #if DEBUG
-#Preview("Configuration") {
+#Preview("Settings") {
     ConfigView()
         .modelContainer(PreviewData.makeContainer())
 }

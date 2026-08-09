@@ -281,6 +281,7 @@ case "$action" in
     test-ui)
         reset_simulator
         run_simulator_tests "Functional UI smoke tests" \
+            "-only-testing:count_caloriesUITests" \
             "-skip-testing:count_caloriesUITests/CountCaloriesUITests/testLaunchPerformance"
         ;;
     test-app-unit)

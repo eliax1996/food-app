@@ -5,10 +5,20 @@ import SwiftData
 final class WeightEntry {
     var date: Date
     var kilograms: Double
+    // Defaults preserve compatibility with existing persistent stores.
+    var stableID: UUID = UUID()
+    var sequence: Int64 = 0
 
-    init(date: Date = .now, kilograms: Double) {
+    init(
+        date: Date = .now,
+        kilograms: Double,
+        stableID: UUID = UUID(),
+        sequence: Int64 = 0
+    ) {
         self.date = date
         self.kilograms = kilograms
+        self.stableID = stableID
+        self.sequence = sequence
     }
 }
 
@@ -19,12 +29,15 @@ final class UserProfile {
     var age: Int
     var dailyCalorieGoal: Int
     var targetDate: Date
+    // Persisted high-water mark prevents sequence reuse after deletion.
+    var nextWeightSequence: Int64 = 0
 
-    init(currentWeight: Double = 70, targetWeight: Double = 68, age: Int = 30, dailyCalorieGoal: Int = 1700, targetDate: Date = .now.addingTimeInterval(60 * 60 * 24 * 90)) {
+    init(currentWeight: Double = 70, targetWeight: Double = 68, age: Int = 30, dailyCalorieGoal: Int = 1700, targetDate: Date = .now.addingTimeInterval(60 * 60 * 24 * 90), nextWeightSequence: Int64 = 0) {
         self.currentWeight = currentWeight
         self.targetWeight = targetWeight
         self.age = age
         self.dailyCalorieGoal = dailyCalorieGoal
         self.targetDate = targetDate
+        self.nextWeightSequence = nextWeightSequence
     }
 }

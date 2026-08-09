@@ -123,6 +123,30 @@ final class ProgressHistoryTests: XCTestCase {
         XCTAssertEqual(progress.points.map(\.kilograms), [72, 70, 71])
     }
 
+    func testWeightProgressUsesStableSequenceForSameTimestampCurrent() {
+        let timestamp = date(day: 4)
+        let progress = ProgressHistory.weightProgress(
+            entries: [
+                WeightProgressPoint(
+                    date: timestamp,
+                    kilograms: 72,
+                    stableID: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+                    sequence: 2
+                ),
+                WeightProgressPoint(
+                    date: timestamp,
+                    kilograms: 70,
+                    stableID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                    sequence: 1
+                )
+            ],
+            targetWeight: nil
+        )
+
+        XCTAssertEqual(progress.points.map(\.kilograms), [70, 72])
+        XCTAssertEqual(progress.current, 72)
+    }
+
     func testRisingWeightHasPositiveChange() {
         let progress = ProgressHistory.weightProgress(
             entries: [point(day: 1, kilograms: 70), point(day: 2, kilograms: 71.2)],
@@ -149,6 +173,24 @@ final class ProgressHistoryTests: XCTestCase {
 
         XCTAssertEqual(progress.current, 70)
         XCTAssertNil(progress.periodChange)
+    }
+
+    func testWeightProgressIgnoresFutureRowsWhenNowIsProvided() {
+        let now = date(day: 10)
+        let progress = ProgressHistory.weightProgress(
+            entries: [
+                point(day: 9, kilograms: 70),
+                point(day: 11, kilograms: 68),
+                point(day: 12, kilograms: .infinity)
+            ],
+            targetWeight: 68,
+            now: now
+        )
+
+        XCTAssertEqual(progress.points.map(\.kilograms), [70])
+        XCTAssertEqual(progress.current, 70)
+        XCTAssertNil(progress.periodChange)
+        XCTAssertEqual(progress.targetDistance, -2)
     }
 
     func testInvalidWeightsAndTargetAreIgnored() {

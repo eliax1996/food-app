@@ -34,13 +34,33 @@ Empirical strengths, weaknesses, quota behavior, and policy changes are tracked 
 
 Use Xcode MCP once to explore or visually inspect a flow. If the same flow must be repeated to prove behavior—or it protects a critical journey—promote it to deterministic XCTest UI coverage before another manual proof. UI tests may cost CPU, but replace repeated agent navigation and save tokens/time. Test-authoring subagents must add step diagnostics and run/fix the created tests to green with a higher bounded timeout (`just test-ui 240` by default), not stop after generating code or the first failure. Keep tests isolated from live network, camera, permissions, wall clock, and uncontrolled persisted state.
 
-## Completed Progress analytics milestone
+## Accepted TRACKING-IA-001 milestone
 
-`HISTORY-001` / `PROGRESS-001` / `WEIGHT-001` are **ACCEPTED — attempt 02**. Visible `History` became `Progress`. Calories show seven most recent recorded days, recorded-day average, profile-goal relation, orange bars, compact actual-day labels, and goal rule. Weight shows current/change/target text, fourteen raw readings, linear points, adaptive nonzero domain, and target rule. Empty Weight state leads directly to Record Weight; record/update sheet uses locale-consistent wheels plus Cancel/Save and save-only dismissal with rollback on failure.
+`TRACKING-IA-001` is **ACCEPTED — ATTEMPT 01 / COMPLETE**. Final root is:
 
-Evidence: deterministic iPhone 17 Pro previews in `design-redesign/screenshots/HISTORY-001/attempt-02-calories.png`, `design-redesign/screenshots/WEIGHT-001/attempt-02-populated.png`, `design-redesign/screenshots/WEIGHT-001/attempt-02-empty.png`, and `design-redesign/screenshots/WEIGHT-001/attempt-02-editor.png`. `ProgressHistoryTests`: 16 pass. Aggregate: 106 pass / 2 opt-in skips. `just check` passed. Final `just test-ui 300` timed out before XCTest and reset simulator; UI suite is not green.
+```text
+Today | Weight | Progress | Settings
+```
 
-Next work is separate user-requested research on splitting navigation among calorie tracker, weight recording, and analytics. No split is pre-decided by this milestone.
+- **Today:** current-day calorie, food, and water actions.
+- **Weight / Weight Log:** raw measurement CRUD, independent date/time backdating, same-day preservation, confirmation plus undo, summary, and basic seven-reading raw chart. One reading shows useful prompt; two or more show chart context.
+- **Progress:** fuller fourteen-reading weight analytics and interpretation; no weight CRUD. `View full trends` routes directly to Progress / Weight.
+- **Settings:** target weight, age, daily calorie goal, target date, and reminders; no current-weight field or save path.
+- No historical calorie CRUD or generic Calories/Water/Weight table. Future calorie history remains a separate date-first day diary.
+
+Final results:
+
+- `just validate 300`: **passed**.
+- Hostless validation: **125 passed / 2 opt-in live skips**.
+- Simulator build, install, and launch: **passed**.
+- `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`.
+- Explicit UI target: **6/6 passed**, covering four tabs; prompt → chart; two same-day readings; backdated regrouping; edit; delete cancel/confirm/undo; Settings; and direct `View full trends` → Progress / Weight.
+- App-hosted persistence tests passed after final duplicate-profile/future-row correctness fixes and again in an integrated run.
+- One later standalone `just test-app-unit 300` timed out before XCTest due to external Xcode 27 host instability; not a red product gate.
+
+Accepted TRACKING visual files are only `design-redesign/screenshots/TRACKING-IA-001/attempt-01-*`. `superseded-three-tab-*` files remain historical; `rejected-one-reading-chart.png` remains rejected evidence.
+
+Next component: empty/error/loading states, then global consistency, dark mode, Dynamic Type, and small-device checks.
 
 ## Active product redesign
 

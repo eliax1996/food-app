@@ -9,6 +9,21 @@ nonisolated struct CalorieProgress: Equatable, Sendable {
 nonisolated struct WeightProgressPoint: Equatable, Sendable {
     let date: Date
     let kilograms: Double
+    /// Persistent ordering metadata. Nil means a hostless compatibility point.
+    let stableID: UUID?
+    let sequence: Int64?
+
+    init(
+        date: Date,
+        kilograms: Double,
+        stableID: UUID? = nil,
+        sequence: Int64? = nil
+    ) {
+        self.date = date
+        self.kilograms = kilograms
+        self.stableID = stableID
+        self.sequence = sequence
+    }
 }
 
 nonisolated struct WeightProgress: Equatable, Sendable {
@@ -55,7 +70,8 @@ nonisolated enum ProgressHistory {
     static func weightProgress(
         entries: [WeightProgressPoint],
         targetWeight: Double?,
-        limit: Int = 14
+        limit: Int = 14,
+        now: Date = .distantFuture
     ) -> WeightProgress {
         guard limit > 0 else {
             return WeightProgress(
@@ -67,16 +83,12 @@ nonisolated enum ProgressHistory {
             )
         }
 
-        let sortedEntries = entries
-            .filter { $0.kilograms.isFinite && $0.kilograms > 0 }
-            .enumerated()
-            .sorted { first, second in
-                if first.element.date == second.element.date {
-                    return first.offset < second.offset
-                }
-                return first.element.date < second.element.date
-            }
-        let points = Array(sortedEntries.suffix(limit).map(\.element))
+        let points = Array(
+            WeightHistory.sortedOldestFirst(
+                entries.filter { $0.kilograms.isFinite && $0.kilograms > 0 && $0.date <= now }
+            )
+            .suffix(limit)
+        )
         let current = points.last?.kilograms
         let change: Double?
         if let current, let first = points.first, points.count > 1 {

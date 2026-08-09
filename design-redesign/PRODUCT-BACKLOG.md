@@ -142,71 +142,103 @@ Logging often means nudging a default amount from 100 g/ml to a nearby value. Op
 
 ## Priority 3 — [TRACKING-IA-001] Tracking navigation and weight-log information architecture
 
-**Status:** RESEARCH COMPLETE / ARCHITECTURE APPROVED
+**Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
 **Priority:** HIGH VALUE
 **Origin:** User-requested navigation split research covering calorie tracking, weight recording, and analytics.
-**Implementation:** NOT STARTED. Approval records architecture only.
+**Implementation:** Implemented, visually accepted, and complete in worktree.
 
 ### User problem
 
-Current root labels and combined Progress behavior do not clearly separate daily action, analytics, and raw weight history. Current Progress also owns direct weight recording. A four-tab or generic journal solution would make sparse weight data a top-level peer of daily calories and would mix incompatible history semantics.
+Current root labels and combined Progress behavior do not clearly separate daily action, analytics, and raw weight history. The initial assessment favored a pushed Weight Log because nutrition apps usually nest sparse weight capture. Explicit user feedback then prioritized discoverability, and dedicated-weight precedent supported a clear root Weight destination. Calorie history still has incompatible semantics and remains outside this milestone.
 
-### Approved decision
+### Decision history and approved final decision
 
-1. Keep exactly three primary tabs: `Today | Progress | Settings`.
-2. Rename `Counter` → `Today` and `Config` → `Settings`.
-3. Make Progress analytics-only. Its Weight segment links to dedicated Weight Log; it does not own weight CRUD.
-4. Build Weight Log as pushed destination: newest-first native grouped list, `+ Record Weight`, row edit, independent date/time backdating, multiple same-day raw entries, explicit delete confirmation, and undo. No chart in log. No in-content Today shortcut initially.
-5. Keep weight chart/trend analytics in Progress.
-6. Settings removes current-weight recording field but retains target weight, age, calorie goal, target date, and reminders.
-7. Defer historical calorie CRUD. Future calorie history is a separate date-first day diary with meal-grouped food rows, never a generic mixed Calories/Water/Weight table.
+The original `eae1c92` assessment chose three root tabs and rejected a fourth:
+
+```text
+Today | Progress | Settings
+```
+
+That initial nutrition-only inference is superseded by explicit user feedback. Initial nutrition evidence still informs Today/Progress and the generic-table boundary, but discoverability plus dedicated-weight precedent now wins.
+
+Final root order:
+
+```text
+Today | Weight | Progress | Settings
+```
+
+1. Rename `Counter` → `Today` and `Config` → `Settings`.
+2. Add root `Weight`; its navigation title is **Weight Log**.
+3. Weight shows current/recent-seven-reading/target summary, compact raw-seven-reading native line + points with target rule, grouped newest-first measurements, toolbar add, row edit/backdate, multiple same-day entries, delete confirmation, and stacked undo. One reading shows a useful prompt; explicit endpoint dates appear only with at least two readings. `View full trends` selects `Progress` / `Weight`.
+4. Progress owns fuller fourteen-reading analytics and interpretation. Progress has no weight create/edit/delete controls.
+5. Settings retains target weight, age, calorie goal, target date, and reminders; it has no current-weight field or save path.
+6. No calorie CRUD is added. Future calorie history is a separate date-first day diary with meal-grouped food rows, never a generic mixed Calories/Water/Weight table.
 
 Full decision, evidence labels, exact source URLs, and access date: `docs/tracking-navigation-assessment.md` (all external sources accessed 2026-08-08).
 
 ### Requirements
 
-- Root tab bar exposes only `Today`, `Progress`, and `Settings`; obsolete user-facing `Counter` and `Config` labels are removed.
+- Root tab bar exposes exactly `Today`, `Weight`, `Progress`, and `Settings` in that order; obsolete user-facing `Counter` and `Config` labels are removed.
 - Today remains current-day calorie/food/water action surface.
-- Progress exposes calorie and weight analytics only. Weight analytics has clear `View Weight Log` route.
-- Weight Log uses native SwiftUI grouped sections by local calendar date, newest section first, newest rows first.
-- `+ Record Weight` defaults to now and allows independent date/time backdating.
+- Progress exposes calorie and fuller fourteen-reading Weight analytics only; it has no weight CRUD. `View full trends` from Weight selects Progress / Weight.
+- Weight root navigation title is `Weight Log`; toolbar `+` / `Record Weight` is the primary creation action. Measurements use native SwiftUI grouped sections by local calendar date, newest section first, newest rows first.
+- Weight summary shows current, recent-seven-reading context, and target. Its compact chart uses up to seven raw readings with native line + points and target rule; endpoint dates appear only with at least two readings; one reading shows a prompt instead of a single-dot/dead chart.
+- Toolbar add defaults to now and allows independently backdated date and time; row tap edits one raw record, including date/time.
 - Row tap opens editor for value/date/time; updates one raw record only.
 - Same-day measurements remain separate and visible; no daily overwrite or collapse.
-- Delete requires explicit confirmation and offers undo; accidental swipe cannot silently destroy data.
-- Weight Log has no chart and no in-content Today shortcut initially.
-- Settings retains target weight, age, daily calorie goal, target date, and reminders; removes current-weight recording.
+- Delete requires explicit confirmation and stacked undo; accidental swipe cannot silently destroy data.
+- Weight has no generic journal or calorie controls; its `View full trends` handoff selects Progress / Weight.
+- Settings retains target weight, age, daily calorie goal, target date, and reminders; removes current-weight recording field and save path.
 - Do not add historical calorie CRUD in this milestone. `PlateEntry` snapshot integrity and preview aggregate behavior require a separate future day-diary design.
 - Do not create generic mixed history table. Keep food history date/meal semantics separate from weight measurement semantics.
-- Preserve native accessibility: Dynamic Type, VoiceOver date/time/value labels and actions, localized formatting, 44-point targets, and non-color-only meaning.
+- Preserve native accessibility: Dynamic Type, VoiceOver date/time/value labels and actions, localized formatting, dark mode, 44-point targets, and non-color-only meaning.
 
 ### Rejected options
 
-- **Four tabs: `Today | Weight | Progress | Settings`:** sparse weight gets equal root status and one domain is split across Weight/Progress. Reviewed nutrition apps instead nest weight capture/history beneath broad daily-log or analytics destinations.
+- **Initial three-tab drill-down: `Today | Progress | Settings`:** superseded by explicit discoverability feedback and dedicated-weight precedent. Initial nutrition evidence remains relevant but no longer controls root order.
 - **`Today | Log | Trends | Settings` with generic journal:** Log duplicates Today for current-day food work and creates one table with incompatible row density, aggregation, editing, and deletion rules. Calories history must become a separate day diary later, never this journal.
 
 ### Tests / success criteria
 
-Implementation not started; these are acceptance gates.
+Acceptance gates are closed. TRACKING-IA-001 is accepted and complete.
 
-- UI test confirms exactly three tabs and labels `Today`, `Progress`, `Settings`; `Counter`/`Config` absent.
-- UI test confirms Progress Weight has analytics and Weight Log route but no direct weight create/edit/delete controls.
-- UI test confirms Weight Log has no chart and no in-content Today shortcut.
+- UI test confirms exactly four tabs in order and labels `Today`, `Weight`, `Progress`, `Settings`; `Counter`/`Config` absent.
+- UI test confirms Progress Weight owns fuller fourteen-reading analytics and exposes no direct weight create/edit/delete controls; `View full trends` selects it.
+- UI test confirms Weight tab title `Weight Log`, toolbar add, summary, compact seven-reading chart behavior, and useful one-reading prompt.
+- UI test confirms target rule appears when valid and explicit endpoint dates appear only with at least two readings.
 - Seed multiple dates/times; verify grouped newest-first sections and rows after reload.
 - Save backdated weight with explicit date and time; verify exact displayed placement.
 - Edit row value/date/time; verify only selected raw record changes.
 - Save two same-day values; verify both survive persistence and analytics processing.
-- Cancel deletion; verify record remains. Confirm deletion; verify only selected record disappears. Trigger undo; verify restoration.
+- Cancel deletion; verify record remains. Confirm deletion; verify only selected record disappears. Verify stacked undo restores deletions.
 - Verify destructive actions never silently replace another same-day entry.
 - Settings test confirms target weight, age, calorie goal, target date, and reminders remain; current-weight recording field is absent.
 - Architecture/UI review confirms no generic Calories/Water/Weight table and no historical calorie CRUD claim.
-- Accessibility review covers Dynamic Type, VoiceOver, localization, and touch targets for navigation, list, editor, and destructive confirmation.
+- Accessibility review covers Dynamic Type, VoiceOver, localization, dark mode, and touch targets for navigation, log, editor, and destructive confirmation.
+
+### Final results
+
+- `just validate 300`: **passed**.
+- Hostless validation: **125 passed / 2 opt-in live skips**.
+- Simulator build, install, and launch: **passed**.
+- `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`.
+- Explicit UI target: **6/6 passed**, covering four tabs; one-reading prompt → two-reading chart; two same-day readings; backdated date regrouping; edit; delete cancel/confirm/undo; Settings; and direct `View full trends` → `Progress` / `Weight`.
+- App-hosted persistence tests passed after final duplicate-profile/future-row correctness fixes and passed again in an integrated run.
+- One later standalone `just test-app-unit 300` timed out before XCTest. Record as external Xcode 27 host instability, not a red product gate.
 
 ### Evidence and result log
 
-- 2026-08-08: Reviewed nonempty `/tmp/navigation-weight-research.txt`; Apple Health, Happy Scale, Withings, Monitor Your Weight, Weight Diary Lite, and Weigh In evidence separated recording, chronological history, and analytics, with source caveats recorded.
-- 2026-08-08: Broad `/tmp/navigation-nutrition-research.txt` timed out empty; bounded `/tmp/navigation-nutrition-focused-research.txt` then verified MacroFactor, Foodnoms, MyFitnessPal, and Cronometer placement. Daily-log/analytics destinations are broad; weight is nested or globally added, not a top-level Weight tab.
+- 2026-08-08: Reviewed nonempty `/tmp/navigation-weight-research.txt`; Apple Health, Happy Scale, Withings, Weight Diary Lite, and Weigh In evidence separated recording, chronological history, and analytics. Monitor Your Weight evidence retained with legacy screenshot caveat.
+- 2026-08-08: Broad `/tmp/navigation-nutrition-research.txt` timed out empty; bounded `/tmp/navigation-nutrition-focused-research.txt` then verified MacroFactor, Foodnoms, MyFitnessPal, and Cronometer placement. Initial nutrition evidence favors nested weight and remains relevant to Today/Progress; it does not override explicit discoverability feedback.
 - 2026-08-08: Reviewed `/tmp/nutrition-history-research.txt`; date-first meal diaries and separate weight histories supported metric-specific flows rather than a generic table.
-- 2026-08-08: Reviewed `/tmp/weight-history-research.txt`; native newest-first list, row edit/delete, date handling, raw-entry preservation, and accessibility patterns supported Weight Log architecture. Verified findings and inferences were kept distinct in assessment.
-- 2026-08-08: Repository baseline reviewed: current `Counter | Progress | Config`, combined Progress weight recording, `PlateEntry` snapshots, and calendar-day calorie aggregation. No code changed during research.
-- 2026-08-08: Four-tab recommendation rejected because it gives sparse weight equal root status and splits domain. Generic Today/Log/Trends journal rejected because it duplicates Today and creates unsafe mixed history.
-- 2026-08-08: TRACKING-IA-001 marked **RESEARCH COMPLETE / ARCHITECTURE APPROVED**. Implementation is next; no UI or test result is claimed yet.
+- 2026-08-08: Reviewed `/tmp/weight-history-research.txt`; native newest-first list, row edit/delete, date handling, raw-entry preservation, and accessibility patterns supported the implemented Weight tab.
+- 2026-08-08: Original `eae1c92` three-tab/drill-down assessment was superseded by explicit user feedback plus dedicated-weight precedent. Final order is `Today | Weight | Progress | Settings`.
+- 2026-08-08: Final attempt-01 navigation/visual evidence under `screenshots/TRACKING-IA-001/`: `attempt-01-four-tabs.png`, `attempt-01-weight-populated.png`, `attempt-01-weight-empty.png`, `attempt-01-weight-accessibility3.png`, and `attempt-01-weight-dark.png`. Earlier functional captures were renamed `superseded-three-tab-*` and retained only as pre-root implementation history. `rejected-one-reading-chart.png` is retained because a single dot is a dead chart; final behavior uses a prompt until two readings.
+- 2026-08-08: `just validate 300` passed; hostless validation reported **125 passed / 2 opt-in live skips**; simulator build, install, and launch passed.
+- 2026-08-08: Explicit UI target reached **6/6 pass** for four tabs, prompt-to-chart, two same-day readings, backdated regrouping, edit, delete cancel/confirm/undo, Settings, and direct `View full trends` to Progress / Weight.
+- 2026-08-08: App-hosted persistence tests passed after duplicate-profile/future-row correctness fixes and again in an integrated run. One later standalone `just test-app-unit 300` timed out before XCTest; this is external Xcode 27 host instability, not a red product gate.
+- 2026-08-08: TRACKING-IA-001 marked **ACCEPTED — ATTEMPT 01 / COMPLETE**.
+
+### Next component
+
+`empty/error/loading states`, followed by global consistency, dark mode, Dynamic Type, and small-device checks.

@@ -228,6 +228,30 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Token/quota note: Luna `max` fit focused correction and diagnosis without another broad-model pass.
 - Policy effect: route similar post-review UI corrections and bounded diagnostic flows to Luna `max`; keep deterministic tests and host status separate in acceptance records.
 
+### 2026-08-08 — Model `openai-codex/gpt-5.6-luna` `max`: bounded TRACKING UI and documentation close
+
+- Shape: bounded acceptance-flow review plus owned documentation updates.
+- Outcome: effective for focused UI verification and concise cross-file docs closure.
+- Strength: kept exact acceptance evidence, architecture boundaries, and rejected/superseded visual history distinct.
+- Weakness: long XCTest outer tasks can exhaust budget even when bounded UI assertions are sound.
+- Policy effect: empirical entry only; no standing model-policy change.
+
+### 2026-08-08 — Model `openai-codex/gpt-5.6-terra` `high`: cross-file SwiftData/order/DST integration
+
+- Shape: cross-file SwiftData persistence, navigation order, and date/time correctness integration.
+- Outcome: succeeded across SwiftData, root order, duplicate-profile, future-row, and DST-sensitive behavior.
+- Strength: connected persistence and UI architecture across interacting files.
+- Policy effect: empirical entry only; no standing model-policy change.
+
+### 2026-08-08 — Model `openai-codex/gpt-5.6-sol` `high`: architecture review
+
+- Shape: high-level review of weight persistence and date/time architecture.
+- Outcome: found exact-timestamp and DST blockers, plus useful architecture findings for correction and acceptance.
+- Strength: surfaced cross-cutting risks that narrow implementation review could miss.
+- Policy effect: empirical entry only; no standing model-policy change.
+
+Do not change standing model policy absent repeated evidence.
+
 ## Record template
 
 ```md

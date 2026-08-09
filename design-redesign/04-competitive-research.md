@@ -14,6 +14,16 @@ Captured from current US App Store metadata/screenshots: 2026-08-08. Selected so
 - Apple layout guidance: https://developer.apple.com/design/human-interface-guidelines/layout
 - Apple navigation and search guidance: https://developer.apple.com/design/human-interface-guidelines/navigation-and-search
 - Apple accessibility: https://developer.apple.com/design/human-interface-guidelines/accessibility
+- Happy Scale App Store: https://apps.apple.com/us/app/happy-scale/id532430574
+- Happy Scale support: https://happyscale.com/support
+- Weight Diary Lite App Store: https://apps.apple.com/us/app/weight-diary-lite/id468520999
+- Weight Diary Lite vendor: https://www.curlybrace.co.uk/weightdiaryfree
+- Weigh In App Store: https://apps.apple.com/us/app/weigh-in-weight-tracker/id1082115351
+- Weigh In official site: https://weighin.app/
+- Monitor Your Weight App Store (legacy screenshot caveat): https://apps.apple.com/us/app/monitor-your-weight/id413313086
+- Monitor Your Weight official site: https://monitoryourweight.com/
+
+All dedicated-weight URLs above are current verified official sources accessed 2026-08-08. Monitor Your Weight's older listing assets are retained as legacy caveat, not decisive current workflow evidence.
 
 ## Actual visual material inspected
 
@@ -48,6 +58,25 @@ App Store assets mix real product pixels with marketing frames. Findings below u
 - MyFitnessPal's broad coaching/AI navigation scope.
 - Promotional gradients, floating device mockups, ratings, and award badges.
 
+## Revised TRACKING-IA-001 decision
+
+Earlier nutrition synthesis favored nested Weight: MacroFactor, Foodnoms, MyFitnessPal, and Cronometer keep daily-log and analytics destinations broad, while weight is nested or reached through a global add action. That evidence remains relevant for calorie navigation and for keeping food history separate from weight.
+
+User feedback explicitly prioritized Weight discoverability. Dedicated-weight precedent now wins for this product. Current verified official sources accessed 2026-08-08:
+
+- [Happy Scale App Store](https://apps.apple.com/us/app/happy-scale/id532430574) and [support](https://happyscale.com/support): Summary, Reports, Logbook, Settings, global add, and editable log entries.
+- [Weight Diary Lite App Store](https://apps.apple.com/us/app/weight-diary-lite/id468520999) and [vendor](https://www.curlybrace.co.uk/weightdiaryfree): graph, summary, and full weight-log modes.
+- [Weigh In App Store](https://apps.apple.com/us/app/weigh-in-weight-tracker/id1082115351) and [official site](https://weighin.app/): separate weigh-in, history, and progress actions.
+- [Monitor Your Weight App Store](https://apps.apple.com/us/app/monitor-your-weight/id413313086) and [official site](https://monitoryourweight.com/): useful precedent with legacy screenshot caveat; not used as decisive current workflow evidence.
+
+Final order is:
+
+```text
+Today | Weight | Progress | Settings
+```
+
+Weight owns Weight Log raw CRUD plus compact seven-reading context. Progress owns fuller fourteen-reading analytics and no CRUD. Settings has no current-weight field. No calorie CRUD or generic Calories/Water/Weight table is added.
+
 ## Opportunities for this app
 
 1. Reframe Counter as **Today**, with remaining calories as dominant answer.
@@ -56,7 +85,8 @@ App Store assets mix real product pixels with marketing frames. Findings below u
 4. Make meal search primary inside a large native sheet; show recent choices when empty.
 5. Add target rule and summary to calorie history.
 6. Use line marks for weight trend instead of calorie-style histogram.
-7. Add macros only after honest local persistence and incomplete-data handling exist.
+7. Keep Weight discoverable as a dedicated raw log while Progress explains fuller trends.
+8. Add macros only after honest local persistence and incomplete-data handling exist.
 
 ## Independent review evidence
 

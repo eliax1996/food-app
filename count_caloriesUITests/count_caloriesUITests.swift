@@ -331,68 +331,632 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
-    func testProgressWeightRecordingShowsTrend() throws {
+    func testTrackingWeightLogLifecycleAndAnalytics() throws {
         let app = XCUIApplication()
-        let progressTab = app.tabBars.buttons["Progress"]
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+
+        let tabs = app.tabBars.buttons
+        let todayTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Today")
+        ).firstMatch
+        let weightTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Weight")
+        ).firstMatch
+        let progressTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Progress")
+        ).firstMatch
+        let settingsTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Settings")
+        ).firstMatch
         let metricPicker = app.segmentedControls["progress-metric-picker"]
         let weightSegment = metricPicker.buttons["Weight"]
-        let emptyState = app.descendants(matching: .any)
+        let progressWeightEmpty = app.descendants(matching: .any)
             .matching(identifier: "progress-weight-empty")
             .firstMatch
-        let recordWeight = app.buttons["record-weight"]
-        let saveWeight = app.buttons["save-weight"]
+        let progressWeightLogLink = app.descendants(matching: .any)
+            .matching(identifier: "progress-weight-log-link")
+            .firstMatch
+        let progressRecordWeightControls = app.descendants(matching: .any)
+            .matching(identifier: "record-weight")
+        let weightLog = app.descendants(matching: .any)
+            .matching(identifier: "weight-log")
+            .firstMatch
+        let weightLogNavigationBar = app.navigationBars["Weight Log"]
+        let weightLogEmpty = app.descendants(matching: .any)
+            .matching(identifier: "weight-log-empty")
+            .firstMatch
+        let recordWeightActions = app.buttons.matching(
+            NSPredicate(format: "label == %@", "Record Weight")
+        )
+        let recordWeightToolbarButton = app.buttons["record-weight-button"]
+        let weightEditor = app.descendants(matching: .any)
+            .matching(identifier: "weight-editor")
+            .firstMatch
+        let recordWeightTitle = app.navigationBars["Record Weight"]
+        let editWeightTitle = app.navigationBars["Edit Weight"]
+        let weightValue = app.textFields["weight-value"]
+        let weightDate = app.descendants(matching: .any)
+            .matching(identifier: "weight-date")
+            .firstMatch
+        let weightTime = app.descendants(matching: .any)
+            .matching(identifier: "weight-time")
+            .firstMatch
+        let weightSave = app.buttons["weight-save"]
+        let weightRows = app.descendants(matching: .any)
+            .matching(identifier: "weight-log-row")
+        let deleteActions = app.buttons.matching(
+            NSPredicate(format: "label == %@", "Delete")
+        )
+        let confirmDelete = app.descendants(matching: .any)
+            .matching(identifier: "confirm-delete-weight")
+            .firstMatch
+        let undo = app.buttons["weight-undo"]
+        let weightLogChart = app.descendants(matching: .any)
+            .matching(identifier: "weight-log-chart")
+            .firstMatch
+        let weightLogChartPrompt = app.descendants(matching: .any)
+            .matching(identifier: "weight-log-chart-prompt")
+            .firstMatch
+        let weightViewProgress = app.buttons["weight-view-progress"]
         let currentWeight = app.staticTexts["progress-weight-current"]
         let trendChart = app.descendants(matching: .any)
             .matching(identifier: "progress-weight-chart")
             .firstMatch
 
-        XCTContext.runActivity(named: "Launch Progress") { _ in
-            app.launchArguments = ["-ui-testing"]
+        XCTContext.runActivity(named: "Launch and verify root tabs") { _ in
+            trace("tracking: launch")
             app.launch()
             XCTAssertTrue(
                 app.wait(for: .runningForeground, timeout: uiTimeout),
-                "Launch: app did not reach foreground; state=\(app.state)."
+                "Launch: app did not reach foreground; state=\(app.state), tabs=\(diagnostic(for: tabs))"
             )
+            assertQueryCount(tabs, expected: 4, phase: "Launch")
+            assertTabLabels(
+                tabs,
+                expected: ["Today", "Weight", "Progress", "Settings"],
+                phase: "Launch"
+            )
+            assertExists(todayTab, identifier: "Today tab", phase: "Launch")
+            assertExists(weightTab, identifier: "Weight tab", phase: "Launch")
             assertExists(progressTab, identifier: "Progress tab", phase: "Launch")
+            assertExists(settingsTab, identifier: "Settings tab", phase: "Launch")
+            XCTAssertFalse(
+                app.tabBars.buttons["Counter"].exists,
+                "Launch: obsolete Counter tab exists; tabs=\(diagnostic(for: tabs))"
+            )
+            XCTAssertFalse(
+                app.tabBars.buttons["Config"].exists,
+                "Launch: obsolete Config tab exists; tabs=\(diagnostic(for: tabs))"
+            )
+        }
+
+        XCTContext.runActivity(named: "Verify Progress Weight is analytics-only") { _ in
+            trace("tracking: progress empty")
             progressTab.tap()
             assertExists(metricPicker, identifier: "progress-metric-picker", phase: "Progress")
-        }
-
-        XCTContext.runActivity(named: "Open empty Weight progress") { _ in
+            assertExists(weightSegment, identifier: "Weight metric", phase: "Progress")
             weightSegment.tap()
-            assertExists(emptyState, identifier: "progress-weight-empty", phase: "Weight empty")
-            assertExists(recordWeight, identifier: "record-weight", phase: "Weight empty")
-            assertLabel(recordWeight, expected: "Record weight", phase: "Weight empty")
-        }
-
-        XCTContext.runActivity(named: "Record default weight") { _ in
-            recordWeight.tap()
-            assertExists(saveWeight, identifier: "save-weight", phase: "Weight sheet")
             assertExists(
-                app.descendants(matching: .any)
-                    .matching(identifier: "weight-draft-value")
-                    .firstMatch,
-                identifier: "weight-draft-value",
-                phase: "Weight sheet"
+                progressWeightEmpty,
+                identifier: "progress-weight-empty",
+                phase: "Progress Weight"
             )
-            saveWeight.tap()
+            assertAbsent(
+                progressWeightLogLink,
+                identifier: "progress-weight-log-link",
+                phase: "Progress Weight"
+            )
+            assertQueryCount(
+                progressRecordWeightControls,
+                expected: 0,
+                phase: "Progress Weight"
+            )
+
+            let progressWeightCopy = app.descendants(matching: .any).matching(
+                NSPredicate(format: "label CONTAINS[c] %@", "Record weight")
+            ).firstMatch
+            if progressWeightCopy.exists {
+                XCTAssertTrue(
+                    progressWeightCopy.label.localizedCaseInsensitiveContains("Weight tab"),
+                    "Progress Weight: empty-state copy does not point to Weight tab; \(diagnostic(for: progressWeightCopy))"
+                )
+            }
         }
 
-        XCTContext.runActivity(named: "Verify saved Weight trend") { _ in
-            assertWeightLabel(currentWeight, phase: "Saved weight")
-            assertExists(trendChart, identifier: "progress-weight-chart", phase: "Saved weight")
-            assertExists(recordWeight, identifier: "record-weight", phase: "Saved weight")
-            assertLabel(recordWeight, expected: "Update today’s weight", phase: "Saved weight")
+        XCTContext.runActivity(named: "Open dedicated Weight Log empty state") { _ in
+            trace("tracking: weight empty")
+            assertHittable(weightTab, identifier: "Weight tab", phase: "Weight Log")
+            weightTab.tap()
+            assertExists(weightLog, identifier: "weight-log", phase: "Weight Log")
+            assertExists(
+                weightLogNavigationBar,
+                identifier: "Weight Log navigation title",
+                phase: "Weight Log"
+            )
+            assertExists(weightLogEmpty, identifier: "weight-log-empty", phase: "Weight Log")
+            assertQueryAtLeastCount(
+                recordWeightActions,
+                expected: 1,
+                phase: "Weight Log empty"
+            )
+            assertHittable(
+                recordWeightActions.firstMatch,
+                identifier: "Record Weight action",
+                phase: "Weight Log empty"
+            )
+        }
+
+        XCTContext.runActivity(named: "Create first default raw measurement") { _ in
+            trace("tracking: first record")
+            recordWeightActions.firstMatch.tap()
+            assertExists(weightEditor, identifier: "weight-editor", phase: "Record editor")
+            assertExists(
+                recordWeightTitle,
+                identifier: "Record Weight title",
+                phase: "Record editor"
+            )
+            assertExists(weightValue, identifier: "weight-value", phase: "Record editor")
+            assertNonEmptyValue(weightValue, identifier: "weight-value", phase: "Record editor")
+            assertExists(weightDate, identifier: "weight-date", phase: "Record editor")
+            assertExists(weightTime, identifier: "weight-time", phase: "Record editor")
+            assertExists(weightSave, identifier: "weight-save", phase: "Record editor")
+            XCTAssertTrue(
+                weightSave.isEnabled,
+                "Record editor: weight-save is disabled; \(diagnostic(for: weightSave))"
+            )
+            weightSave.tap()
+            assertQueryCount(weightRows, expected: 1, phase: "First save")
+            assertAbsent(weightEditor, identifier: "weight-editor", phase: "First save")
+            assertExists(
+                weightLogChartPrompt,
+                identifier: "weight-log-chart-prompt",
+                phase: "First save"
+            )
+            assertAbsent(weightLogChart, identifier: "weight-log-chart", phase: "First save")
+            assertExists(weightViewProgress, identifier: "weight-view-progress", phase: "First save")
+        }
+
+        XCTContext.runActivity(named: "Create second same-day raw measurement") { _ in
+            trace("tracking: second record")
+            assertExists(
+                recordWeightToolbarButton,
+                identifier: "record-weight-button",
+                phase: "Second record"
+            )
+            recordWeightToolbarButton.tap()
+            assertExists(weightEditor, identifier: "weight-editor", phase: "Second record")
+            assertExists(
+                recordWeightTitle,
+                identifier: "Record Weight title",
+                phase: "Second record"
+            )
+            assertExists(weightValue, identifier: "weight-value", phase: "Second record")
+            assertExists(weightDate, identifier: "weight-date", phase: "Second record")
+            assertExists(weightTime, identifier: "weight-time", phase: "Second record")
+            assertExists(weightSave, identifier: "weight-save", phase: "Second record")
+            weightSave.tap()
+            assertQueryCount(weightRows, expected: 2, phase: "Second save")
+            XCTAssertEqual(
+                rowAccessibilityValues(weightRows).count,
+                2,
+                "Second save: expected two distinct raw row values; \(diagnostic(for: weightRows))"
+            )
+            assertAbsent(
+                weightLogChartPrompt,
+                identifier: "weight-log-chart-prompt",
+                phase: "Second save"
+            )
+            assertExists(weightLogChart, identifier: "weight-log-chart", phase: "Second save")
+        }
+
+        try XCTContext.runActivity(named: "Edit one row and preserve peer value") { _ in
+            trace("tracking: edit")
+            let valuesBeforeEdit = rowAccessibilityValues(weightRows)
+            assertQueryCount(weightRows, expected: 2, phase: "Edit before")
+            trace("tracking: edit rows ready")
+            let rowToEdit = weightRows.firstMatch
+            let originalEditedValue = accessibilityValue(of: rowToEdit)
+            assertExists(rowToEdit, identifier: "weight-log-row to edit", phase: "Edit before")
+            rowToEdit.tap()
+            trace("tracking: edit row tapped")
+            assertExists(weightEditor, identifier: "weight-editor", phase: "Edit editor")
+            assertExists(editWeightTitle, identifier: "Edit Weight title", phase: "Edit editor")
+            trace("tracking: edit sheet ready")
+            replaceText(
+                in: weightValue,
+                with: "71.2",
+                app: app,
+                phase: "Edit editor"
+            )
+            trace("tracking: edit text replaced")
+
+            let previousDate = try XCTUnwrap(
+                Calendar.current.date(byAdding: .day, value: -1, to: .now),
+                "Edit editor: could not derive previous calendar day."
+            )
+            let dayFormatter = DateFormatter()
+            dayFormatter.locale = Locale(identifier: "en_US")
+            dayFormatter.dateFormat = "EEEE, MMMM d"
+            let previousDayButton = app.buttons[dayFormatter.string(from: previousDate)]
+            weightDate.tap()
+            assertHittable(
+                previousDayButton,
+                identifier: "previous day in weight date picker",
+                phase: "Edit editor"
+            )
+            previousDayButton.tap()
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.70)).tap()
+            assertAbsent(
+                previousDayButton,
+                identifier: "weight date-picker popover",
+                phase: "Edit editor"
+            )
+            trace("tracking: edit date backdated")
+
+            assertExists(weightSave, identifier: "weight-save", phase: "Edit editor")
+            weightSave.tap()
+            trace("tracking: edit save tapped")
+            assertQueryCount(weightRows, expected: 2, phase: "Edit save")
+            assertAbsent(weightEditor, identifier: "weight-editor", phase: "Edit save")
+
+            let valuesAfterEdit = rowAccessibilityValues(weightRows)
+            assertOnlyOneAccessibilityValueChanged(
+                before: valuesBeforeEdit,
+                after: valuesAfterEdit,
+                rows: weightRows,
+                phase: "Edit save"
+            )
+            XCTAssertEqual(
+                valuesAfterEdit.filter { $0.contains("71.2 kg") }.count,
+                1,
+                "Edit save: edited row value missing or duplicated; rows=\(diagnostic(for: weightRows))"
+            )
+            let fullDateFormatter = DateFormatter()
+            fullDateFormatter.locale = Locale(identifier: "en_US")
+            fullDateFormatter.dateStyle = .full
+            fullDateFormatter.timeStyle = .none
+            let previousDateLabel = fullDateFormatter.string(from: previousDate)
+            XCTAssertEqual(
+                valuesAfterEdit.filter {
+                    $0.contains("71.2 kg") && $0.contains(previousDateLabel)
+                }.count,
+                1,
+                "Edit save: backdated row did not move to expected date; expected=\(previousDateLabel), rows=\(diagnostic(for: weightRows))"
+            )
+            let originalEditedValueOccurrencesBefore = valuesBeforeEdit.filter {
+                $0 == originalEditedValue
+            }.count
+            let originalEditedValueOccurrencesAfter = valuesAfterEdit.filter {
+                $0 == originalEditedValue
+            }.count
+            XCTAssertEqual(
+                originalEditedValueOccurrencesAfter,
+                originalEditedValueOccurrencesBefore - 1,
+                "Edit save: edited row accessibility value occurrence count did not decrease by one; before=\(valuesBeforeEdit), after=\(valuesAfterEdit), rows=\(diagnostic(for: weightRows))"
+            )
+        }
+
+        XCTContext.runActivity(named: "Swipe delete and cancel confirmation") { _ in
+            trace("tracking: delete cancel")
+            assertQueryCount(weightRows, expected: 2, phase: "Delete cancel before swipe")
+            let rowToDelete = weightRows.firstMatch
+            let protectedValue = accessibilityValue(of: rowToDelete)
+            assertExists(
+                rowToDelete,
+                identifier: "weight-log-row for cancelled delete",
+                phase: "Delete cancel before swipe"
+            )
+            assertHittable(
+                rowToDelete,
+                identifier: "weight-log-row for cancelled delete",
+                phase: "Delete cancel before swipe"
+            )
+            rowToDelete.swipeLeft()
+            assertQueryAtLeastCount(deleteActions, expected: 1, phase: "Delete cancel swipe")
+            assertQueryCount(weightRows, expected: 2, phase: "Delete cancel swipe")
+            let swipeDelete = deleteActions.firstMatch
+            assertHittable(swipeDelete, identifier: "Delete swipe action", phase: "Delete cancel swipe")
+            swipeDelete.tap()
+            assertExists(
+                confirmDelete,
+                identifier: "confirm-delete-weight",
+                phase: "Delete confirmation"
+            )
+            assertQueryCount(weightRows, expected: 2, phase: "Delete confirmation")
+            let cancelDelete = app.buttons.matching(
+                NSPredicate(format: "label == %@", "Cancel")
+            ).firstMatch
+            assertHittable(cancelDelete, identifier: "Cancel delete", phase: "Delete confirmation")
+            cancelDelete.tap()
+            assertAbsent(confirmDelete, identifier: "confirm-delete-weight", phase: "Delete cancel")
+            assertQueryCount(weightRows, expected: 2, phase: "Delete cancel")
+            XCTAssertTrue(
+                rowAccessibilityValues(weightRows).contains(protectedValue),
+                "Delete cancel: protected row disappeared; rows=\(diagnostic(for: weightRows))"
+            )
+        }
+
+        XCTContext.runActivity(named: "Confirm selected delete and restore with Undo") { _ in
+            trace("tracking: delete undo")
+            assertQueryCount(weightRows, expected: 2, phase: "Delete confirm before swipe")
+            let rowToDelete = weightRows.firstMatch
+            let deletedValue = accessibilityValue(of: rowToDelete)
+            assertExists(rowToDelete, identifier: "selected weight-log-row", phase: "Delete confirm before swipe")
+            rowToDelete.swipeLeft()
+            trace("tracking: delete undo row swiped")
+            assertQueryAtLeastCount(deleteActions, expected: 1, phase: "Delete confirm swipe")
+            deleteActions.firstMatch.tap()
+            trace("tracking: delete undo action tapped")
+            assertExists(confirmDelete, identifier: "confirm-delete-weight", phase: "Delete confirm")
+            assertQueryCount(weightRows, expected: 2, phase: "Delete confirm")
+            confirmDelete.tap()
+            trace("tracking: delete undo confirmation tapped")
+            assertQueryCount(weightRows, expected: 1, phase: "Delete committed")
+            let valuesAfterDelete = rowAccessibilityValues(weightRows)
+            XCTAssertFalse(
+                valuesAfterDelete.contains(deletedValue),
+                "Delete committed: selected row still exists; rows=\(diagnostic(for: weightRows))"
+            )
+            assertHittable(undo, identifier: "weight-undo", phase: "Delete committed")
+            trace("tracking: undo hittable")
+            undo.tap()
+            trace("tracking: undo tapped")
+            assertQueryCount(weightRows, expected: 2, phase: "Undo")
+            XCTAssertTrue(
+                rowAccessibilityValues(weightRows).contains(deletedValue),
+                "Undo: deleted row value was not restored; rows=\(diagnostic(for: weightRows))"
+            )
+            assertAbsent(undo, identifier: "weight-undo", phase: "Undo")
+            trace("tracking: undo complete")
+        }
+
+        XCTContext.runActivity(named: "View full trends in Progress") { _ in
+            trace("tracking: final trends")
+            assertExists(weightViewProgress, identifier: "weight-view-progress", phase: "Analytics navigation")
+            for _ in 0..<5 {
+                if weightViewProgress.isHittable { break }
+                app.swipeDown()
+            }
+            assertHittable(
+                weightViewProgress,
+                identifier: "weight-view-progress",
+                phase: "Analytics navigation"
+            )
+            weightViewProgress.tap()
+
+            let progressSelected = XCTNSPredicateExpectation(
+                predicate: NSPredicate { object, _ in
+                    guard let tab = object as? XCUIElement else { return false }
+                    return tab.exists && tab.isSelected
+                },
+                object: progressTab
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(for: [progressSelected], timeout: uiTimeout),
+                .completed,
+                "Analytics: Progress tab was not selected; tabs=\(diagnostic(for: tabs))"
+            )
+            assertExists(metricPicker, identifier: "progress-metric-picker", phase: "Analytics")
+            assertExists(weightSegment, identifier: "Weight metric", phase: "Analytics")
+            let weightSelected = XCTNSPredicateExpectation(
+                predicate: NSPredicate { object, _ in
+                    guard let segment = object as? XCUIElement else { return false }
+                    return segment.exists && segment.isSelected
+                },
+                object: weightSegment
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(for: [weightSelected], timeout: uiTimeout),
+                .completed,
+                "Analytics: View full trends did not open Weight metric; \(diagnostic(for: weightSegment))"
+            )
+            assertExists(currentWeight, identifier: "progress-weight-current", phase: "Analytics")
+            assertExists(trendChart, identifier: "progress-weight-chart", phase: "Analytics")
+            XCTAssertTrue(
+                currentWeight.label.contains("Current 70.0 kg"),
+                "Analytics: current weight did not use chronologically latest raw value; \(diagnostic(for: currentWeight))"
+            )
         }
     }
 
     private let uiTimeout: TimeInterval = 5
+
+    private func assertQueryCount(
+        _ query: XCUIElementQuery,
+        expected: Int,
+        phase: String
+    ) {
+        if query.count == expected { return }
+        let countExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "count == %d", expected),
+            object: query
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [countExpectation], timeout: uiTimeout),
+            .completed,
+            "\(phase): expected exactly \(expected) elements; \(diagnostic(for: query))"
+        )
+    }
+
+    private func assertQueryAtLeastCount(
+        _ query: XCUIElementQuery,
+        expected: Int,
+        phase: String
+    ) {
+        if query.count >= expected { return }
+        let countExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "count >= %d", expected),
+            object: query
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [countExpectation], timeout: uiTimeout),
+            .completed,
+            "\(phase): expected at least \(expected) elements; \(diagnostic(for: query))"
+        )
+    }
+
+    private func assertTabLabels(
+        _ tabs: XCUIElementQuery,
+        expected: [String],
+        phase: String
+    ) {
+        assertQueryCount(tabs, expected: expected.count, phase: phase)
+        let actual = tabs.allElementsBoundByIndex.map { $0.label }
+        XCTAssertEqual(
+            Set(actual),
+            Set(expected),
+            "\(phase): tab label set mismatch; labels=\(actual), tabs=\(diagnostic(for: tabs))"
+        )
+        XCTAssertEqual(
+            actual,
+            expected,
+            "\(phase): tab label order mismatch; labels=\(actual), tabs=\(diagnostic(for: tabs))"
+        )
+    }
+
+    private func assertHittable(
+        _ element: XCUIElement,
+        identifier: String,
+        phase: String
+    ) {
+        if element.exists && element.isHittable { return }
+        assertExists(element, identifier: identifier, phase: phase)
+        let hittableExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let element = object as? XCUIElement else { return false }
+                return element.exists && element.isHittable
+            },
+            object: element
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [hittableExpectation], timeout: uiTimeout),
+            .completed,
+            "\(phase): \(identifier) is not hittable; \(diagnostic(for: element))"
+        )
+    }
+
+    private func assertNonEmptyValue(
+        _ element: XCUIElement,
+        identifier: String,
+        phase: String
+    ) {
+        assertExists(element, identifier: identifier, phase: phase)
+        let value = accessibilityValue(of: element)
+        XCTAssertFalse(
+            value == "<nil>" || value.isEmpty,
+            "\(phase): \(identifier) has no accessibility value; \(diagnostic(for: element))"
+        )
+    }
+
+    private func assertAbsent(
+        _ element: XCUIElement,
+        identifier: String,
+        phase: String
+    ) {
+        if !element.exists { return }
+        XCTAssertTrue(
+            element.waitForNonExistence(timeout: uiTimeout),
+            "\(phase): expected \(identifier) to be absent; \(diagnostic(for: element))"
+        )
+    }
+
+    private func replaceText(
+        in field: XCUIElement,
+        with replacement: String,
+        app: XCUIApplication,
+        phase: String
+    ) {
+        assertExists(field, identifier: "weight-value", phase: phase)
+        field.tap()
+        field.typeKey("a", modifierFlags: .command)
+        field.typeText(replacement)
+
+        if accessibilityValue(of: field) != replacement {
+            field.press(forDuration: 1)
+            let selectAll = app.menuItems.matching(
+                NSPredicate(format: "label == %@", "Select All")
+            ).firstMatch
+            if selectAll.waitForExistence(timeout: 1) {
+                selectAll.tap()
+            } else {
+                field.tap()
+                field.typeKey("a", modifierFlags: .command)
+            }
+
+            for index in replacement.indices {
+                let prefix = String(replacement[replacement.startIndex...index])
+                field.typeText(String(replacement[index]))
+                let prefixEntered = XCTNSPredicateExpectation(
+                    predicate: NSPredicate(format: "value == %@", prefix),
+                    object: field
+                )
+                XCTAssertEqual(
+                    XCTWaiter.wait(for: [prefixEntered], timeout: uiTimeout),
+                    .completed,
+                    "\(phase): replacement prefix '\(prefix)' did not become accessible; \(diagnostic(for: field))"
+                )
+            }
+        }
+
+        XCTAssertEqual(
+            accessibilityValue(of: field),
+            replacement,
+            "\(phase): robust text replacement failed; \(diagnostic(for: field))"
+        )
+    }
+
+    private func rowAccessibilityValues(_ rows: XCUIElementQuery) -> [String] {
+        rows.allElementsBoundByIndex.map { accessibilityValue(of: $0) }
+    }
+
+    private func accessibilityValue(of element: XCUIElement) -> String {
+        element.value.map { String(describing: $0) } ?? "<nil>"
+    }
+
+    private func assertOnlyOneAccessibilityValueChanged(
+        before: [String],
+        after: [String],
+        rows: XCUIElementQuery,
+        phase: String
+    ) {
+        var unmatchedAfter = after
+        var unchangedCount = 0
+        for value in before {
+            if let index = unmatchedAfter.firstIndex(of: value) {
+                unmatchedAfter.remove(at: index)
+                unchangedCount += 1
+            }
+        }
+        XCTAssertEqual(
+            unchangedCount,
+            before.count - 1,
+            "\(phase): expected exactly one row accessibility value change; before=\(before), after=\(after), rows=\(diagnostic(for: rows))"
+        )
+        XCTAssertEqual(
+            unmatchedAfter.count,
+            1,
+            "\(phase): expected one replacement row value; before=\(before), after=\(after), rows=\(diagnostic(for: rows))"
+        )
+    }
+
+    private func diagnostic(for query: XCUIElementQuery) -> String {
+        let elements = query.allElementsBoundByIndex
+        let states = elements.enumerated().map { index, element in
+            "\(index):\(diagnostic(for: element))"
+        }.joined(separator: "; ")
+        return "count=\(query.count), elements=[\(states)]"
+    }
 
     private func assertExists(
         _ element: XCUIElement,
         identifier: String,
         phase: String
     ) {
+        if element.exists { return }
         XCTAssertTrue(
             element.waitForExistence(timeout: uiTimeout),
             "\(phase): expected \(identifier) to exist; \(diagnostic(for: element))"
@@ -486,34 +1050,100 @@ final class CountCaloriesUITests: XCTestCase {
         return "exists=\(element.exists), enabled=\(element.isEnabled), label='\(element.label)', value='\(value)'"
     }
 
+    private func trace(_ message: String) {
+        let url = URL(fileURLWithPath: "/tmp/count-calories-ui-trace")
+        let existing = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        try? (existing + "\(Date()) \(message)\n").write(
+            to: url,
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
     @MainActor
-    func testReminderSettingsAreAvailableIndependently() throws {
+    func testRootTabsAndSettingsRemainAvailable() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
-        app.launch()
-
-        app.tabBars.buttons["Config"].tap()
-
-        for identifier in [
+        let tabs = app.tabBars.buttons
+        let settingsTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Settings")
+        ).firstMatch
+        let ageControl = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Age:")
+        ).firstMatch
+        let dailyGoalControl = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Daily goal:")
+        ).firstMatch
+        let targetDateControl = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Target date")
+        ).firstMatch
+        let currentWeightFields = app.textFields.matching(
+            NSPredicate(format: "label == %@", "Weight")
+        )
+        let saveSettings = app.buttons.matching(
+            NSPredicate(format: "label == %@", "Save settings")
+        ).firstMatch
+        let reminderIdentifiers = [
             "breakfast-reminder-toggle",
             "lunch-reminder-toggle",
             "snack-reminder-toggle",
-            "dinner-reminder-toggle"
-        ] {
+            "dinner-reminder-toggle",
+            "water-reminder-toggle"
+        ]
+
+        XCTContext.runActivity(named: "Launch and verify Settings root tab") { _ in
+            app.launch()
             XCTAssertTrue(
-                app.switches[identifier].waitForExistence(timeout: 5),
-                "Missing reminder control: \(identifier)"
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Settings launch: app did not reach foreground; state=\(app.state), tabs=\(diagnostic(for: tabs))"
+            )
+            assertTabLabels(
+                tabs,
+                expected: ["Today", "Weight", "Progress", "Settings"],
+                phase: "Settings launch"
+            )
+            assertExists(settingsTab, identifier: "Settings tab", phase: "Settings launch")
+            XCTAssertFalse(
+                app.tabBars.buttons["Config"].exists,
+                "Settings launch: obsolete Config tab exists; tabs=\(diagnostic(for: tabs))"
+            )
+            settingsTab.tap()
+            assertExists(
+                app.navigationBars["Settings"],
+                identifier: "Settings navigation title",
+                phase: "Settings root"
             )
         }
 
-        let waterReminderToggle = app.switches["water-reminder-toggle"]
-        if !waterReminderToggle.exists {
-            app.swipeUp()
+        XCTContext.runActivity(named: "Verify retained Settings profile and goals") { _ in
+            assertExists(ageControl, identifier: "Age", phase: "Settings profile")
+            assertExists(dailyGoalControl, identifier: "Daily goal", phase: "Settings goals")
+            assertExists(targetDateControl, identifier: "Target date", phase: "Settings goals")
+            assertQueryCount(
+                currentWeightFields,
+                expected: 0,
+                phase: "Settings current-weight boundary"
+            )
         }
-        XCTAssertTrue(
-            waterReminderToggle.waitForExistence(timeout: 5),
-            "Missing reminder control: water-reminder-toggle"
-        )
+
+        XCTContext.runActivity(named: "Verify independent reminder controls") { _ in
+            for identifier in reminderIdentifiers {
+                let reminder = app.switches[identifier]
+                for _ in 0..<3 {
+                    if reminder.exists { break }
+                    app.swipeUp()
+                }
+                assertExists(reminder, identifier: identifier, phase: "Settings reminders")
+            }
+        }
+
+        XCTContext.runActivity(named: "Verify Settings bottom actions") { _ in
+            for _ in 0..<3 {
+                if saveSettings.exists { break }
+                app.swipeUp()
+            }
+            assertExists(saveSettings, identifier: "Save settings", phase: "Settings bottom")
+        }
     }
 
     @MainActor

@@ -306,7 +306,81 @@ Reason: target-aware calorie interpretation, data-appropriate weight trend, usef
 
 ### Next work
 
-Separate user-requested feature: research possible navigation split among calorie tracker, weight recording, and analytics. Do not pre-decide or design that split in this completed milestone.
+Historical note: this milestone's next work was the user-requested navigation split. The later `eae1c92` three-tab/drill-down assessment was superseded by explicit discoverability feedback and dedicated-weight precedent; see revised TRACKING-IA-001 below.
+
+## [TRACKING-IA-001] Revised tracking navigation and Weight Log
+
+### Decision history
+
+Original `eae1c92` assessment selected:
+
+```text
+Today | Progress | Settings
+```
+
+Initial nutrition evidence favored nesting sparse weight under analytics or a global add flow. User feedback explicitly prioritized discoverability. Current verified dedicated-weight precedent now wins: Happy Scale has Logbook and Reports; Weight Diary Lite exposes graph, summary, and full-log modes; Weigh In separates record, history, and progress actions. Final root order is:
+
+```text
+Today | Weight | Progress | Settings
+```
+
+This is transparent supersession, not a claim that initial nutrition evidence was wrong. Nutrition references remain relevant to Today/Progress placement and the rejection of generic mixed history.
+
+### Implemented structure
+
+- `Counter` is user-facing **Today**.
+- Root **Weight** destination uses navigation title **Weight Log**.
+- **Progress** remains analytics-only; its Weight view owns fuller fourteen-reading analytics and no CRUD.
+- **Settings** retains target weight, age, calorie goal, target date, and reminders; no current-weight field or save path.
+- No calorie CRUD and no generic Calories/Water/Weight table. Future calorie history remains a separate date-first day diary.
+
+### Weight tab
+
+- Toolbar `+` is the add/Record Weight action.
+- Summary shows current value, basic recent-seven-reading context, and target.
+- Compact basic chart uses latest seven raw readings with native line + points and target rule. Explicit endpoint dates appear only when at least two readings exist.
+- One reading shows a useful prompt instead of a single dot/dead chart. Rejected evidence is retained at `../screenshots/TRACKING-IA-001/rejected-one-reading-chart.png` because that chart had no useful trend; final behavior prompts until two readings.
+- Measurements are grouped by local calendar date, newest date first, with newest rows first. Multiple same-day readings remain distinct.
+- Toolbar add defaults to now and supports independent date/time backdating. Row tap edits value/date/time for one raw record.
+- Delete requires confirmation and stacked undo; cancel preserves data.
+- `View full trends` selects `Progress` with `Weight` selected.
+
+### Evidence
+
+Accepted TRACKING-IA-001 visual files are only these attempt-01 files under `../screenshots/TRACKING-IA-001/`:
+
+- `attempt-01-four-tabs.png`
+- `attempt-01-weight-populated.png`
+- `attempt-01-weight-empty.png`
+- `attempt-01-weight-accessibility3.png`
+- `attempt-01-weight-dark.png`
+
+Superseded three-tab functional history is retained as historical evidence only:
+
+- `superseded-three-tab-two-same-day.png`
+- `superseded-three-tab-backdated.png`
+- `superseded-three-tab-editor.png`
+- `superseded-three-tab-delete-confirmation.png`
+
+`rejected-one-reading-chart.png` retains the rejected single-dot/dead-chart comparison.
+
+### Final results
+
+- `just validate 300`: **passed**.
+- Hostless validation: **125 passed / 2 opt-in live skips**.
+- Simulator build, install, and launch: **passed**.
+- `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`.
+- Explicit UI target: **6/6 passed**, covering four tabs; one-reading prompt → two-reading chart; two same-day readings; backdated date regrouping; edit; delete cancel/confirm/undo; Settings; and direct `View full trends` → `Progress` / `Weight`.
+- App-hosted persistence tests passed after final duplicate-profile/future-row correctness fixes and passed again in an integrated run.
+- One later standalone `just test-app-unit 300` timed out before XCTest. This is external Xcode 27 host instability, not a red product gate.
+
+### Decision
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE**
+
+### Next component
+
+`empty/error/loading states`, followed by global consistency, dark mode, Dynamic Type, and small-device checks.
 
 ## [FOOD-TOOLS-001] Barcode and custom food tools
 

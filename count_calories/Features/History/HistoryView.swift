@@ -1,30 +1,19 @@
 import SwiftData
 import SwiftUI
-import os
 
 struct HistoryView: View {
-    @Environment(\.modelContext) private var modelContext
     @Query(sort: \PlateEntry.date, order: .reverse) private var entries: [PlateEntry]
     @Query(sort: \WeightEntry.date, order: .reverse) private var weights: [WeightEntry]
     @Query private var profiles: [UserProfile]
 
-    @State private var selectedMetric: HistoryMetric
-    @State private var showingWeightPicker = false
-    @State private var draftWeightKilograms = 70
-    @State private var draftWeightTenths = 0
-    @State private var isSavingWeight = false
-    @State private var errorMessage: String?
+    @Binding private var selectedMetric: HistoryMetric
 
-    init(initialMetric: HistoryMetric = .calories) {
-        _selectedMetric = State(initialValue: initialMetric)
+    init(selectedMetric: Binding<HistoryMetric>) {
+        _selectedMetric = selectedMetric
     }
 
     private var profile: UserProfile? {
         profiles.first
-    }
-
-    private var todaysWeight: WeightEntry? {
-        weights.first { Calendar.current.isDateInToday($0.date) }
     }
 
     private var dailyGoal: Int? {
@@ -44,8 +33,16 @@ struct HistoryView: View {
 
     private var weightProgress: WeightProgress {
         ProgressHistory.weightProgress(
-            entries: weights.map { WeightProgressPoint(date: $0.date, kilograms: $0.kilograms) },
-            targetWeight: profile?.targetWeight
+            entries: weights.map {
+                WeightProgressPoint(
+                    date: $0.date,
+                    kilograms: $0.kilograms,
+                    stableID: $0.stableID,
+                    sequence: $0.sequence
+                )
+            },
+            targetWeight: profile?.targetWeight,
+            now: .now
         )
     }
 
@@ -69,17 +66,6 @@ struct HistoryView: View {
                 }
             }
             .navigationTitle("Progress")
-            .sheet(isPresented: $showingWeightPicker) {
-                weightPickerSheet
-            }
-            .alert("Could not save weight", isPresented: Binding(
-                get: { errorMessage != nil },
-                set: { if !$0 { errorMessage = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(errorMessage ?? "Unknown error")
-            }
         }
     }
 
@@ -118,7 +104,7 @@ struct HistoryView: View {
                 ContentUnavailableView(
                     "No weights recorded",
                     systemImage: "scalemass",
-                    description: Text("Record weight to see change over time and distance to target.")
+                    description: Text("Record weight in the Weight tab to see change over time.")
                 )
                 .accessibilityIdentifier("progress-weight-empty")
             } else {
@@ -131,31 +117,16 @@ struct HistoryView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("progress-weight-summary")
                 }
-                WeightProgressChart(progress: weightProgress, targetWeight: validTargetWeight)
+                if weightProgress.points.count > 1 {
+                    WeightProgressChart(progress: weightProgress, targetWeight: validTargetWeight)
+                } else {
+                    Text("Add another reading in the Weight tab to see a trend.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("progress-weight-chart-prompt")
+                }
             }
         }
-
-        Section {
-            Button {
-                prepareWeightPicker()
-                showingWeightPicker = true
-            } label: {
-                Label(weightActionTitle, systemImage: "plus.circle.fill")
-                    .font(.body.weight(.semibold))
-            }
-            .accessibilityIdentifier("record-weight")
-        }
-    }
-
-    private var weightPickerSheet: some View {
-        WeightPickerSheet(
-            kilograms: $draftWeightKilograms,
-            tenths: $draftWeightTenths,
-            title: weightPickerTitle,
-            isSaving: isSavingWeight,
-            onCancel: { showingWeightPicker = false },
-            onSave: saveWeight
-        )
     }
 
     private var calorieAverageValue: String {
@@ -212,139 +183,37 @@ struct HistoryView: View {
                 details.append("\(abs(distance).formatted(.number.precision(.fractionLength(1)))) kg above target")
             }
         } else {
-            details.append("Set target in Config")
+            details.append("Set target in Settings")
         }
         return details.joined(separator: " • ")
-    }
-
-    private var weightActionTitle: String {
-        todaysWeight == nil ? "Record weight" : "Update today’s weight"
-    }
-
-    private var weightPickerTitle: String {
-        todaysWeight == nil ? "Record weight" : "Update weight"
     }
 
     private func weightLabel(_ weight: Double?) -> String {
         guard let weight else { return "—" }
         return "\(weight.formatted(.number.precision(.fractionLength(1)))) kg"
     }
-
-    private func prepareWeightPicker() {
-        let baseWeight = todaysWeight?.kilograms ?? weightProgress.current ?? profile?.currentWeight ?? 70
-        let roundedWeight = min(max((baseWeight * 10).rounded() / 10, 30), 250)
-        draftWeightKilograms = Int(roundedWeight)
-        draftWeightTenths = Int((roundedWeight * 10).rounded()) % 10
-    }
-
-    private func saveWeight(_ kilograms: Double) {
-        guard kilograms.isFinite, kilograms > 0 else { return }
-        isSavingWeight = true
-
-        if let todaysWeight {
-            todaysWeight.kilograms = kilograms
-            todaysWeight.date = .now
-        } else {
-            modelContext.insert(WeightEntry(kilograms: kilograms))
-        }
-        profile?.currentWeight = kilograms
-
-        do {
-            try modelContext.save()
-            isSavingWeight = false
-            showingWeightPicker = false
-        } catch {
-            modelContext.rollback()
-            isSavingWeight = false
-            AppLogger.persistence.error("Failed to save weight: \(error.localizedDescription, privacy: .public)")
-            errorMessage = "Your weight could not be saved. Please try again."
-        }
-    }
-}
-
-private struct WeightPickerSheet: View {
-    @Environment(\.locale) private var locale
-    @Binding var kilograms: Int
-    @Binding var tenths: Int
-
-    let title: String
-    let isSaving: Bool
-    let onCancel: () -> Void
-    let onSave: (Double) -> Void
-
-    private var weight: Double {
-        Double(kilograms) + Double(tenths) / 10
-    }
-
-    private var decimalSeparator: String {
-        locale.decimalSeparator ?? "."
-    }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("\(weight, format: .number.precision(.fractionLength(1))) kg")
-                        .font(.title.bold())
-                        .contentTransition(.numericText())
-                        .accessibilityIdentifier("weight-draft-value")
-
-                    HStack(spacing: 0) {
-                        Picker("Kilograms", selection: $kilograms) {
-                            ForEach(30...250, id: \.self) { value in
-                                Text("\(value)").tag(value)
-                            }
-                        }
-                        .pickerStyle(.wheel)
-                        .frame(maxWidth: .infinity)
-                        .accessibilityIdentifier("weight-kilograms-picker")
-
-                        Picker("Tenths", selection: $tenths) {
-                            ForEach(0...9, id: \.self) { value in
-                                Text("\(decimalSeparator)\(value)").tag(value)
-                            }
-                        }
-                        .pickerStyle(.wheel)
-                        .frame(maxWidth: .infinity)
-                        .accessibilityIdentifier("weight-tenths-picker")
-                    }
-                    .frame(height: 180)
-                }
-                .padding()
-            }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel)
-                        .accessibilityIdentifier("cancel-weight")
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { onSave(weight) }
-                        .disabled(isSaving)
-                        .accessibilityIdentifier("save-weight")
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-    }
 }
 
 #if DEBUG
+private struct HistoryPreview: View {
+    @State var metric: HistoryMetric
+    let state: DesignReviewState
+
+    var body: some View {
+        HistoryView(selectedMetric: $metric)
+            .modelContainer(PreviewData.makeContainer(state: state))
+    }
+}
+
 #Preview("Progress — Calories") {
-    HistoryView(initialMetric: .calories)
-        .modelContainer(PreviewData.makeContainer())
+    HistoryPreview(metric: .calories, state: .normal)
 }
 
 #Preview("Progress — Weight") {
-    HistoryView(initialMetric: .weight)
-        .modelContainer(PreviewData.makeContainer())
+    HistoryPreview(metric: .weight, state: .normal)
 }
 
 #Preview("Progress — Empty weight") {
-    HistoryView(initialMetric: .weight)
-        .modelContainer(PreviewData.makeContainer(state: .empty))
+    HistoryPreview(metric: .weight, state: .empty)
 }
 #endif

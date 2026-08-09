@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab = AppTab.counter
+    @State private var selectedProgressMetric = HistoryMetric.calories
     @State private var addMealRequestID: UUID?
     @State private var waterAdjustmentRequest: WaterAdjustmentRequest?
 
@@ -13,19 +14,32 @@ struct ContentView: View {
                 waterAdjustmentRequest: $waterAdjustmentRequest
             )
                 .tabItem {
-                    Label("Counter", systemImage: "flame.fill")
+                    Label("Today", systemImage: "flame.fill")
+                        .accessibilityIdentifier("today-tab")
                 }
                 .tag(AppTab.counter)
 
-            HistoryView()
+            WeightLogView(onViewProgress: {
+                selectedProgressMetric = .weight
+                selectedTab = .history
+            })
+                .tabItem {
+                    Label("Weight", systemImage: "scalemass.fill")
+                        .accessibilityIdentifier("weight-tab")
+                }
+                .tag(AppTab.weight)
+
+            HistoryView(selectedMetric: $selectedProgressMetric)
                 .tabItem {
                     Label("Progress", systemImage: "chart.xyaxis.line")
+                        .accessibilityIdentifier("progress-tab")
                 }
                 .tag(AppTab.history)
 
             ConfigView()
                 .tabItem {
-                    Label("Config", systemImage: "gearshape.fill")
+                    Label("Settings", systemImage: "gearshape.fill")
+                        .accessibilityIdentifier("settings-tab")
                 }
                 .tag(AppTab.config)
         }
@@ -51,6 +65,7 @@ struct WaterAdjustmentRequest: Equatable {
 
 private enum AppTab: Hashable {
     case counter
+    case weight
     case history
     case config
 }

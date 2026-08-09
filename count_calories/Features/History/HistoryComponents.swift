@@ -9,6 +9,8 @@ enum HistoryMetric: String, CaseIterable, Identifiable {
 }
 
 struct CalorieProgressChart: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let progress: CalorieProgress
     let dailyGoal: Int?
 
@@ -42,7 +44,7 @@ struct CalorieProgressChart: View {
         }
         .chartYScale(domain: 0...chartMaximum)
         .chartXAxis {
-            AxisMarks(values: progress.summaries.map(\.date)) { _ in
+            AxisMarks(values: calorieXAxisValues) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0))
                 AxisValueLabel(format: .dateTime.day())
             }
@@ -59,6 +61,12 @@ struct CalorieProgressChart: View {
         .accessibilityIdentifier("progress-calorie-chart")
     }
 
+    private var calorieXAxisValues: [Date] {
+        let dates = progress.summaries.map(\.date)
+        guard dynamicTypeSize.isAccessibilitySize, dates.count > 3 else { return dates }
+        return [dates[0], dates[dates.count / 2], dates[dates.count - 1]]
+    }
+
     private var calorieAccessibilitySummary: String {
         let count = progress.summaries.count
         let dayLabel = count == 1 ? "recorded day" : "recorded days"
@@ -68,6 +76,8 @@ struct CalorieProgressChart: View {
 }
 
 struct WeightProgressChart: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let progress: WeightProgress
     let targetWeight: Double?
 
@@ -102,7 +112,7 @@ struct WeightProgressChart: View {
         }
         .chartYScale(domain: progress.domain ?? 0.1...1)
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 4)) { _ in
+            AxisMarks(values: weightXAxisValues) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0))
                 AxisValueLabel(format: .dateTime.month(.abbreviated).day())
             }
@@ -117,6 +127,16 @@ struct WeightProgressChart: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(weightAccessibilitySummary)
         .accessibilityIdentifier("progress-weight-chart")
+    }
+
+    private var weightXAxisValues: [Date] {
+        let dates = progress.points.map(\.date)
+        let desiredCount = dynamicTypeSize.isAccessibilitySize ? 2 : 4
+        guard dates.count > desiredCount else { return dates }
+        return (0..<desiredCount).map { index in
+            let position = Double(index) * Double(dates.count - 1) / Double(desiredCount - 1)
+            return dates[Int(position.rounded())]
+        }
     }
 
     private var weightAccessibilitySummary: String {
