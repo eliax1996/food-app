@@ -214,7 +214,13 @@ final class NutritionLookupTests: XCTestCase {
             barcode: legacyNutrition.barcode,
             name: legacyNutrition.name,
             defaultAmount: NutritionAmount(value: 275, unit: .milliliters),
-            caloriesPer100: 64
+            caloriesPer100: 64,
+            nutrientsPer100: FoodNutrients(
+                carbohydratesGrams: 16,
+                proteinGrams: 0,
+                fatGrams: 0,
+                fiberGrams: nil
+            )
         ))
     }
 

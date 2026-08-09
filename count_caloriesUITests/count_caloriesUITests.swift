@@ -598,6 +598,126 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testCustomFoodNutrientsReachDailyBalance() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US",
+            "-ui-test-session", UUID().uuidString
+        ]
+        let moreLoggingOptions = app.buttons["More logging options"]
+        let enterBarcodeOrCreateFood = app.buttons["Enter barcode or create food"]
+        let foodToolsTitle = app.navigationBars["Food tools"]
+        let customFoodName = app.textFields["custom-food-name"]
+        let nutrientLink = app.descendants(matching: .any)
+            .matching(identifier: "custom-food-nutrients")
+            .firstMatch
+        let nutrientTitle = app.navigationBars["Nutrients"]
+        let nutrientDone = app.buttons["nutrient-editor-done"]
+        let carbohydrates = app.textFields["custom-food-carbohydrates"]
+        let protein = app.textFields["custom-food-protein"]
+        let fat = app.textFields["custom-food-fat"]
+        let fiber = app.textFields["custom-food-fiber"]
+        let saveCustomFood = app.buttons["Save custom food"]
+        let keyboardDone = app.buttons["food-tools-keyboard-done"]
+        let addMealButton = app.buttons["add-meal"]
+        let selectedFoodName = app.staticTexts["selected-food-name"]
+        let saveMeal = app.buttons["save-meal"]
+        let nutritionLink = app.descendants(matching: .any)
+            .matching(identifier: "nutrition-balance-link")
+            .firstMatch
+        let nutritionDetail = app.descendants(matching: .any)
+            .matching(identifier: "daily-nutrition-detail")
+            .firstMatch
+        let carbohydrateValues = app.staticTexts.matching(identifier: "nutrition-macro-carbs")
+        let proteinValues = app.staticTexts.matching(identifier: "nutrition-macro-protein")
+        let fatValues = app.staticTexts.matching(identifier: "nutrition-macro-fat")
+        let fiberMeasured = app.staticTexts["nutrition-fiber-measured"]
+        let fatGuidance = app.staticTexts.matching(
+            NSPredicate(format: "identifier == %@ AND label == %@", "nutrition-guidance", "Fat below range")
+        ).firstMatch
+        let macroCoverage = app.descendants(matching: .any)
+            .matching(identifier: "nutrition-macro-coverage")
+            .firstMatch
+        let fiberCoverage = app.descendants(matching: .any)
+            .matching(identifier: "nutrition-fiber-coverage")
+            .firstMatch
+
+        XCTContext.runActivity(named: "Launch Food tools") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertHittable(moreLoggingOptions, identifier: "More logging options", phase: "Launch")
+            moreLoggingOptions.tap()
+            assertHittable(enterBarcodeOrCreateFood, identifier: "Enter barcode or create food", phase: "Toolbar menu")
+            enterBarcodeOrCreateFood.tap()
+            assertExists(foodToolsTitle, identifier: "Food tools navigation title", phase: "Food tools")
+            assertHittable(nutrientLink, identifier: "custom-food-nutrients", phase: "Food tools")
+        }
+
+        XCTContext.runActivity(named: "Save complete custom-food nutrient facts") { _ in
+            replaceText(
+                in: customFoodName,
+                with: "Fixture Bowl ",
+                app: app,
+                identifier: "custom-food-name",
+                phase: "Custom food"
+            )
+            assertHittable(keyboardDone, identifier: "food-tools-keyboard-done", phase: "Custom food")
+            keyboardDone.tap()
+            nutrientLink.tap()
+            assertExists(nutrientTitle, identifier: "Nutrients navigation title", phase: "Custom nutrients")
+
+            for (field, value, identifier) in [
+                (carbohydrates, "15", "custom-food-carbohydrates"),
+                (protein, "10", "custom-food-protein"),
+                (fat, "2", "custom-food-fat"),
+                (fiber, "4", "custom-food-fiber")
+            ] {
+                replaceText(
+                    in: field,
+                    with: value,
+                    app: app,
+                    identifier: identifier,
+                    phase: "Custom nutrients"
+                )
+            }
+            assertHittable(nutrientDone, identifier: "nutrient-editor-done", phase: "Custom nutrients")
+            nutrientDone.tap()
+            assertExists(foodToolsTitle, identifier: "Food tools navigation title", phase: "Custom nutrients")
+            assertHittable(saveCustomFood, identifier: "Save custom food", phase: "Custom nutrients")
+            saveCustomFood.tap()
+            assertAbsent(foodToolsTitle, identifier: "Food tools navigation title", phase: "Custom saved")
+        }
+
+        XCTContext.runActivity(named: "Log custom food and open daily nutrition") { _ in
+            assertHittable(addMealButton, identifier: "add-meal", phase: "Custom saved")
+            addMealButton.tap()
+            assertLabel(selectedFoodName, expected: "Fixture Bowl", phase: "Meal editor")
+            assertHittable(saveMeal, identifier: "save-meal", phase: "Meal editor")
+            saveMeal.tap()
+            assertHittable(nutritionLink, identifier: "nutrition-balance-link", phase: "Today nutrition")
+            nutritionLink.tap()
+            assertExists(nutritionDetail, identifier: "daily-nutrition-detail", phase: "Nutrition detail")
+        }
+
+        XCTContext.runActivity(named: "Verify complete measured balance without inferred values") { _ in
+            assertLabel(carbohydrateValues.element(boundBy: 0), expected: "Carbs, 15 g", phase: "Nutrition detail")
+            assertLabel(carbohydrateValues.element(boundBy: 1), expected: "Carbs, 51% · adult range 45%–65%", phase: "Nutrition detail")
+            assertLabel(proteinValues.element(boundBy: 0), expected: "Protein, 10 g", phase: "Nutrition detail")
+            assertLabel(fatValues.element(boundBy: 0), expected: "Fat, 2 g", phase: "Nutrition detail")
+            assertLabel(fiberMeasured, expected: "Measured, 4 g", phase: "Nutrition detail")
+            app.swipeUp()
+            assertExists(fatGuidance, identifier: "Fat below range", phase: "Nutrition detail")
+            assertExists(macroCoverage, identifier: "nutrition-macro-coverage", phase: "Nutrition coverage")
+            assertExists(fiberCoverage, identifier: "nutrition-fiber-coverage", phase: "Nutrition coverage")
+        }
+    }
+
+    @MainActor
     func testOpenFoodFactsSlowSearchEndsWithNoMatches() throws {
         let app = XCUIApplication()
         app.launchArguments = [

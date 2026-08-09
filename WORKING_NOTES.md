@@ -15,32 +15,31 @@ Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 - Dedicated Weight Log
 - Root `Today | Weight | Progress | Settings`
 
-Latest milestone commit: `96e6ec9 Add dedicated weight tracking tab`.
+Latest committed milestone: `83b68a1 Add resilient food lookup recovery`. NUTRIENTS-001 is accepted and ready for its focused commit.
 
 ## Current component
 
-`NUTRIENTS-001`: daily carbohydrates, protein, fat, and fiber persistence; explicit coverage; transparent nutrition-balance guidance.
+`REFINE-001`: competitor/safety research, welcome/setup, explainable Plan and calorie goal, NUTRITION-GOALS-001 theoretical macro/fiber references versus measured actuals, weight adaptation, configurable reminders, and hierarchical Settings.
 
-`STATES-001` is accepted attempt 04 and complete.
+`STATES-001` and `NUTRIENTS-001` are accepted and complete.
 
 ## Remaining sequence
 
-1. NUTRIENTS-001 — daily carbohydrates/protein/fat/fiber split plus transparent nutrition-balance guidance
-2. REFINE-001 — deferred until NUTRIENTS completes; full onboarding/calorie-goal/weight-adaptation/custom-reminder/Settings scope is preserved under `COMPLETION-PLAN.md#refine`
-3. AUXILIARY-001 — Widget and Live Activity
-4. CONSISTENCY-001
-5. ROBUSTNESS-001
-6. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
+1. REFINE-001 — prerequisite complete; full onboarding/calorie-goal/weight-adaptation/custom-reminder/Settings scope plus NUTRITION-GOALS-001 calorie-goal-derived macro/fiber reference composition versus measured actuals is preserved under `COMPLETION-PLAN.md#refine`
+2. AUXILIARY-001 — Widget and Live Activity
+3. CONSISTENCY-001
+4. ROBUSTNESS-001
+5. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
 
 ## Current validation baseline
 
 - exact-tree `just validate 300`: passed
-- `just iterate 240`: passed
-- hostless: 130 passed / 2 opt-in live skips
-- functional UI target: 11/11 passed through `just test-ui 420`
+- hostless: 140 passed / 2 opt-in live skips
+- functional UI target: 12/12 passed through `just test-ui 420`
 - simulator build/install/launch: passed
-- app-host persistence: passed after final tracking correctness fixes; one later standalone host attempt timed out before XCTest
+- app-hosted: 167 passed / 2 opt-in live skips after one bounded host recovery
+- NUTRIENTS critical/high visual acceptance: 3/3 APPROVE
 
 ## Immediate action
 
-Research NUTRIENTS-001 source completeness and target/range rules, then specify migration-safe Food/PlateEntry nutrient snapshots and coverage behavior before implementation. REFINE-001 stays deferred until nutrients are accepted.
+Create focused NUTRIENTS-001 commit excluding `.TASK_NOTES.md`, then begin REFINE-001 competitor and nutrition-safety research/specification. Include NUTRITION-GOALS-001: derive theoretical macro gram ranges and Fiber reference from calorie goal, then compare them with real measured intake without calling one composition universally ideal.

@@ -200,6 +200,23 @@ Status: **ACCEPTED — ATTEMPT 04 / COMPLETE**.
 
 Reason: typed loading, terminal empty, offline, unavailable, scanner permission, scanner availability, and barcode failure states preserve unaffected local work and provide one calm recovery path. Final screenshot reviews returned 2/3 approval for both remote and barcode offline evidence; residual objections concerned a measured 44-point Retry target and the native iOS 27 Done control, so no counter-native replacement was made. Full functional UI target passed 11/11.
 
+## NUTRIENTS-001
+
+Accepted attempt 01 evidence:
+
+- ![Today nutrition balance](screenshots/NUTRIENTS-001/attempt-01-today.png) — calories remain primary; separated macro-energy split, Fiber, complete coverage, and neutral general-adult comparison appear before Meals.
+- ![Complete daily nutrition](screenshots/NUTRIENTS-001/attempt-01-complete.png) — measured grams, adult macro ranges, labeled Fiber reference, and non-personal guidance.
+- ![Measured gap guidance](screenshots/NUTRIENTS-001/attempt-01-guidance.png) — at most two measured, range-citing, non-shaming suggestions.
+- ![Partial nutrient coverage](screenshots/NUTRIENTS-001/attempt-01-partial.png) — known grams remain visible while split, Fiber comparison, and guidance pause without estimates.
+- ![Accessibility 3 dark nutrition detail](screenshots/NUTRIENTS-001/attempt-01-guidance-ax3-dark.png) — adaptive text-first macro rows, visible card boundary, dark appearance, and scroll continuation.
+- ![Custom food nutrient entry point](screenshots/NUTRIENTS-001/attempt-01-custom-food.png) — optional focused nutrient editor remains secondary to core custom-food fields.
+- ![Custom nutrient editor](screenshots/NUTRIENTS-001/attempt-01-custom-nutrients.png) — visibly editable fields, explicit Done, and clear draft/save copy.
+- ![Accessibility 3 dark custom nutrient editor](screenshots/NUTRIENTS-001/attempt-01-custom-nutrients-ax3-dark.png) — large text, dark appearance, editable fields, and reachable native completion.
+
+Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**.
+
+Reason: optional facts remain unknown through API/cache/persistence when missing; logged entries keep immutable consumed snapshots; complete and partial states are explicit; actual macro/fiber values compare only with transparent general adult references; no opaque score or medical claim appears. Final critical/high visual review reached **3/3 APPROVE**. Validation: `just validate 300` passed with **140 hostless pass / 2 live skips**; app-hosted tests passed **167 / 2 skips**; functional UI passed **12/12**.
+
 ## SETTINGS-001 / REFINE-001
 
 Baseline: ![Settings baseline](screenshots/baseline/config-top.png)

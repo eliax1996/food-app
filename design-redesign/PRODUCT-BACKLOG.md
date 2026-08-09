@@ -242,3 +242,39 @@ Acceptance gates are closed. TRACKING-IA-001 is accepted and complete.
 ### Next component
 
 `empty/error/loading states`, followed by global consistency, dark mode, Dynamic Type, and small-device checks.
+
+---
+
+## Priority 4 — [NUTRITION-GOALS-001] Reference nutrition composition in Plan
+
+**Status:** QUEUED — SCHEDULED WITH ACTIVE REFINE-001
+**Priority:** HIGH VALUE
+**Origin:** User requested a theoretical healthy carbohydrate, protein, fat, and fiber composition beside measured intake.
+
+### User problem
+
+A calorie goal alone does not explain what a broadly balanced adult macro composition could look like. Daily measured grams are also hard to interpret without a transparent comparison. Calling one composition “ideal” would overstate general population guidance and ignore individual or clinical needs.
+
+### Required product behavior
+
+1. In the future Plan/goal surface, show general adult **reference ranges**, not a universal “ideal”: carbohydrates 45–65%, protein 10–35%, and fat 20–35% of macro energy.
+2. Convert those percentages into theoretical gram ranges for the selected daily calorie goal using 4 kcal/g for carbohydrate and protein and 9 kcal/g for fat. Show both percentages and grams, plus the calculation basis.
+3. Show fiber’s energy-scaled adult reference of 14 g per 1,000 kcal as a daily gram value for the selected calorie goal.
+4. Compare today’s real measured composition with the reference beside it: actual grams and macro-energy percentages versus reference ranges, plus measured fiber versus its reference.
+5. Gate actual-versus-reference comparisons on 100% relevant nutrient coverage. Keep known partial grams visible, but never estimate missing values or treat them as zero.
+6. Keep food-label calories authoritative and separate from 4/4/9-derived macro energy; explain why the values may not reconcile exactly.
+7. Recalculate theoretical ranges when the calorie goal changes. Do not silently alter logged foods, calorie goals, or user choices.
+8. Label guidance as general adult population information, not medical advice or a personal prescription. Preserve explicit exclusions for children, pregnancy/lactation, clinical diets, and other individualized needs.
+9. During REFINE-001 research, decide whether users may optionally set personal macro targets while retaining transparent reference defaults and a restore action.
+10. Cover formulas, rounding, finite/boundary calorie goals, unit presentation, missing coverage, VoiceOver, Dynamic Type, and dark mode with deterministic tests and screenshots.
+
+### Success criteria
+
+- Plan shows a calorie-goal-derived reference composition in percentages and grams for all four requested nutrients.
+- Daily detail makes theoretical reference and real measured values easy to compare without an opaque score.
+- Every displayed comparison exposes its basis and coverage.
+- No missing nutrient is inferred and no general reference is presented as universally optimal.
+
+### Scheduling decision
+
+NUTRIENTS-001 is accepted and now supplies trustworthy persisted actuals, coverage, and measured daily comparison. Goal-integrated theoretical values proceed with REFINE-001’s explainable Plan/calorie-goal work.

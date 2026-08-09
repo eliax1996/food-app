@@ -8,19 +8,28 @@ final class Food {
     var servingGrams: Double
     var servingUnitRawValue: String?
     var barcode: String?
+    var carbohydratesGramsPerServing: Double?
+    var proteinGramsPerServing: Double?
+    var fatGramsPerServing: Double?
+    var fiberGramsPerServing: Double?
 
     init(
         name: String,
         calories: Int,
         servingGrams: Double,
         servingUnit: NutritionUnit = .grams,
-        barcode: String? = nil
+        barcode: String? = nil,
+        nutrientsPerServing: FoodNutrients = .empty
     ) {
         self.name = name
         self.calories = calories
         self.servingGrams = servingGrams
         servingUnitRawValue = servingUnit.rawValue
         self.barcode = barcode
+        carbohydratesGramsPerServing = nutrientsPerServing.carbohydratesGrams
+        proteinGramsPerServing = nutrientsPerServing.proteinGrams
+        fatGramsPerServing = nutrientsPerServing.fatGrams
+        fiberGramsPerServing = nutrientsPerServing.fiberGrams
     }
 }
 
@@ -34,6 +43,10 @@ final class PlateEntry {
     var servingUnitRawValue: String?
     var date: Date
     var mealType: String?
+    var carbohydratesGrams: Double?
+    var proteinGrams: Double?
+    var fatGrams: Double?
+    var fiberGrams: Double?
 
     init(
         foodName: String,
@@ -41,6 +54,7 @@ final class PlateEntry {
         weightGrams: Double,
         quantity: Double,
         servingUnit: NutritionUnit = .grams,
+        nutrients: FoodNutrients = .empty,
         mealType: String? = nil,
         date: Date = .now
     ) {
@@ -52,12 +66,45 @@ final class PlateEntry {
         servingUnitRawValue = servingUnit.rawValue
         self.mealType = mealType
         self.date = date
+        carbohydratesGrams = nutrients.carbohydratesGrams
+        proteinGrams = nutrients.proteinGrams
+        fatGrams = nutrients.fatGrams
+        fiberGrams = nutrients.fiberGrams
     }
 }
 
 extension Food {
     var nutritionUnit: NutritionUnit {
         NutritionUnit(rawValue: servingUnitRawValue ?? "") ?? .grams
+    }
+
+    var nutrientsPerServing: FoodNutrients {
+        FoodNutrients(
+            carbohydratesGrams: carbohydratesGramsPerServing,
+            proteinGrams: proteinGramsPerServing,
+            fatGrams: fatGramsPerServing,
+            fiberGrams: fiberGramsPerServing
+        )
+    }
+
+    func consumedNutrients(consumedAmount: Double, portionCount: Double) -> FoodNutrients {
+        guard
+            servingGrams.isFinite,
+            servingGrams > 0,
+            consumedAmount.isFinite,
+            consumedAmount >= 0,
+            portionCount.isFinite,
+            portionCount > 0
+        else { return .empty }
+        return nutrientsPerServing.scaled(by: consumedAmount * portionCount / servingGrams)
+    }
+
+    func applyNutrition(_ nutrition: FoodNutrition) {
+        let servingNutrients = nutrition.nutrients(for: nutrition.defaultAmount.value)
+        carbohydratesGramsPerServing = servingNutrients.carbohydratesGrams
+        proteinGramsPerServing = servingNutrients.proteinGrams
+        fatGramsPerServing = servingNutrients.fatGrams
+        fiberGramsPerServing = servingNutrients.fiberGrams
     }
 
     func matchesLookupProduct(barcode scannedBarcode: String, name scannedName: String) -> Bool {
@@ -75,5 +122,21 @@ extension PlateEntry {
 
     var nutritionUnit: NutritionUnit {
         NutritionUnit(rawValue: servingUnitRawValue ?? "") ?? .grams
+    }
+
+    var nutrients: FoodNutrients {
+        FoodNutrients(
+            carbohydratesGrams: carbohydratesGrams,
+            proteinGrams: proteinGrams,
+            fatGrams: fatGrams,
+            fiberGrams: fiberGrams
+        )
+    }
+
+    func applyNutritionSnapshot(_ nutrients: FoodNutrients) {
+        carbohydratesGrams = nutrients.carbohydratesGrams
+        proteinGrams = nutrients.proteinGrams
+        fatGrams = nutrients.fatGrams
+        fiberGrams = nutrients.fiberGrams
     }
 }

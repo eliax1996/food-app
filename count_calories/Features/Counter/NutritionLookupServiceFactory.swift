@@ -51,7 +51,13 @@ private struct FixtureNutritionFetcher: FoodNutritionFetching {
                     barcode: barcode,
                     name: "Fixture Granola",
                     defaultAmount: NutritionAmount(value: 45, unit: .grams),
-                    caloriesPer100: 420
+                    caloriesPer100: 420,
+                    nutrientsPer100: FoodNutrients(
+                        carbohydratesGrams: 64,
+                        proteinGrams: 10,
+                        fatGrams: 14,
+                        fiberGrams: 8
+                    )
                 )
             )
         default:

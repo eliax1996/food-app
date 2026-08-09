@@ -14,6 +14,8 @@ struct CountCaloriesApp: App {
 #if DEBUG
             if arguments.contains("-design-review") {
                 DesignReviewRoot()
+            } else if arguments.contains("-ui-testing") {
+                UITestingRoot()
             } else {
                 ContentView()
             }
@@ -29,6 +31,48 @@ struct CountCaloriesApp: App {
 }
 
 #if DEBUG
+private struct UITestingRoot: View {
+    @Environment(\.modelContext) private var modelContext
+    @State private var isReady = false
+
+    var body: some View {
+        Group {
+            if isReady {
+                ContentView()
+            } else {
+                ProgressView("Preparing test data")
+                    .task {
+                        do {
+                            try resetStore()
+                            isReady = true
+                        } catch {
+                            assertionFailure("Could not reset UI-test data: \(error)")
+                        }
+                    }
+            }
+        }
+    }
+
+    private func resetStore() throws {
+        for entry in try modelContext.fetch(FetchDescriptor<PlateEntry>()) {
+            modelContext.delete(entry)
+        }
+        for food in try modelContext.fetch(FetchDescriptor<Food>()) {
+            modelContext.delete(food)
+        }
+        for day in try modelContext.fetch(FetchDescriptor<WaterDay>()) {
+            modelContext.delete(day)
+        }
+        for entry in try modelContext.fetch(FetchDescriptor<WeightEntry>()) {
+            modelContext.delete(entry)
+        }
+        for profile in try modelContext.fetch(FetchDescriptor<UserProfile>()) {
+            modelContext.delete(profile)
+        }
+        try modelContext.save()
+    }
+}
+
 private struct DesignReviewRoot: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isReady = false

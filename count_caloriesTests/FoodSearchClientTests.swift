@@ -63,7 +63,13 @@ final class FoodSearchClientTests: XCTestCase {
                 "quantity": "500 ml",
                 "nutrition": ["aggregated_set": [
                     "per": "100ml",
-                    "nutrients": ["energy-kcal": ["value": 0]]
+                    "nutrients": [
+                        "energy-kcal": ["value": 0],
+                        "carbohydrates": ["unit": "g", "value": 0],
+                        "proteins": ["unit": "g", "value": 0],
+                        "fat": ["unit": "g", "value": 0],
+                        "fiber": ["unit": "g", "value": 0]
+                    ]
                 ]]
             ]
         ])
@@ -75,7 +81,13 @@ final class FoodSearchClientTests: XCTestCase {
             barcode: "3274080005003",
             name: "Water",
             defaultAmount: NutritionAmount(value: 500, unit: .milliliters),
-            caloriesPer100: 0
+            caloriesPer100: 0,
+            nutrientsPer100: FoodNutrients(
+                carbohydratesGrams: 0,
+                proteinGrams: 0,
+                fatGrams: 0,
+                fiberGrams: 0
+            )
         )])
     }
 

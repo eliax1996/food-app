@@ -43,7 +43,10 @@ actor NutritionCache: FoodNutritionCaching {
             create: true
         ).appending(path: "NutritionCache", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return try NutritionCache(fileURL: directory.appending(path: "open-food-facts.json"), maximumBytes: maximumBytes)
+        return try NutritionCache(
+            fileURL: directory.appending(path: "open-food-facts-nutrients-v2.json"),
+            maximumBytes: maximumBytes
+        )
     }
 
     func nutrition(for barcode: String) -> FoodNutrition? {

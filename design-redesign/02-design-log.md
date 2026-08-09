@@ -427,3 +427,32 @@ Progressive disclosure will improve daily hierarchy without removing advanced en
 ### Attempts
 
 Attempt 04 accepted after custom-food create/search/select/cancel proof plus visible disabled-state correction. Full evidence: `experiments/FOOD-TOOLS-001.md`.
+
+## [NUTRIENTS-001] Daily measured nutrition balance
+
+### Purpose
+
+Expose carbohydrate, protein, fat, and Fiber without converting missing crowdsourced facts into false zeroes or replacing transparent evidence with a health score.
+
+### Accepted implementation
+
+Open Food Facts v3.6, v2, and search now map independently optional facts into nutrient-aware caches. `Food` stores facts for its serving; each `PlateEntry` stores consumed snapshots, so later food edits never rewrite historical intake. Custom food uses a focused optional Nutrients editor with explicit Done draft commit.
+
+Today keeps remaining calories primary and adds a compact macro-energy split separated from Fiber, coverage, and one neutral headline. Detail uses native List sections for measured grams, adult ranges, energy-scaled Fiber reference, at most two measured-gap suggestions, exact coverage, source links, label caveat, and nonmedical scope. Macro/Fiber comparisons require 100% corresponding coverage; reported calories remain separate from 4/4/9 split math.
+
+### Iteration
+
+Direct screenshot review and independent judges exposed hidden Back controls in root previews, macro/Fiber ambiguity, overly approval-like range language, read-only-looking custom fields, and AX3 card continuation. Corrected evidence uses pushed navigation previews, explicit macro/Fiber separation, `adult range` wording with general-reference copy, visible rounded fields plus Done, and an accessibility text-first macro card with visible boundary.
+
+### Evidence
+
+Accepted attempt-01 files under `../screenshots/NUTRIENTS-001/` cover Today, complete, measured-gap, partial, AX3 dark, Food Tools, and normal/AX3-dark custom nutrient entry. Full record: `experiments/NUTRIENTS-001.md`.
+
+### Validation and decision
+
+- `just validate 300`: 140 hostless pass / 2 opt-in skips; simulator build/install/launch passed.
+- `just test-app-unit 420`: 167 pass / 2 skips after one bounded Xcode-host recovery.
+- `just test-ui 420`: 12/12 pass, including custom nutrient entry → immutable logged snapshot → daily balance.
+- Final critical/high visual judgment: 3/3 `APPROVE`.
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: REFINE-001, including queued NUTRITION-GOALS-001 theoretical calorie-goal-derived ranges versus measured actuals.

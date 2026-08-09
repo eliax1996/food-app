@@ -8,6 +8,8 @@ enum DesignReviewState: String, CaseIterable {
     case nearTarget
     case exceeded
     case longContent
+    case nutritionPartial
+    case nutritionImbalanced
 
     static var current: DesignReviewState {
         let rawValue = ProcessInfo.processInfo.environment["DESIGN_REVIEW_STATE"] ?? "normal"
@@ -43,16 +45,82 @@ enum PreviewData {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         let foods = [
-            Food(name: "Almond Milk", calories: 15, servingGrams: 100),
-            Food(name: "Oatmeal with Blueberries", calories: 360, servingGrams: 280),
-            Food(name: "Grilled Chicken & Quinoa Bowl", calories: 540, servingGrams: 420),
-            Food(name: "Greek Yogurt & Honey", calories: 180, servingGrams: 200),
-            Food(name: "Salmon, Roasted Potatoes & Greens", calories: 520, servingGrams: 460),
-            Food(name: "Dark Chocolate", calories: 120, servingGrams: 22),
+            Food(
+                name: "Almond Milk",
+                calories: 15,
+                servingGrams: 100,
+                nutrientsPerServing: FoodNutrients(
+                    carbohydratesGrams: 0.3,
+                    proteinGrams: 0.6,
+                    fatGrams: 1.1,
+                    fiberGrams: 0.2
+                )
+            ),
+            Food(
+                name: "Oatmeal with Blueberries",
+                calories: 360,
+                servingGrams: 280,
+                nutrientsPerServing: FoodNutrients(
+                    carbohydratesGrams: 62,
+                    proteinGrams: 12,
+                    fatGrams: 7,
+                    fiberGrams: 9
+                )
+            ),
+            Food(
+                name: "Grilled Chicken & Quinoa Bowl",
+                calories: 540,
+                servingGrams: 420,
+                nutrientsPerServing: FoodNutrients(
+                    carbohydratesGrams: 55,
+                    proteinGrams: 48,
+                    fatGrams: 17,
+                    fiberGrams: 10
+                )
+            ),
+            Food(
+                name: "Greek Yogurt & Honey",
+                calories: 180,
+                servingGrams: 200,
+                nutrientsPerServing: FoodNutrients(
+                    carbohydratesGrams: 25,
+                    proteinGrams: 20,
+                    fatGrams: 5,
+                    fiberGrams: 0
+                )
+            ),
+            Food(
+                name: "Salmon, Roasted Potatoes & Greens",
+                calories: 520,
+                servingGrams: 460,
+                nutrientsPerServing: FoodNutrients(
+                    carbohydratesGrams: 45,
+                    proteinGrams: 38,
+                    fatGrams: 22,
+                    fiberGrams: 8
+                )
+            ),
+            Food(
+                name: "Dark Chocolate",
+                calories: 120,
+                servingGrams: 22,
+                nutrientsPerServing: FoodNutrients(
+                    carbohydratesGrams: 10,
+                    proteinGrams: 2,
+                    fatGrams: 9,
+                    fiberGrams: 2
+                )
+            ),
             Food(
                 name: "Whole Grain Sourdough Toast with Avocado and Poached Eggs",
                 calories: 430,
-                servingGrams: 310
+                servingGrams: 310,
+                nutrientsPerServing: FoodNutrients(
+                    carbohydratesGrams: 35,
+                    proteinGrams: 20,
+                    fatGrams: 24,
+                    fiberGrams: 10
+                )
             )
         ]
         foods.forEach(context.insert)
@@ -75,6 +143,43 @@ enum PreviewData {
             return calendar.date(byAdding: .hour, value: hour, to: day) ?? day
         }
 
+        func nutrientsForMeal(_ name: String, calories: Int) -> FoodNutrients {
+            if state == .nutritionImbalanced {
+                switch name {
+                case "Oatmeal with Blueberries":
+                    return FoodNutrients(
+                        carbohydratesGrams: 40,
+                        proteinGrams: 3,
+                        fatGrams: 20,
+                        fiberGrams: 4
+                    )
+                case "Grilled Chicken & Quinoa Bowl":
+                    return FoodNutrients(
+                        carbohydratesGrams: 35,
+                        proteinGrams: 5,
+                        fatGrams: 20,
+                        fiberGrams: 3
+                    )
+                case "Greek Yogurt & Honey":
+                    return FoodNutrients(
+                        carbohydratesGrams: 25,
+                        proteinGrams: 2,
+                        fatGrams: 10,
+                        fiberGrams: 1
+                    )
+                default:
+                    break
+                }
+            }
+            if state == .nutritionPartial, name == "Greek Yogurt & Honey" {
+                return FoodNutrients(proteinGrams: 20, fatGrams: 5)
+            }
+            guard let food = foods.first(where: { $0.name == name }), food.calories > 0 else {
+                return .empty
+            }
+            return food.nutrientsPerServing.scaled(by: Double(calories) / Double(food.calories))
+        }
+
         func addTodayMeal(
             _ name: String,
             calories: Int,
@@ -87,6 +192,7 @@ enum PreviewData {
                 calories: calories,
                 weightGrams: amount,
                 quantity: 1,
+                nutrients: nutrientsForMeal(name, calories: calories),
                 mealType: mealType.rawValue,
                 date: mealDate(hour: hour)
             ))
@@ -110,8 +216,8 @@ enum PreviewData {
             "Greek Yogurt & Honey",
             calories: 180,
             amount: 200,
-            mealType: .snack,
-            hour: 16
+            mealType: .dinner,
+            hour: 19
         )
 
         if state == .nearTarget || state == .exceeded {

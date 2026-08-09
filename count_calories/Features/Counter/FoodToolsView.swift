@@ -74,10 +74,23 @@ enum BarcodeLookupFailure: Equatable {
 }
 
 struct FoodToolsView: View {
+    private enum FocusedField: Hashable {
+        case barcode
+        case name
+        case calories
+        case serving
+    }
+
+    @FocusState private var focusedField: FocusedField?
+
     @Binding var barcode: String
     @Binding var foodName: String
     @Binding var calories: Int
     @Binding var servingAmount: Double
+    @Binding var carbohydrates: Double?
+    @Binding var protein: Double?
+    @Binding var fat: Double?
+    @Binding var fiber: Double?
 
     let isLookingUpBarcode: Bool
     let barcodeLookupFailure: BarcodeLookupFailure?
@@ -97,7 +110,12 @@ struct FoodToolsView: View {
     private var canSaveFood: Bool {
         !foodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && calories >= 0
+            && servingAmount.isFinite
             && servingAmount > 0
+            && [carbohydrates, protein, fat, fiber].allSatisfy {
+                guard let value = $0 else { return true }
+                return value.isFinite && value >= 0
+            }
     }
 
     var body: some View {
@@ -106,6 +124,7 @@ struct FoodToolsView: View {
                 Section {
                     TextField("Barcode", text: $barcode)
                         .keyboardType(.numberPad)
+                        .focused($focusedField, equals: .barcode)
                         .textContentType(.none)
                         .disabled(isLookingUpBarcode)
                         .accessibilityIdentifier("manual-barcode")
@@ -168,6 +187,7 @@ struct FoodToolsView: View {
                     LabeledContent("Name") {
                         TextField("Food name", text: $foodName)
                             .textInputAutocapitalization(.words)
+                            .focused($focusedField, equals: .name)
                             .multilineTextAlignment(.trailing)
                             .accessibilityIdentifier("custom-food-name")
                     }
@@ -175,8 +195,8 @@ struct FoodToolsView: View {
                     LabeledContent("Calories") {
                         TextField("Calories", value: $calories, format: .number)
                             .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .calories)
                             .multilineTextAlignment(.trailing)
-                            .frame(minWidth: 72)
                     }
 
                     LabeledContent("Serving") {
@@ -187,12 +207,24 @@ struct FoodToolsView: View {
                                 format: .number.precision(.fractionLength(0...2))
                             )
                             .keyboardType(.decimalPad)
+                            .focused($focusedField, equals: .serving)
                             .multilineTextAlignment(.trailing)
-                            .frame(minWidth: 72)
                             Text("g")
                                 .foregroundStyle(.secondary)
                         }
                     }
+
+                    NavigationLink {
+                        CustomFoodNutrientsEditor(
+                            carbohydrates: $carbohydrates,
+                            protein: $protein,
+                            fat: $fat,
+                            fiber: $fiber
+                        )
+                    } label: {
+                        LabeledContent("Nutrients (optional)", value: nutrientSummary)
+                    }
+                    .accessibilityIdentifier("custom-food-nutrients")
 
                     Button("Save custom food", action: onSaveFood)
                         .disabled(!canSaveFood)
@@ -211,19 +243,179 @@ struct FoodToolsView: View {
                     }
                     .accessibilityIdentifier("food-tools-done")
                 }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        focusedField = nil
+                    }
+                    .accessibilityIdentifier("food-tools-keyboard-done")
+                }
             }
         }
         .presentationDetents([.large])
     }
+
+    private var nutrientSummary: String {
+        let count = [carbohydrates, protein, fat, fiber].compactMap { $0 }.count
+        return count == 0 ? "Not added" : "\(count) of 4 added"
+    }
+}
+
+private struct CustomFoodNutrientsEditor: View {
+    private enum FocusedField: Hashable {
+        case carbohydrates
+        case protein
+        case fat
+        case fiber
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: FocusedField?
+
+    @Binding private var carbohydrates: Double?
+    @Binding private var protein: Double?
+    @Binding private var fat: Double?
+    @Binding private var fiber: Double?
+
+    @State private var draftCarbohydrates: Double?
+    @State private var draftProtein: Double?
+    @State private var draftFat: Double?
+    @State private var draftFiber: Double?
+
+    init(
+        carbohydrates: Binding<Double?>,
+        protein: Binding<Double?>,
+        fat: Binding<Double?>,
+        fiber: Binding<Double?>
+    ) {
+        _carbohydrates = carbohydrates
+        _protein = protein
+        _fat = fat
+        _fiber = fiber
+        _draftCarbohydrates = State(initialValue: carbohydrates.wrappedValue)
+        _draftProtein = State(initialValue: protein.wrappedValue)
+        _draftFat = State(initialValue: fat.wrappedValue)
+        _draftFiber = State(initialValue: fiber.wrappedValue)
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                nutrientField(
+                    "Carbs",
+                    value: $draftCarbohydrates,
+                    identifier: "custom-food-carbohydrates",
+                    field: .carbohydrates
+                )
+                nutrientField(
+                    "Protein",
+                    value: $draftProtein,
+                    identifier: "custom-food-protein",
+                    field: .protein
+                )
+                nutrientField(
+                    "Fat",
+                    value: $draftFat,
+                    identifier: "custom-food-fat",
+                    field: .fat
+                )
+                nutrientField(
+                    "Fiber",
+                    value: $draftFiber,
+                    identifier: "custom-food-fiber",
+                    field: .fiber
+                )
+            } footer: {
+                Text("Values apply to the custom food serving. Tap Done to keep them, then save the custom food in Food tools. Leave unknown values blank.")
+            }
+        }
+        .navigationTitle("Nutrients")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done", action: saveDraft)
+                    .accessibilityIdentifier("nutrient-editor-done")
+            }
+
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+                .accessibilityIdentifier("nutrient-editor-keyboard-done")
+            }
+        }
+    }
+
+    private func nutrientField(
+        _ title: String,
+        value: Binding<Double?>,
+        identifier: String,
+        field: FocusedField
+    ) -> some View {
+        LabeledContent(title) {
+            HStack(spacing: 6) {
+                TextField(
+                    "Optional",
+                    value: value,
+                    format: .number.precision(.fractionLength(0...2))
+                )
+                .keyboardType(.decimalPad)
+                .focused($focusedField, equals: field)
+                .multilineTextAlignment(.trailing)
+                .textFieldStyle(.roundedBorder)
+                .frame(minWidth: 88, maxWidth: 140)
+                .accessibilityLabel("\(title) grams per serving")
+                .accessibilityIdentifier(identifier)
+
+                Text("g")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func saveDraft() {
+        carbohydrates = draftCarbohydrates
+        protein = draftProtein
+        fat = draftFat
+        fiber = draftFiber
+        focusedField = nil
+        dismiss()
+    }
 }
 
 #if DEBUG
+private struct PushedFoodToolsPreview<Destination: View>: View {
+    @State private var path = [1]
+
+    let destination: Destination
+
+    init(@ViewBuilder destination: () -> Destination) {
+        self.destination = destination()
+    }
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            Color.clear
+                .navigationTitle("Food tools")
+                .navigationDestination(for: Int.self) { _ in
+                    destination
+                }
+        }
+    }
+}
+
 #Preview("Food tools") {
     FoodToolsView(
         barcode: .constant(""),
         foodName: .constant(""),
         calories: .constant(120),
         servingAmount: .constant(100),
+        carbohydrates: .constant(nil),
+        protein: .constant(nil),
+        fat: .constant(nil),
+        fiber: .constant(nil),
         isLookingUpBarcode: false,
         barcodeLookupFailure: nil,
         onBarcodeChanged: {},
@@ -239,6 +431,10 @@ struct FoodToolsView: View {
         foodName: .constant(""),
         calories: .constant(120),
         servingAmount: .constant(100),
+        carbohydrates: .constant(nil),
+        protein: .constant(nil),
+        fat: .constant(nil),
+        fiber: .constant(nil),
         isLookingUpBarcode: false,
         barcodeLookupFailure: .offline,
         onBarcodeChanged: {},
@@ -254,6 +450,10 @@ struct FoodToolsView: View {
         foodName: .constant(""),
         calories: .constant(120),
         servingAmount: .constant(100),
+        carbohydrates: .constant(nil),
+        protein: .constant(nil),
+        fat: .constant(nil),
+        fiber: .constant(nil),
         isLookingUpBarcode: true,
         barcodeLookupFailure: nil,
         onBarcodeChanged: {},
@@ -261,5 +461,16 @@ struct FoodToolsView: View {
         onLookupBarcode: {},
         onSaveFood: {}
     )
+}
+
+#Preview("Custom food nutrients") {
+    PushedFoodToolsPreview {
+        CustomFoodNutrientsEditor(
+            carbohydrates: .constant(15),
+            protein: .constant(10),
+            fat: .constant(2),
+            fiber: .constant(4)
+        )
+    }
 }
 #endif

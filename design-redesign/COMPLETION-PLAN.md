@@ -2,7 +2,7 @@
 
 **Status:** IN PROGRESS
 **Started:** 2026-08-09
-**Last updated:** 2026-08-09 — STATES-001 accepted; NUTRIENTS-001 next
+**Last updated:** 2026-08-10 — NUTRIENTS-001 accepted; REFINE-001 next
 
 ## Goal
 
@@ -25,7 +25,8 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
 - Preserved accepted, rejected, and superseded experiment screenshots.
 - Added deterministic hostless, app-hosted persistence, and UI regression coverage.
 - Completed STATES-001 truthful remote loading/empty/offline recovery, scanner permission/availability recovery, and inline barcode lookup recovery.
-- Latest accepted state milestone: exact-tree `just validate 300` passed; 130 hostless tests passed with 2 opt-in live skips; explicit functional UI target passed 11/11.
+- Accepted NUTRIENTS-001 optional macro/fiber API mapping, persistence snapshots, coverage-gated daily balance, custom-food entry, and transparent general-adult comparison.
+- Latest accepted nutrient milestone: exact-tree `just validate 300` passed; 140 hostless tests passed with 2 opt-in live skips; app-hosted tests passed 167 with 2 skips; explicit functional UI target passed 12/12.
 
 ## Missing before whole-product DONE
 
@@ -34,15 +35,14 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
    - Remote and barcode failures preserve usable local content; scanner denial provides Settings/manual recovery.
    - Notification authorization and reminder persistence intentionally continue under REFINE-001 with the broader reminder redesign.
 
-2. **NUTRIENTS-001 — daily macros, fiber, and nutrition-quality guidance**
-   - Extend Open Food Facts normalization and persistence for carbohydrates, protein, fat, and fiber without inventing missing crowdsourced values.
-   - Snapshot nutrients on logged entries so historical daily totals remain stable when foods change.
-   - Show a compact daily macro-energy split plus fiber and explicit data-coverage state.
-   - Research transparent target/range rules before implementing any score.
-   - Prefer an explainable “daily nutrition balance” overview over an opaque health score; suggestions must cite the measured gap (for example, protein below target or fat above target), avoid medical claims, and remain silent when data coverage is insufficient.
-   - Add custom-food nutrient entry and migration-safe defaults/optionality as required.
+2. **NUTRIENTS-001 — COMPLETE: daily macros, fiber, coverage, and measured guidance**
+   - Optional carbohydrate, protein, fat, and fiber survive v3.6/v2/search, cache projection migration, Food serving persistence, and immutable consumed PlateEntry snapshots without inventing missing values.
+   - Today and daily detail expose measured grams, macro-energy split, Fiber, explicit coverage, methodology, and at most two neutral range-citing suggestions.
+   - Macro and Fiber comparisons require 100% relevant coverage; reported calories remain authoritative and separate from 4/4/9 macro energy.
+   - Focused custom-food nutrient editor, complete/partial/dark/AX3 evidence, hostless/app-hosted tests, 12/12 UI target, and 3/3 critical/high visual approval are accepted.
+   - Calorie-goal-derived theoretical gram ranges requested for Plan remain tracked as NUTRITION-GOALS-001 inside REFINE-001.
 
-3. **REFINE-001 — onboarding, goals, hierarchical Settings, and adaptive reminders (deferred until NUTRIENTS-001 is complete)**
+3. **REFINE-001 — NEXT: onboarding, goals, hierarchical Settings, and adaptive reminders**
    - Execute full `## Refine` research/specification below; this replaces the narrower SETTINGS-001 / REMINDERS-001 pass.
    - Resolve mixed immediate-versus-explicit-save semantics and notification authorization/denial/failure behavior.
    - Capture accepted onboarding, Settings, reminder, denied/error, large-text, dark, and small-device evidence.
@@ -98,8 +98,8 @@ For each component:
 |---|---|---|
 | Completion audit | COMPLETE | Original program correctly classified incomplete; this plan created. |
 | STATES-001 | COMPLETE | Accepted attempt 04. Post-fix live remote screenshot proves one `69.7 × 44.0` Retry; scanner permission plus AX3-dark and barcode loading/offline evidence accepted; functional UI target passed 11/11. |
-| NUTRIENTS-001 | NEXT | Daily carbohydrates/protein/fat/fiber persistence, coverage, transparent balance guidance, and actionable measured suggestions now begin with research/data-model audit. |
-| REFINE-001 | DEFERRED UNTIL NUTRIENTS COMPLETE | Expanded onboarding, calorie-goal planning, weight feedback, custom reminder windows, and hierarchical Settings requirements are preserved in `## Refine` below. |
+| NUTRIENTS-001 | COMPLETE | Accepted attempt 01: optional API/cache facts, immutable snapshots, custom entry, coverage-gated balance, 3/3 critical/high visual approval, 140 hostless pass / 2 skips, 167 app-host pass / 2 skips, and 12/12 UI. |
+| REFINE-001 | NEXT | NUTRIENTS prerequisite is complete. Begin competitor/safety research, specification, onboarding/Plan architecture, NUTRITION-GOALS-001, reminders, adaptive tuning, and hierarchical Settings below. |
 | AUXILIARY-001 | PENDING | No widget/Live Activity visual audit yet. |
 | CONSISTENCY-001 | PENDING | Requires completed component set. |
 | ROBUSTNESS-001 | PENDING | Partial Meal/Amount/Weight evidence only. |
@@ -108,7 +108,7 @@ For each component:
 
 ## Refine
 
-**Execution status:** DEFERRED BY USER until current unimplemented work—especially NUTRIENTS-001 macros/fiber—is complete. Do not begin implementation early. Preserve and later execute every item below autonomously.
+**Execution status:** NEXT / READY. User’s NUTRIENTS-001 prerequisite is accepted. Execute every item below autonomously, beginning with research and specification before implementation.
 
 ### 1. Competitor and safety research
 
@@ -153,6 +153,8 @@ Research and specify before implementation:
 - maintenance and weight-gain behavior;
 - manual goal override and ability to restore calculated recommendation;
 - exact calculation breakdown visible on demand;
+- a companion theoretical nutrition composition for the selected calorie goal: adult macro reference ranges in both percent and derived grams using 4/4/9 kcal factors, plus fiber at 14 g/1,000 kcal;
+- side-by-side reference-versus-real daily nutrient comparison, gated on complete relevant coverage and explicitly labeled general population guidance rather than a universal “ideal”;
 - migration from existing `dailyCalorieGoal` without silently replacing user choice.
 
 Add deterministic domain tests for units, boundaries, impossible dates, finite math, rounding, safety clamps, localization/calendar behavior, and migration.
@@ -188,7 +190,7 @@ Add deterministic schedule tests for custom windows, boundary minutes, DST, elap
 
 Design hierarchy after setup specification, likely:
 
-1. **Plan** — current calorie goal, goal mode, target/rate/date, calculation summary, manual/calculated status.
+1. **Plan** — current calorie goal, goal mode, target/rate/date, calculation summary, manual/calculated status, and calorie-goal-derived macro/fiber reference composition versus measured actuals.
 2. **Profile & activity** — inputs used by calculation.
 3. **Weight & adaptation** — weigh-in reminders, trend/tuning explanation, adjustment consent.
 4. **Meal & water reminders** — compact summaries leading to focused editors.
@@ -221,4 +223,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-Begin NUTRIENTS-001 research and data-model/API completeness audit. REFINE-001 remains deferred until NUTRIENTS-001 is accepted.
+Begin REFINE-001 competitor and nutrition-safety research. Specify onboarding inputs, explainable calorie-goal math and safety bounds, NUTRITION-GOALS-001 theoretical reference-versus-real presentation, reminder state machines, adaptive-tuning evidence rules, migration, and hierarchical Settings before implementation.

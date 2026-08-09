@@ -47,7 +47,13 @@ private struct FixtureFoodSearchFetcher: FoodSearchFetching {
                     barcode: "1234567890123",
                     name: "Remote Oat Drink",
                     defaultAmount: NutritionAmount(value: 250, unit: .milliliters),
-                    caloriesPer100: 40
+                    caloriesPer100: 40,
+                    nutrientsPer100: FoodNutrients(
+                        carbohydratesGrams: 6.5,
+                        proteinGrams: 1,
+                        fatGrams: 1.2,
+                        fiberGrams: 0.8
+                    )
                 )
             ]
         } else {

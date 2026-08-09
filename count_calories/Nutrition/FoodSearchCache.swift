@@ -2,7 +2,7 @@ import Foundation
 import os
 
 nonisolated struct FoodSearchCacheKey: Hashable, Codable, Sendable {
-    static let currentProjectionSchemaVersion = 1
+    static let currentProjectionSchemaVersion = 2
 
     let normalizedQuery: String
     let languages: [String]

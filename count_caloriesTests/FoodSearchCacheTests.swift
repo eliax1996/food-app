@@ -22,6 +22,30 @@ final class FoodSearchCacheTests: XCTestCase {
         XCTAssertEqual(snapshot.generation, 1)
     }
 
+    func testProjectionVersionKeepsCalorieOnlySearchCacheOutOfNutrientResults() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let cache = try fixture.cache()
+        let oldKey = FoodSearchCacheKey(
+            query: "oat milk",
+            languages: ["en"],
+            projectionSchemaVersion: 1
+        )
+        _ = try await cache.store(
+            fixture.page(query: "oat milk", page: 1, rawHitCount: 1),
+            for: oldKey,
+            fetchedAt: fixture.clock.date,
+            replacingPageOne: true
+        )
+
+        let currentSnapshot = await cache.snapshot(for: fixture.key("oat milk"))
+        let oldSnapshot = await cache.snapshot(for: oldKey)
+
+        XCTAssertEqual(FoodSearchCacheKey.currentProjectionSchemaVersion, 2)
+        XCTAssertNil(currentSnapshot)
+        XCTAssertNotNil(oldSnapshot)
+    }
+
     func testPagesTerminalAndPageOneReplacement() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }

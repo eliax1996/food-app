@@ -29,7 +29,11 @@ final class OpenFoodFactsAPITests: XCTestCase {
                 "per": "100g",
                 "preparation": "as_sold",
                 "nutrients": {
-                  "energy-kcal": { "unit": "kcal", "value": 539 }
+                  "energy-kcal": { "unit": "kcal", "value": 539 },
+                  "carbohydrates": { "unit": "g", "value": 57.5 },
+                  "proteins": { "unit": "g", "value": 6.3 },
+                  "fat": { "unit": "g", "value": 30.9 },
+                  "fiber": { "unit": "g", "value": 3 }
                 }
               },
               "input_sets": [
@@ -61,10 +65,99 @@ final class OpenFoodFactsAPITests: XCTestCase {
         XCTAssertEqual(nutrition.name, "Nutella")
         XCTAssertEqual(nutrition.defaultAmount, NutritionAmount(value: 15, unit: .grams))
         XCTAssertEqual(nutrition.caloriesPer100, 539)
+        XCTAssertEqual(nutrition.nutrientsPer100, FoodNutrients(
+            carbohydratesGrams: 57.5,
+            proteinGrams: 6.3,
+            fatGrams: 30.9,
+            fiberGrams: 3
+        ))
+        let servingNutrients = nutrition.nutrients(for: 30)
+        XCTAssertEqual(servingNutrients.carbohydratesGrams ?? -1, 17.25, accuracy: 0.000_001)
+        XCTAssertEqual(servingNutrients.proteinGrams ?? -1, 1.89, accuracy: 0.000_001)
+        XCTAssertEqual(servingNutrients.fatGrams ?? -1, 9.27, accuracy: 0.000_001)
+        XCTAssertEqual(servingNutrients.fiberGrams ?? -1, 0.9, accuracy: 0.000_001)
         XCTAssertEqual(nutrition.calories(for: 30), 161.7)
         XCTAssertEqual(MockURLProtocol.lastRequest?.url?.path, "/api/v3.6/product/3017620422003")
         XCTAssertEqual(MockURLProtocol.lastRequest?.timeoutInterval, 6)
         XCTAssertTrue(MockURLProtocol.lastRequest?.url?.query?.contains("nutrition") == true)
+    }
+
+    func testV3NormalizesServingNutrientsAndKeepsMissingValuesUnknown() async throws {
+        MockURLProtocol.responseData = """
+        {
+          "status": "success",
+          "product": {
+            "code": "12345678",
+            "product_name": "Serving-based food",
+            "nutrition": {
+              "input_sets": [
+                {
+                  "per": "serving",
+                  "per_quantity": 50,
+                  "per_unit": "g",
+                  "preparation": "as_sold",
+                  "nutrients": {
+                    "energy-kcal": { "unit": "kcal", "value": 100 },
+                    "carbohydrates": { "unit": "g", "value": 20 },
+                    "proteins": { "unit": "g", "value": 5 },
+                    "fat": { "unit": "g", "value": 2 }
+                  }
+                }
+              ]
+            }
+          }
+        }
+        """.data(using: .utf8)!
+
+        let result = try await OpenFoodFactsV3Client(session: mockSession())
+            .fetchNutrition(for: "12345678")
+
+        guard case let .found(nutrition) = result else {
+            return XCTFail("Expected normalized serving nutrition, got \(result)")
+        }
+        XCTAssertEqual(nutrition.caloriesPer100, 200)
+        XCTAssertEqual(nutrition.nutrientsPer100, FoodNutrients(
+            carbohydratesGrams: 40,
+            proteinGrams: 10,
+            fatGrams: 4,
+            fiberGrams: nil
+        ))
+        XCTAssertFalse(nutrition.nutrientsPer100.isComplete)
+    }
+
+    func testV3PreservesExplicitZeroWithoutInventingInvalidNutrients() async throws {
+        MockURLProtocol.responseData = """
+        {
+          "status": "success",
+          "product": {
+            "code": "12345678",
+            "product_name": "Partial nutrition",
+            "nutrition": {
+              "aggregated_set": {
+                "per": "100g",
+                "nutrients": {
+                  "energy-kcal": { "value": 20 },
+                  "carbohydrates": { "unit": "g", "value": 0 },
+                  "proteins": { "unit": "g", "value": -1 },
+                  "fat": { "unit": "%", "value": 5 },
+                  "fiber": { "unit": "g", "value": 0 }
+                }
+              }
+            }
+          }
+        }
+        """.data(using: .utf8)!
+
+        let result = try await OpenFoodFactsV3Client(session: mockSession())
+            .fetchNutrition(for: "12345678")
+
+        guard case let .found(nutrition) = result else {
+            return XCTFail("Expected partial nutrition, got \(result)")
+        }
+        XCTAssertEqual(nutrition.nutrientsPer100.carbohydratesGrams, 0)
+        XCTAssertNil(nutrition.nutrientsPer100.proteinGrams)
+        XCTAssertNil(nutrition.nutrientsPer100.fatGrams)
+        XCTAssertEqual(nutrition.nutrientsPer100.fiberGrams, 0)
     }
 
     func testV3MapsBeveragePackageToMilliliters() async throws {
@@ -226,7 +319,11 @@ final class OpenFoodFactsAPITests: XCTestCase {
             "serving_quantity": "15",
             "serving_quantity_unit": "g",
             "nutriments": {
-              "energy-kcal_100g": "539"
+              "energy-kcal_100g": "539",
+              "carbohydrates_100g": "57.5",
+              "proteins_100g": "6.3",
+              "fat_100g": "30.9",
+              "fiber_100g": "3"
             }
           }
         }
@@ -242,6 +339,12 @@ final class OpenFoodFactsAPITests: XCTestCase {
         }
         XCTAssertEqual(nutrition.defaultAmount, NutritionAmount(value: 15, unit: .grams))
         XCTAssertEqual(nutrition.caloriesPer100, 539)
+        XCTAssertEqual(nutrition.nutrientsPer100, FoodNutrients(
+            carbohydratesGrams: 57.5,
+            proteinGrams: 6.3,
+            fatGrams: 30.9,
+            fiberGrams: 3
+        ))
         XCTAssertEqual(MockURLProtocol.lastRequest?.url?.path, "/api/v2/product/3017620422003")
         XCTAssertTrue(MockURLProtocol.lastRequest?.url?.query?.contains("nutriments") == true)
     }

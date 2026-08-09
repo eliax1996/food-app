@@ -55,5 +55,67 @@ final class MealModelTests: XCTestCase {
 
         XCTAssertEqual(food.nutritionUnit, .grams)
     }
+
+    func testFoodNutrientsScaleForAmountAndServingCount() {
+        let food = Food(
+            name: "Fixture Granola",
+            calories: 189,
+            servingGrams: 45,
+            nutrientsPerServing: FoodNutrients(
+                carbohydratesGrams: 28.8,
+                proteinGrams: 4.5,
+                fatGrams: 6.3,
+                fiberGrams: 3.6
+            )
+        )
+
+        let consumed = food.consumedNutrients(consumedAmount: 90, portionCount: 0.5)
+
+        XCTAssertEqual(consumed.carbohydratesGrams ?? -1, 28.8, accuracy: 0.000_001)
+        XCTAssertEqual(consumed.proteinGrams ?? -1, 4.5, accuracy: 0.000_001)
+        XCTAssertEqual(consumed.fatGrams ?? -1, 6.3, accuracy: 0.000_001)
+        XCTAssertEqual(consumed.fiberGrams ?? -1, 3.6, accuracy: 0.000_001)
+    }
+
+    func testPlateEntryKeepsNutrientSnapshotAfterFoodChanges() {
+        let original = FoodNutrients(
+            carbohydratesGrams: 20,
+            proteinGrams: 10,
+            fatGrams: 5,
+            fiberGrams: 4
+        )
+        let food = Food(
+            name: "Soup",
+            calories: 200,
+            servingGrams: 250,
+            nutrientsPerServing: original
+        )
+        let entry = PlateEntry(
+            foodName: food.name,
+            calories: food.calories,
+            weightGrams: food.servingGrams,
+            quantity: 1,
+            nutrients: food.nutrientsPerServing
+        )
+
+        food.carbohydratesGramsPerServing = 99
+        food.proteinGramsPerServing = nil
+
+        XCTAssertEqual(entry.nutrients, original)
+    }
+
+    func testLegacyFoodAndEntryKeepMissingNutrientsUnknown() {
+        let food = Food(name: "Apple", calories: 52, servingGrams: 100)
+        let entry = PlateEntry(
+            foodName: food.name,
+            calories: food.calories,
+            weightGrams: 100,
+            quantity: 1
+        )
+
+        XCTAssertTrue(food.nutrientsPerServing.isEmpty)
+        XCTAssertTrue(entry.nutrients.isEmpty)
+        XCTAssertFalse(entry.nutrients.isComplete)
+    }
 }
 #endif

@@ -108,29 +108,110 @@ nonisolated struct NutritionAmount: Codable, Equatable, Sendable {
     }
 }
 
+nonisolated struct FoodNutrients: Codable, Equatable, Sendable {
+    static let empty = FoodNutrients()
+
+    let carbohydratesGrams: Double?
+    let proteinGrams: Double?
+    let fatGrams: Double?
+    let fiberGrams: Double?
+
+    init(
+        carbohydratesGrams: Double? = nil,
+        proteinGrams: Double? = nil,
+        fatGrams: Double? = nil,
+        fiberGrams: Double? = nil
+    ) {
+        self.carbohydratesGrams = Self.validated(carbohydratesGrams)
+        self.proteinGrams = Self.validated(proteinGrams)
+        self.fatGrams = Self.validated(fatGrams)
+        self.fiberGrams = Self.validated(fiberGrams)
+    }
+
+    var hasCompleteMacros: Bool {
+        carbohydratesGrams != nil && proteinGrams != nil && fatGrams != nil
+    }
+
+    var isComplete: Bool {
+        hasCompleteMacros && fiberGrams != nil
+    }
+
+    var isEmpty: Bool {
+        carbohydratesGrams == nil && proteinGrams == nil && fatGrams == nil && fiberGrams == nil
+    }
+
+    func scaled(by multiplier: Double) -> FoodNutrients {
+        guard multiplier.isFinite, multiplier >= 0 else { return .empty }
+        return FoodNutrients(
+            carbohydratesGrams: carbohydratesGrams.map { $0 * multiplier },
+            proteinGrams: proteinGrams.map { $0 * multiplier },
+            fatGrams: fatGrams.map { $0 * multiplier },
+            fiberGrams: fiberGrams.map { $0 * multiplier }
+        )
+    }
+
+    func mergingMissingValues(from fallback: FoodNutrients) -> FoodNutrients {
+        FoodNutrients(
+            carbohydratesGrams: carbohydratesGrams ?? fallback.carbohydratesGrams,
+            proteinGrams: proteinGrams ?? fallback.proteinGrams,
+            fatGrams: fatGrams ?? fallback.fatGrams,
+            fiberGrams: fiberGrams ?? fallback.fiberGrams
+        )
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            carbohydratesGrams: try container.decodeIfPresent(Double.self, forKey: .carbohydratesGrams),
+            proteinGrams: try container.decodeIfPresent(Double.self, forKey: .proteinGrams),
+            fatGrams: try container.decodeIfPresent(Double.self, forKey: .fatGrams),
+            fiberGrams: try container.decodeIfPresent(Double.self, forKey: .fiberGrams)
+        )
+    }
+
+    private static func validated(_ value: Double?) -> Double? {
+        guard let value, value.isFinite, value >= 0 else { return nil }
+        return value
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case carbohydratesGrams
+        case proteinGrams
+        case fatGrams
+        case fiberGrams
+    }
+}
+
 nonisolated struct FoodNutrition: Codable, Equatable, Identifiable, Sendable {
     let barcode: String
     let name: String
     let defaultAmount: NutritionAmount
     let caloriesPer100: Double
+    let nutrientsPer100: FoodNutrients
 
     init(
         barcode: String,
         name: String,
         defaultAmount: NutritionAmount,
-        caloriesPer100: Double
+        caloriesPer100: Double,
+        nutrientsPer100: FoodNutrients = .empty
     ) {
         precondition(caloriesPer100.isFinite && caloriesPer100 >= 0, "Calories must be finite and nonnegative.")
         self.barcode = barcode
         self.name = name
         self.defaultAmount = defaultAmount
         self.caloriesPer100 = caloriesPer100
+        self.nutrientsPer100 = nutrientsPer100
     }
 
     var id: String { barcode }
 
     func calories(for amount: Double) -> Double {
         caloriesPer100 * amount / 100
+    }
+
+    func nutrients(for amount: Double) -> FoodNutrients {
+        nutrientsPer100.scaled(by: amount / 100)
     }
 
     init(from decoder: Decoder) throws {
@@ -166,10 +247,34 @@ nonisolated struct FoodNutrition: Codable, Equatable, Identifiable, Sendable {
             )
         }
 
+        let currentNutrients = try container.decodeIfPresent(
+            FoodNutrients.self,
+            forKey: .nutrientsPer100
+        )
+        let legacyNutrients = FoodNutrients(
+            carbohydratesGrams: try container.decodeIfPresent(
+                Double.self,
+                forKey: .legacyCarbohydratesPer100Grams
+            ),
+            proteinGrams: try container.decodeIfPresent(
+                Double.self,
+                forKey: .legacyProteinPer100Grams
+            ),
+            fatGrams: try container.decodeIfPresent(
+                Double.self,
+                forKey: .legacyFatPer100Grams
+            ),
+            fiberGrams: try container.decodeIfPresent(
+                Double.self,
+                forKey: .legacyFiberPer100Grams
+            )
+        )
+
         self.barcode = barcode
         self.name = name
         self.defaultAmount = defaultAmount
         caloriesPer100 = calories
+        nutrientsPer100 = currentNutrients ?? legacyNutrients
     }
 
     func encode(to encoder: Encoder) throws {
@@ -178,6 +283,7 @@ nonisolated struct FoodNutrition: Codable, Equatable, Identifiable, Sendable {
         try container.encode(name, forKey: .name)
         try container.encode(defaultAmount, forKey: .defaultAmount)
         try container.encode(caloriesPer100, forKey: .caloriesPer100)
+        try container.encode(nutrientsPer100, forKey: .nutrientsPer100)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -185,9 +291,14 @@ nonisolated struct FoodNutrition: Codable, Equatable, Identifiable, Sendable {
         case name
         case defaultAmount
         case caloriesPer100
+        case nutrientsPer100
         case legacyQuantityDescription = "quantityDescription"
         case legacyServingGrams = "servingGrams"
         case legacyServingUnit = "servingUnit"
         case legacyCaloriesPer100Grams = "caloriesPer100Grams"
+        case legacyProteinPer100Grams = "proteinGramsPer100Grams"
+        case legacyCarbohydratesPer100Grams = "carbohydrateGramsPer100Grams"
+        case legacyFatPer100Grams = "fatGramsPer100Grams"
+        case legacyFiberPer100Grams = "fiberGramsPer100Grams"
     }
 }

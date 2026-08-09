@@ -33,6 +33,10 @@ struct CalorieCounterView: View {
     @State private var newFoodName = ""
     @State private var newFoodCalories = 120
     @State private var newFoodServingGrams = 100.0
+    @State private var newFoodCarbohydrates: Double?
+    @State private var newFoodProtein: Double?
+    @State private var newFoodFat: Double?
+    @State private var newFoodFiber: Double?
     @State private var barcode = ""
     @State private var pendingScannedBarcode: String?
     @State private var barcodeFlowOrigin = BarcodeFlowOrigin.today
@@ -69,6 +73,15 @@ struct CalorieCounterView: View {
 
     private var todaysWater: WaterDay? {
         waterDays.first { Calendar.current.isDateInToday($0.date) }
+    }
+
+    private var todaysNutritionSummary: DailyNutritionSummary {
+        DailyNutrition.summary(
+            records: todaysEntries.map {
+                LoggedNutrition(calories: $0.calories, nutrients: $0.nutrients)
+            },
+            calorieGoal: dailyCalorieGoal
+        )
     }
 
     private var dailyCalorieGoal: Int {
@@ -117,6 +130,13 @@ struct CalorieCounterView: View {
         )
     }
 
+    private var selectedNutrients: FoodNutrients {
+        selectedFood?.consumedNutrients(
+            consumedAmount: weightGrams,
+            portionCount: quantity
+        ) ?? .empty
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -131,6 +151,13 @@ struct CalorieCounterView: View {
                         glasses: waterBinding,
                         goal: waterGoal
                     )
+
+                    NavigationLink {
+                        DailyNutritionView(summary: todaysNutritionSummary)
+                    } label: {
+                        NutritionBalanceRow(summary: todaysNutritionSummary)
+                    }
+                    .accessibilityIdentifier("nutrition-balance-link")
                 }
 
                 Section("Meals") {
@@ -239,6 +266,10 @@ struct CalorieCounterView: View {
                     foodName: $newFoodName,
                     calories: $newFoodCalories,
                     servingAmount: $newFoodServingGrams,
+                    carbohydrates: $newFoodCarbohydrates,
+                    protein: $newFoodProtein,
+                    fat: $newFoodFat,
+                    fiber: $newFoodFiber,
                     isLookingUpBarcode: isLookingUpBarcode,
                     barcodeLookupFailure: barcodeLookupFailure,
                     onBarcodeChanged: barcodeDidChange,
@@ -360,6 +391,7 @@ struct CalorieCounterView: View {
             editingEntry.quantity = max(1, Int(quantity.rounded()))
             editingEntry.portionCount = quantity
             editingEntry.servingUnitRawValue = selectedFood.nutritionUnit.rawValue
+            editingEntry.applyNutritionSnapshot(selectedNutrients)
             editingEntry.mealType = selectedMeal.rawValue
         } else {
             let entry = PlateEntry(
@@ -368,6 +400,7 @@ struct CalorieCounterView: View {
                 weightGrams: weightGrams,
                 quantity: quantity,
                 servingUnit: selectedFood.nutritionUnit,
+                nutrients: selectedNutrients,
                 mealType: selectedMeal.rawValue
             )
             modelContext.insert(entry)
@@ -421,6 +454,7 @@ struct CalorieCounterView: View {
         food.servingGrams = servingAmount
         food.servingUnitRawValue = servingUnit.rawValue
         food.barcode = nutrition.barcode
+        food.applyNutrition(nutrition)
 
         do {
             try modelContext.save()
@@ -445,7 +479,13 @@ struct CalorieCounterView: View {
         let food = Food(
             name: trimmedName,
             calories: newFoodCalories,
-            servingGrams: newFoodServingGrams
+            servingGrams: newFoodServingGrams,
+            nutrientsPerServing: FoodNutrients(
+                carbohydratesGrams: newFoodCarbohydrates,
+                proteinGrams: newFoodProtein,
+                fatGrams: newFoodFat,
+                fiberGrams: newFoodFiber
+            )
         )
         modelContext.insert(food)
         if saveChanges() {
@@ -454,6 +494,10 @@ struct CalorieCounterView: View {
             newFoodName = ""
             newFoodCalories = 120
             newFoodServingGrams = 100
+            newFoodCarbohydrates = nil
+            newFoodProtein = nil
+            newFoodFat = nil
+            newFoodFiber = nil
             showingFoodTools = false
         }
     }
@@ -607,6 +651,7 @@ struct CalorieCounterView: View {
             food.servingGrams = servingAmount
             food.servingUnitRawValue = servingUnit.rawValue
             food.barcode = nutrition.barcode
+            food.applyNutrition(nutrition)
 
             do {
                 try modelContext.save()
@@ -755,5 +800,6 @@ struct CalorieCounterView: View {
         waterAdjustmentRequest: .constant(nil)
     )
     .modelContainer(PreviewData.makeContainer())
+    .environment(\.locale, Locale(identifier: "en_US"))
 }
 #endif
