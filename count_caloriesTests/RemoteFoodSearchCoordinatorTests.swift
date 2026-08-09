@@ -8,6 +8,18 @@ import XCTest
 
 @MainActor
 final class RemoteFoodSearchCoordinatorTests: XCTestCase {
+    func testQualifyingUpdateSetsLoadingSynchronously() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let coordinator = fixture.coordinator()
+
+        coordinator.update(query: "milk", localCandidates: [])
+
+        XCTAssertTrue(coordinator.isLoading)
+        await coordinator.waitForIdle()
+        XCTAssertFalse(coordinator.isLoading)
+    }
+
     func testQueryShorterThanThreeDoesNotCallService() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
@@ -47,6 +59,28 @@ final class RemoteFoodSearchCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(fixture.fetcher.pages, [1])
         XCTAssertEqual(coordinator.foods.map(\.barcode), ["12345678"])
+    }
+
+    func testCachedTerminalResultClearsLoadingWithoutNetwork() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let page = fixturePage(query: "milk", page: 1, foods: [], rawHitCount: 0)
+        _ = try await fixture.cache.store(
+            page,
+            for: fixture.key("milk"),
+            fetchedAt: .now,
+            replacingPageOne: true
+        )
+        let coordinator = fixture.coordinator()
+
+        coordinator.update(query: "milk", localCandidates: [])
+
+        XCTAssertTrue(coordinator.isLoading)
+        await coordinator.waitForIdle()
+        XCTAssertFalse(coordinator.isLoading)
+        XCTAssertTrue(coordinator.isComplete)
+        XCTAssertTrue(coordinator.foods.isEmpty)
+        XCTAssertEqual(fixture.fetcher.callCount, 0)
     }
 
     func testCachedPagesApplyImmediatelyInPageOrder() async throws {
@@ -111,6 +145,20 @@ final class RemoteFoodSearchCoordinatorTests: XCTestCase {
         XCTAssertEqual(coordinator.foods.map(\.barcode), ["22222222"])
     }
 
+    func testTerminalEmptyResultCompletesWithoutFailure() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let coordinator = fixture.coordinator()
+
+        coordinator.update(query: "milk", localCandidates: [])
+        await coordinator.waitForIdle()
+
+        XCTAssertTrue(coordinator.foods.isEmpty)
+        XCTAssertTrue(coordinator.isComplete)
+        XCTAssertNil(coordinator.failure)
+        XCTAssertFalse(coordinator.isLoading)
+    }
+
     func testNewQueryIgnoresCanceledOldCompletion() async throws {
         let fetcher = ControlledFetcher()
         let directory = FileManager.default.temporaryDirectory
@@ -139,6 +187,27 @@ final class RemoteFoodSearchCoordinatorTests: XCTestCase {
         XCTAssertFalse(coordinator.isLoading)
     }
 
+    func testCancelClearsLoadingImmediately() async throws {
+        let fetcher = ControlledFetcher()
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cache = try FoodSearchCache(fileURL: directory.appending(path: "cache.json"))
+        let coordinator = RemoteFoodSearchCoordinator(
+            service: RemoteFoodSearchService(fetcher: fetcher, cache: cache),
+            languages: ["en"],
+            debounce: {}
+        )
+
+        coordinator.update(query: "milk", localCandidates: [])
+        await fetcher.waitForRequest("milk")
+        coordinator.cancel()
+
+        XCTAssertFalse(coordinator.isLoading)
+        await fetcher.succeed("milk", foods: [], rawHitCount: 0)
+    }
+
     func testExplicitLoadMoreCallsRemoteEvenWithFiveLocalCandidates() async throws {
         let fixture = try Fixture(
             results: [.success(fixturePage(query: "milk", page: 1, foods: [fixtureFood("33333333")], rawHitCount: 1))]
@@ -154,6 +223,29 @@ final class RemoteFoodSearchCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(fixture.fetcher.pages, [1])
         XCTAssertEqual(coordinator.foods.map(\.barcode), ["33333333"])
+    }
+
+    func testFailureClassification() async throws {
+        func searchFailure(_ error: Error) async throws -> RemoteFoodSearchFailure {
+            let fixture = try Fixture(results: [.failure(error)])
+            defer { fixture.remove() }
+            let coordinator = fixture.coordinator()
+            coordinator.update(query: "milk", localCandidates: [])
+            await coordinator.waitForIdle()
+            return try XCTUnwrap(coordinator.failure)
+        }
+
+        let offline = try await searchFailure(URLError(.notConnectedToInternet))
+        let rateLimited = try await searchFailure(
+            FoodSearchRateLimitError(retryAfter: 1, retryAt: .now)
+        )
+        let unavailable = try await searchFailure(FoodSearchError.timedOut)
+        let generic = try await searchFailure(TestError.failed)
+
+        XCTAssertEqual(offline, .offline)
+        XCTAssertEqual(rateLimited, .rateLimited)
+        XCTAssertEqual(unavailable, .unavailable)
+        XCTAssertEqual(generic, .generic)
     }
 
     func testFailureKeepsCachedRowsAndSurfacesError() async throws {
@@ -308,10 +400,10 @@ private actor ControlledFetcher: FoodSearchFetching {
         waiters.forEach { $0.resume(returning: page) }
     }
 
-    func fail(_ query: String) {
+    func fail(_ query: String, error: Error = TestError.failed) {
         let normalized = FoodSearchQuery.normalize(query)
         let waiters = responseWaiters.removeValue(forKey: normalized) ?? []
-        waiters.forEach { $0.resume(throwing: TestError.failed) }
+        waiters.forEach { $0.resume(throwing: error) }
     }
 }
 

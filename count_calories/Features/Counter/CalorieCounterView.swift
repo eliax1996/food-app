@@ -3,6 +3,11 @@ import SwiftData
 import SwiftUI
 import os
 
+private enum BarcodeFlowOrigin: Equatable {
+    case today
+    case mealEditor
+}
+
 struct CalorieCounterView: View {
     private let defaultCalorieGoal = 1700
     private let waterGoal = 8
@@ -30,8 +35,16 @@ struct CalorieCounterView: View {
     @State private var newFoodServingGrams = 100.0
     @State private var barcode = ""
     @State private var pendingScannedBarcode: String?
-    @State private var pendingBarcodeMealType: MealType?
+    @State private var barcodeFlowOrigin = BarcodeFlowOrigin.today
+    @State private var scannerManualEntryRequested = false
+    @State private var preservesMealDraftOnDismissal = false
     @State private var isLookingUpBarcode = false
+    @State private var barcodeLookupFailure: BarcodeLookupFailure?
+    @State private var barcodeLookupFailureBarcode: String?
+    @State private var barcodeLookupTask: Task<Void, Never>?
+    @State private var activeBarcodeLookup: String?
+    @State private var barcodeLookupGeneration = 0
+    @State private var barcodeLookupSucceeded = false
     @State private var showingBarcodeScanner = false
     @State private var showingFoodTools = false
     @State private var errorMessage: String?
@@ -158,17 +171,14 @@ struct CalorieCounterView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
-                            pendingScannedBarcode = nil
-                            pendingBarcodeMealType = nil
+                            beginBarcodeFlow(from: .today)
                             showingBarcodeScanner = true
                         } label: {
                             Label("Scan barcode", systemImage: "barcode.viewfinder")
                         }
                         .disabled(isLookingUpBarcode)
 
-                        Button {
-                            showingFoodTools = true
-                        } label: {
+                        Button(action: showFoodToolsFromToolbar) {
                             Label("Enter barcode or create food", systemImage: "square.and.pencil")
                         }
                     } label: {
@@ -202,7 +212,7 @@ struct CalorieCounterView: View {
                 synchronizeWaterFromWidgetStore()
                 mirrorTodayToWidgetStore()
             }
-            .sheet(isPresented: $showingAddMeal, onDismiss: resetMealSheet) {
+            .sheet(isPresented: $showingAddMeal, onDismiss: mealEditorDidDismiss) {
                 MealEditorView(
                     foods: foods,
                     recentFoods: recentFoods,
@@ -217,32 +227,38 @@ struct CalorieCounterView: View {
                     onSelectRemoteFood: selectRemoteFood,
                     onCancel: {
                         showingAddMeal = false
-                        resetMealSheet()
                     },
                     onScanBarcode: scanBarcodeFromMealEditor,
                     onSave: savePlate
                 )
                 .environment(\.dynamicTypeSize, dynamicTypeSize)
             }
-            .sheet(isPresented: $showingFoodTools) {
+            .sheet(isPresented: $showingFoodTools, onDismiss: foodToolsDidDismiss) {
                 FoodToolsView(
                     barcode: $barcode,
                     foodName: $newFoodName,
                     calories: $newFoodCalories,
                     servingAmount: $newFoodServingGrams,
                     isLookingUpBarcode: isLookingUpBarcode,
+                    barcodeLookupFailure: barcodeLookupFailure,
+                    onBarcodeChanged: barcodeDidChange,
+                    onDone: dismissFoodTools,
                     onLookupBarcode: lookupEnteredBarcode,
                     onSaveFood: addFood
                 )
             }
-            .sheet(isPresented: $showingBarcodeScanner, onDismiss: lookupScannedBarcode) {
+            .sheet(isPresented: $showingBarcodeScanner, onDismiss: scannerDidDismiss) {
                 BarcodeScannerView(
                     isPresented: $showingBarcodeScanner,
-                    errorMessage: $errorMessage
-                ) { scannedBarcode in
-                    barcode = scannedBarcode
-                    pendingScannedBarcode = scannedBarcode
-                }
+                    onScan: { scannedBarcode in
+                        barcode = scannedBarcode
+                        pendingScannedBarcode = scannedBarcode
+                    },
+                    onEnterManually: {
+                        scannerManualEntryRequested = true
+                        showingBarcodeScanner = false
+                    }
+                )
             }
             .alert("Could not complete action", isPresented: Binding(
                 get: { errorMessage != nil },
@@ -360,7 +376,6 @@ struct CalorieCounterView: View {
         if saveChanges() {
             mirrorTodayToWidgetStore()
             showingAddMeal = false
-            resetMealSheet()
         }
     }
 
@@ -369,6 +384,14 @@ struct CalorieCounterView: View {
         if saveChanges() {
             mirrorTodayToWidgetStore()
         }
+    }
+
+    private func mealEditorDidDismiss() {
+        if preservesMealDraftOnDismissal {
+            preservesMealDraftOnDismissal = false
+            return
+        }
+        resetMealSheet()
     }
 
     private func resetMealSheet() {
@@ -418,6 +441,7 @@ struct CalorieCounterView: View {
             return
         }
 
+        cancelBarcodeLookup()
         let food = Food(
             name: trimmedName,
             calories: newFoodCalories,
@@ -426,6 +450,7 @@ struct CalorieCounterView: View {
         modelContext.insert(food)
         if saveChanges() {
             selectedFood = food
+            weightGrams = food.servingGrams
             newFoodName = ""
             newFoodCalories = 120
             newFoodServingGrams = 100
@@ -433,71 +458,146 @@ struct CalorieCounterView: View {
         }
     }
 
+    private func beginBarcodeFlow(from origin: BarcodeFlowOrigin) {
+        cancelBarcodeLookup()
+        barcodeLookupFailure = nil
+        barcodeLookupFailureBarcode = nil
+        pendingScannedBarcode = nil
+        scannerManualEntryRequested = false
+        barcodeLookupSucceeded = false
+        barcodeFlowOrigin = origin
+    }
+
+    private func showFoodToolsFromToolbar() {
+        beginBarcodeFlow(from: .today)
+        showingFoodTools = true
+    }
+
+    private func barcodeDidChange() {
+        let generation = barcodeLookupGeneration
+        Task { @MainActor in
+            await Task.yield()
+            guard generation == barcodeLookupGeneration else { return }
+            let currentBarcode = barcode.filter(\.isNumber)
+            if let failureBarcode = barcodeLookupFailureBarcode,
+               currentBarcode != failureBarcode {
+                barcodeLookupFailure = nil
+                barcodeLookupFailureBarcode = nil
+            }
+        }
+    }
+
     private func lookupEnteredBarcode() {
-        let enteredBarcode = barcode
-        pendingBarcodeMealType = nil
+        startBarcodeLookup()
+    }
+
+    private func dismissFoodTools() {
+        cancelBarcodeLookup()
+        barcodeLookupFailure = nil
+        barcodeLookupFailureBarcode = nil
         showingFoodTools = false
-        Task {
-            try? await Task.sleep(for: .milliseconds(350))
-            await lookupBarcode(enteredBarcode)
+    }
+
+    private func foodToolsDidDismiss() {
+        cancelBarcodeLookup()
+        barcodeLookupFailure = nil
+        barcodeLookupFailureBarcode = nil
+        let origin = barcodeFlowOrigin
+        let lookupSucceeded = barcodeLookupSucceeded
+        clearBarcodeFlow()
+
+        switch (origin, lookupSucceeded) {
+        case (.today, true):
+            prepareMealSheetForAdd()
+        case (.mealEditor, _):
+            showingAddMeal = true
+        case (.today, false):
+            break
         }
     }
 
     private func scanBarcodeFromMealEditor() {
-        pendingBarcodeMealType = selectedMeal
-        pendingScannedBarcode = nil
+        beginBarcodeFlow(from: .mealEditor)
+        preservesMealDraftOnDismissal = true
         showingAddMeal = false
 
-        Task {
+        Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
             showingBarcodeScanner = true
         }
     }
 
-    private func lookupScannedBarcode() {
-        guard let scannedBarcode = pendingScannedBarcode else {
-            pendingBarcodeMealType = nil
+    private func scannerDidDismiss() {
+        if scannerManualEntryRequested {
+            scannerManualEntryRequested = false
+            showingFoodTools = true
             return
         }
+
+        guard pendingScannedBarcode != nil else {
+            let origin = barcodeFlowOrigin
+            clearBarcodeFlow()
+            if origin == .mealEditor {
+                showingAddMeal = true
+            }
+            return
+        }
+
         pendingScannedBarcode = nil
-        Task { await lookupBarcode(scannedBarcode) }
+        showingFoodTools = true
+        startBarcodeLookup()
     }
 
-    private func lookupBarcode(_ barcodeToLookup: String) async {
-        let requestedMealType = pendingBarcodeMealType
-        pendingBarcodeMealType = nil
-        isLookingUpBarcode = true
-        defer { isLookingUpBarcode = false }
+    private func startBarcodeLookup() {
+        let barcodeToLookup = barcode.filter(\.isNumber)
+        guard (8...14).contains(barcodeToLookup.count) else {
+            barcodeLookupFailure = .invalid
+            barcodeLookupFailureBarcode = barcodeToLookup
+            return
+        }
 
+        cancelBarcodeLookup()
+        barcodeLookupFailure = nil
+        barcodeLookupFailureBarcode = nil
+        activeBarcodeLookup = barcodeToLookup
+        isLookingUpBarcode = true
+        let generation = barcodeLookupGeneration
+        barcodeLookupTask = Task { @MainActor in
+            await performBarcodeLookup(barcode: barcodeToLookup, generation: generation)
+        }
+    }
+
+    private func performBarcodeLookup(barcode: String, generation: Int) async {
         do {
-            let service = NutritionLookupService(
-                client: OpenFoodFactsClient(),
-                cache: try NutritionCache.applicationCache()
-            )
-            let result = try await service.lookup(barcode: barcodeToLookup.filter(\.isNumber))
+            let service = try NutritionLookupServiceFactory.make()
+            let result = try await service.lookup(barcode: barcode)
+            guard isCurrentBarcodeLookup(generation) else { return }
+
             let nutrition: FoodNutrition
             switch result {
             case let .found(foundNutrition):
                 nutrition = foundNutrition
             case .incompleteProduct:
-                errorMessage = "This product does not provide usable calorie information."
+                finishBarcodeLookup(generation, failure: .incomplete)
                 return
             case .notFound:
-                errorMessage = "No product was found for that barcode."
+                finishBarcodeLookup(generation, failure: .notFound)
                 return
             }
+
             let servingAmount = nutrition.defaultAmount.value
             let servingUnit = nutrition.defaultAmount.unit
             let servingCalories = Int(nutrition.calories(for: servingAmount).rounded())
             let food = foods.first {
                 $0.matchesLookupProduct(barcode: nutrition.barcode, name: nutrition.name)
             } ?? Food(
-                    name: nutrition.name,
-                    calories: servingCalories,
-                    servingGrams: servingAmount,
-                    servingUnit: servingUnit,
-                    barcode: nutrition.barcode
-                )
+                name: nutrition.name,
+                calories: servingCalories,
+                servingGrams: servingAmount,
+                servingUnit: servingUnit,
+                barcode: nutrition.barcode
+            )
             let isNewFood = !foods.contains { $0 === food }
             if isNewFood {
                 modelContext.insert(food)
@@ -513,15 +613,55 @@ struct CalorieCounterView: View {
             } catch {
                 modelContext.rollback()
                 AppLogger.persistence.error("Failed to save barcode food: \(error.localizedDescription, privacy: .public)")
-                errorMessage = "Your food could not be saved. Please try again."
+                finishBarcodeLookup(generation, failure: .saveFailed)
                 return
             }
+            guard isCurrentBarcodeLookup(generation) else { return }
+
             selectedFood = food
-            barcode = ""
-            prepareMealSheetForAdd(mealType: requestedMealType)
+            weightGrams = servingAmount
+            isLookingUpBarcode = false
+            barcodeLookupTask = nil
+            activeBarcodeLookup = nil
+            barcodeLookupFailure = nil
+            barcodeLookupFailureBarcode = nil
+            barcodeLookupSucceeded = true
+            self.barcode = ""
+            showingFoodTools = false
+        } catch is CancellationError {
+            return
         } catch {
-            errorMessage = "The product lookup failed. Check your connection and try again."
+            guard isCurrentBarcodeLookup(generation) else { return }
+            finishBarcodeLookup(generation, failure: BarcodeLookupFailure.classify(error))
         }
+    }
+
+    private func isCurrentBarcodeLookup(_ generation: Int) -> Bool {
+        generation == barcodeLookupGeneration && !Task.isCancelled
+    }
+
+    private func finishBarcodeLookup(_ generation: Int, failure: BarcodeLookupFailure) {
+        guard isCurrentBarcodeLookup(generation) else { return }
+        isLookingUpBarcode = false
+        barcodeLookupTask = nil
+        barcodeLookupFailureBarcode = activeBarcodeLookup
+        activeBarcodeLookup = nil
+        barcodeLookupFailure = failure
+    }
+
+    private func cancelBarcodeLookup() {
+        barcodeLookupGeneration &+= 1
+        barcodeLookupTask?.cancel()
+        barcodeLookupTask = nil
+        activeBarcodeLookup = nil
+        isLookingUpBarcode = false
+    }
+
+    private func clearBarcodeFlow() {
+        pendingScannedBarcode = nil
+        scannerManualEntryRequested = false
+        barcodeLookupSucceeded = false
+        barcodeFlowOrigin = .today
     }
 
     private func synchronizeWaterFromWidgetStore() {

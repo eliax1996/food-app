@@ -45,6 +45,7 @@ Use `just` as the only entrypoint for project operations. Do not invoke `scripts
 - `just test-rerun`: rerun the already-built hostless tests only when sources have not changed.
 - `just test-app-unit`: explicitly verify the duplicate app-hosted XCTest integration when needed.
 - `just test-ui`: run functional UI smoke tests behind a clean simulator restart, excluding launch-performance measurement.
+- `just test-ui-one Class/method`: run one functional UI test behind a clean simulator restart for focused authoring and diagnosis.
 - `just test-performance`: run launch measurement explicitly; performance tests never belong in the edit loop or correctness gate.
 - `just test`: run the automated correctness gate: hostless unit tests and an incremental app compile.
 - `just validate`: run unit tests, compile, install, and launch in the simulator. Xcode 27 UI-test hosting is intentionally explicit because it can stall before XCTest starts.
@@ -206,7 +207,7 @@ Follow a testing pyramid:
 
 A subagent that creates or modifies a UI test owns the complete green loop, not only test source generation:
 
-1. Run every created/changed test immediately. Use `just test-ui 240` as the normal authoring timeout; choose a higher explicit timeout when build plus the flow cannot reasonably fit, while retaining an overall bound. If focused UI execution becomes recurring, add a supported `just` recipe rather than calling Xcode tools directly.
+1. Run every created/changed test immediately. Use `just test-ui-one Class/method 240` while authoring one flow, then `just test-ui 300` near completion; choose a higher explicit timeout when build plus the selected flow or suite cannot reasonably fit, while retaining an overall bound.
 2. Add enough deterministic diagnostics to locate the failing step: stable accessibility identifiers, descriptive assertion messages, `XCTContext.runActivity` phases, relevant result attachments/screenshots, and concise app `Logger` events at integration boundaries. Never log sensitive food/profile input or add render-loop noise.
 3. On failure, inspect `just test-results`, XCTest output, hierarchy/screenshots, and app logs. Classify product defect, test defect, or Xcode test-host infrastructure before editing.
 4. Fix the responsible code/test and rerun the created tests. Continue this diagnose–fix–run loop within the task until they pass; do not return immediately after the first red run or weaken assertions to manufacture green.

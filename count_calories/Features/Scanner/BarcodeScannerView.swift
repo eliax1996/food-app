@@ -1,17 +1,288 @@
+import AVFoundation
 import SwiftUI
+import UIKit
 import Vision
 import VisionKit
 import os
 
-struct BarcodeScannerView: UIViewControllerRepresentable {
-    private static let logger = Logger(subsystem: "ch.elia.count-calories", category: "barcode.scanner")
+enum BarcodeScannerIssue: Equatable {
+    case cameraPermissionDenied
+    case unsupported
+    case temporarilyUnavailable
 
+    var title: String {
+        switch self {
+        case .cameraPermissionDenied:
+            "Camera access is off"
+        case .unsupported:
+            "Scanner unavailable"
+        case .temporarilyUnavailable:
+            "Scanner unavailable right now"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .cameraPermissionDenied:
+            "Allow camera access in Settings, or enter the barcode manually."
+        case .unsupported:
+            "This device cannot scan barcodes. Enter one manually instead."
+        case .temporarilyUnavailable:
+            "Camera could not start. Try again or enter barcode manually."
+        }
+    }
+
+    var image: String {
+        switch self {
+        case .cameraPermissionDenied:
+            "camera.fill"
+        case .unsupported:
+            "barcode.viewfinder"
+        case .temporarilyUnavailable:
+            "camera.badge.ellipsis"
+        }
+    }
+}
+
+struct BarcodeScannerView: View {
+    fileprivate static let logger = Logger(subsystem: "ch.elia.count-calories", category: "barcode.scanner")
+
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @Binding var isPresented: Bool
-    @Binding var errorMessage: String?
     let onScan: (String) -> Void
+    let onEnterManually: () -> Void
+    private let initialIssue: BarcodeScannerIssue?
+
+    @State private var issue: BarcodeScannerIssue?
+    @State private var shouldStartScanner = false
+    @State private var isRequestingCameraAccess = false
+
+    init(
+        isPresented: Binding<Bool>,
+        onScan: @escaping (String) -> Void,
+        onEnterManually: @escaping () -> Void,
+        initialIssue: BarcodeScannerIssue? = nil
+    ) {
+        _isPresented = isPresented
+        self.onScan = onScan
+        self.onEnterManually = onEnterManually
+        self.initialIssue = initialIssue
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let issue {
+                    issueView(for: issue)
+                } else if shouldStartScanner {
+                    DataScannerRepresentable(
+                        onScan: { barcode in
+                            onScan(barcode)
+                            isPresented = false
+                        },
+                        onIssue: { scannerIssue in
+                            issue = scannerIssue
+                            shouldStartScanner = false
+                        }
+                    )
+                    .ignoresSafeArea(edges: .bottom)
+                } else {
+                    ProgressView("Preparing camera")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .navigationTitle("Scan barcode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                    .accessibilityLabel("Cancel barcode scanner")
+                    .accessibilityIdentifier("barcode-scanner-cancel")
+                }
+            }
+        }
+        .onAppear(perform: startScanner)
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active,
+                  issue == .cameraPermissionDenied,
+                  Self.debugIssue == nil
+            else { return }
+            startScanner()
+        }
+    }
+
+    @ViewBuilder
+    private func issueView(for issue: BarcodeScannerIssue) -> some View {
+        ContentUnavailableView {
+            Label(issue.title, systemImage: issue.image)
+        } description: {
+            Text(issue.message)
+        } actions: {
+            VStack(spacing: 12) {
+                if issue == .cameraPermissionDenied {
+                    Button {
+                        openSettings()
+                    } label: {
+                        actionLabel("Open Settings")
+                    }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityLabel("Open Settings for camera access")
+                        .accessibilityIdentifier("barcode-scanner-open-settings")
+                }
+
+                if issue == .temporarilyUnavailable {
+                    Button {
+                        startScanner()
+                    } label: {
+                        actionLabel("Try scanner again")
+                    }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityLabel("Try barcode scanner again")
+                        .accessibilityIdentifier("barcode-scanner-retry")
+                }
+
+                if issue == .unsupported {
+                    manualEntryButton
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    manualEntryButton
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.tint)
+                }
+            }
+            .controlSize(.large)
+            .frame(maxWidth: 280)
+        }
+        .accessibilityIdentifier("barcode-scanner-state")
+    }
+
+    private var manualEntryButton: some View {
+        Button {
+            onEnterManually()
+        } label: {
+            Text("Enter barcode manually")
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .accessibilityLabel("Enter barcode manually")
+        .accessibilityIdentifier("barcode-scanner-enter-manually")
+    }
+
+    private func actionLabel(_ title: String) -> some View {
+        Text(title)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: 44)
+    }
+
+    private func startScanner() {
+        guard isPresented else { return }
+        shouldStartScanner = false
+        issue = nil
+
+        if let forcedIssue = initialIssue ?? Self.debugIssue {
+            issue = forcedIssue
+            return
+        }
+
+        let authorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        if let authorizationIssue = Self.issue(for: authorizationStatus) {
+            issue = authorizationIssue
+        } else if authorizationStatus == .notDetermined {
+            requestCameraAccess()
+        } else {
+            startAuthorizedScanner()
+        }
+    }
+
+    private func requestCameraAccess() {
+        guard !isRequestingCameraAccess else { return }
+        isRequestingCameraAccess = true
+
+        AVCaptureDevice.requestAccess(for: .video) { granted in
+            DispatchQueue.main.async {
+                self.isRequestingCameraAccess = false
+                guard self.isPresented else { return }
+                if granted {
+                    self.startAuthorizedScanner()
+                } else {
+                    self.issue = .cameraPermissionDenied
+                }
+            }
+        }
+    }
+
+    private func startAuthorizedScanner() {
+        guard DataScannerViewController.isSupported else {
+            issue = .unsupported
+            return
+        }
+        guard DataScannerViewController.isAvailable else {
+            issue = .temporarilyUnavailable
+            return
+        }
+        shouldStartScanner = true
+    }
+
+    private func openSettings() {
+        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(settingsURL)
+    }
+
+    static func issue(for authorizationStatus: AVAuthorizationStatus) -> BarcodeScannerIssue? {
+        switch authorizationStatus {
+        case .denied, .restricted:
+            .cameraPermissionDenied
+        case .authorized, .notDetermined:
+            nil
+        @unknown default:
+            .temporarilyUnavailable
+        }
+    }
+
+    private static var debugIssue: BarcodeScannerIssue? {
+#if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-scanner-permission-denied") {
+            return .cameraPermissionDenied
+        }
+        if arguments.contains("-scanner-unsupported") {
+            return .unsupported
+        }
+        if arguments.contains("-scanner-temporarily-unavailable") {
+            return .temporarilyUnavailable
+        }
+#endif
+        return nil
+    }
+}
+
+#if DEBUG
+#Preview("Scanner permission denied") {
+    BarcodeScannerView(
+        isPresented: .constant(true),
+        onScan: { _ in },
+        onEnterManually: {},
+        initialIssue: .cameraPermissionDenied
+    )
+}
+#endif
+
+struct DataScannerRepresentable: UIViewControllerRepresentable {
+    let onScan: (String) -> Void
+    let onIssue: (BarcodeScannerIssue) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(isPresented: $isPresented, errorMessage: $errorMessage, onScan: onScan)
+        Coordinator(onScan: onScan, onIssue: onIssue)
     }
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
@@ -25,38 +296,47 @@ struct BarcodeScannerView: UIViewControllerRepresentable {
             isHighlightingEnabled: true
         )
         scanner.delegate = context.coordinator
-        guard DataScannerViewController.isSupported, DataScannerViewController.isAvailable else {
-            Self.logger.error("Barcode scanner is unavailable")
-            context.coordinator.dismissWithError("Barcode scanning is unavailable on this device. Enter the barcode manually.")
+
+        guard DataScannerViewController.isSupported else {
+            context.coordinator.reportIssue(.unsupported)
             return scanner
         }
+        guard DataScannerViewController.isAvailable else {
+            context.coordinator.reportIssue(.temporarilyUnavailable)
+            return scanner
+        }
+
         do {
             try scanner.startScanning()
         } catch {
-            Self.logger.error("Failed to start barcode scanner: \(error.localizedDescription, privacy: .public)")
-            context.coordinator.dismissWithError("Barcode scanning could not start. Enter the barcode manually.")
+            BarcodeScannerView.logger.error("Failed to start barcode scanner: \(error.localizedDescription, privacy: .public)")
+            context.coordinator.reportIssue(.temporarilyUnavailable)
         }
         return scanner
     }
 
     func updateUIViewController(_ uiViewController: DataScannerViewController, context: Context) {}
 
+    static func dismantleUIViewController(_ uiViewController: DataScannerViewController, coordinator: Coordinator) {
+        uiViewController.stopScanning()
+    }
+
     final class Coordinator: NSObject, DataScannerViewControllerDelegate {
-        @Binding private var isPresented: Bool
-        @Binding private var errorMessage: String?
         private let onScan: (String) -> Void
+        private let onIssue: (BarcodeScannerIssue) -> Void
         private var didScanBarcode = false
 
-        init(isPresented: Binding<Bool>, errorMessage: Binding<String?>, onScan: @escaping (String) -> Void) {
-            _isPresented = isPresented
-            _errorMessage = errorMessage
+        init(
+            onScan: @escaping (String) -> Void,
+            onIssue: @escaping (BarcodeScannerIssue) -> Void = { _ in }
+        ) {
             self.onScan = onScan
+            self.onIssue = onIssue
         }
 
-        func dismissWithError(_ message: String) {
+        func reportIssue(_ issue: BarcodeScannerIssue) {
             DispatchQueue.main.async {
-                self.errorMessage = message
-                self.isPresented = false
+                self.onIssue(issue)
             }
         }
 
@@ -66,7 +346,6 @@ struct BarcodeScannerView: UIViewControllerRepresentable {
 
             DispatchQueue.main.async {
                 self.onScan(value)
-                self.isPresented = false
             }
         }
 

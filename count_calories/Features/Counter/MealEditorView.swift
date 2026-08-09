@@ -392,12 +392,6 @@ private struct FoodSearchView: View {
 
             if canSearchRemote, let remoteSearch {
                 Section("Open Food Facts") {
-                    if remoteSearch.foods.isEmpty, !remoteSearch.isLoading, remoteSearch.errorMessage == nil {
-                        Text("Search Open Food Facts for matching products.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
                     ForEach(remoteSearch.foods) { food in
                         remoteFoodButton(food)
                     }
@@ -409,26 +403,47 @@ private struct FoodSearchView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
+                        .accessibilityElement(children: .combine)
                         .accessibilityLabel("Searching Open Food Facts")
-                    }
-
-                    if let errorMessage = remoteSearch.errorMessage {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(errorMessage)
+                        .accessibilityIdentifier("open-food-facts-loading")
+                    } else if let failure = remoteSearch.failure {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(failure.title, systemImage: failure.symbolName)
+                                .font(.subheadline.weight(.semibold))
+                                .accessibilityLabel(failure.title)
+                                .accessibilityIdentifier("open-food-facts-failure-title")
+                            Text(failure.body)
                                 .font(.subheadline)
-                                .foregroundStyle(.red)
-                            Button("Retry Open Food Facts") {
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("open-food-facts-failure-message")
+                            Button("Try again") {
                                 remoteSearch.loadMore(query: searchText, localCandidates: localCandidates)
                             }
+                            .frame(minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
                             .accessibilityIdentifier("retry-open-food-facts")
                         }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("open-food-facts-failure")
+                    } else if remoteSearch.foods.isEmpty, remoteSearch.isComplete {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Label("No Open Food Facts matches", systemImage: "magnifyingglass")
+                                .font(.subheadline.weight(.semibold))
+                            Text("Try another name or search again.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("open-food-facts-no-matches")
                     }
 
-                    Button(remoteSearch.foods.isEmpty ? "Search Open Food Facts" : "Load more from Open Food Facts") {
-                        remoteSearch.loadMore(query: searchText, localCandidates: localCandidates)
+                    if remoteSearch.failure == nil {
+                        Button(remoteSearch.foods.isEmpty ? "Search Open Food Facts" : "Load more from Open Food Facts") {
+                            remoteSearch.loadMore(query: searchText, localCandidates: localCandidates)
+                        }
+                        .disabled(remoteSearch.isLoading)
+                        .accessibilityIdentifier("search-open-food-facts")
                     }
-                    .disabled(remoteSearch.isLoading)
-                    .accessibilityIdentifier("search-open-food-facts")
 
                     Link("Data from Open Food Facts", destination: URL(string: "https://world.openfoodfacts.org")!)
                         .font(.footnote)

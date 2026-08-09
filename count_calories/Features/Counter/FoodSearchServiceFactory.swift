@@ -29,8 +29,19 @@ private struct FixtureFoodSearchFetcher: FoodSearchFetching {
         pageSize: Int,
         languages: [String]
     ) async throws -> FoodSearchPage {
+        let normalizedQuery = FoodSearchQuery.normalize(query)
+        if normalizedQuery.contains("zzslow") {
+            try await Task.sleep(for: .seconds(3))
+        }
+        if normalizedQuery.contains("zzoffline") {
+            throw URLError(.notConnectedToInternet)
+        }
+        if normalizedQuery.contains("zzunavailable") {
+            throw FoodSearchError.timedOut
+        }
+
         let food: [FoodNutrition]
-        if FoodSearchQuery.normalize(query).contains("zzremote") && page == 1 {
+        if normalizedQuery.contains("zzremote") && page == 1 {
             food = [
                 FoodNutrition(
                     barcode: "1234567890123",

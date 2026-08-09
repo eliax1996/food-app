@@ -22,6 +22,7 @@ final class CountCaloriesUITests: XCTestCase {
             .firstMatch
         let saveMealButton = app.buttons["save-meal"]
         let calorieTotal = app.staticTexts["daily-calorie-total"]
+        var initialEatenCalories = 0
         XCTContext.runActivity(named: "Launch app") { _ in
             app.launchArguments = ["-ui-testing"]
             app.launch()
@@ -31,7 +32,7 @@ final class CountCaloriesUITests: XCTestCase {
             )
             assertExists(addMealButton, identifier: "add-meal", phase: "Launch")
             assertExists(calorieTotal, identifier: "daily-calorie-total", phase: "Launch")
-            assertDailyTotal(calorieTotal, eaten: 0, phase: "Launch")
+            initialEatenCalories = dailyEatenCalories(calorieTotal, phase: "Launch")
         }
 
         XCTContext.runActivity(named: "Open meal editor") { _ in
@@ -56,7 +57,7 @@ final class CountCaloriesUITests: XCTestCase {
 
         XCTContext.runActivity(named: "Verify saved total") { _ in
             saveMealButton.tap()
-            assertDailyTotal(calorieTotal, eaten: 15, phase: "Total")
+            assertDailyTotal(calorieTotal, eaten: initialEatenCalories + 15, phase: "Total")
         }
     }
 
@@ -331,6 +332,381 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testScannerPermissionDeniedRecoversToManualBarcodeEntry() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-scanner-permission-denied",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let moreLoggingOptions = app.buttons["More logging options"]
+        let scanBarcode = app.buttons["Scan barcode"]
+        let scannerNavigationTitle = app.navigationBars["Scan barcode"]
+        let scannerState = app.descendants(matching: .any)
+            .matching(identifier: "barcode-scanner-state")
+            .firstMatch
+        let cameraAccessTitle = app.staticTexts["Camera access is off"]
+        let cameraAccessMessage = app.staticTexts[
+            "Allow camera access in Settings, or enter the barcode manually."
+        ]
+        let openSettings = app.buttons.matching(
+            NSPredicate(format: "label == %@", "Open Settings for camera access")
+        ).firstMatch
+        let enterManually = app.buttons.matching(
+            NSPredicate(format: "label == %@", "Enter barcode manually")
+        ).firstMatch
+        let cancelScanner = app.buttons["barcode-scanner-cancel"]
+        let foodToolsTitle = app.navigationBars["Food tools"]
+        let manualBarcode = app.textFields["manual-barcode"]
+        let done = app.buttons["Done"]
+
+        XCTContext.runActivity(named: "Launch Today with camera access denied") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertHittable(
+                moreLoggingOptions,
+                identifier: "More logging options",
+                phase: "Launch"
+            )
+        }
+
+        XCTContext.runActivity(named: "Open denied scanner sheet") { _ in
+            moreLoggingOptions.tap()
+            assertHittable(scanBarcode, identifier: "Scan barcode", phase: "Scanner menu")
+            scanBarcode.tap()
+            assertExists(
+                scannerNavigationTitle,
+                identifier: "Scan barcode scanner sheet title",
+                phase: "Scanner sheet"
+            )
+            assertExists(scannerState, identifier: "barcode-scanner-state", phase: "Scanner sheet")
+        }
+
+        XCTContext.runActivity(named: "Verify calm camera recovery actions") { _ in
+            assertExists(cameraAccessTitle, identifier: "camera access title", phase: "Permission denied")
+            assertLabel(
+                cameraAccessTitle,
+                expected: "Camera access is off",
+                phase: "Permission denied"
+            )
+            assertExists(cameraAccessMessage, identifier: "camera access message", phase: "Permission denied")
+            assertLabel(
+                cameraAccessMessage,
+                expected: "Allow camera access in Settings, or enter the barcode manually.",
+                phase: "Permission denied"
+            )
+
+            for (identifier, control) in [
+                ("barcode-scanner-open-settings", openSettings),
+                ("barcode-scanner-enter-manually", enterManually)
+            ] {
+                assertHittable(control, identifier: identifier, phase: "Permission denied")
+                assertButtonTarget(control, identifier: identifier, phase: "Permission denied")
+            }
+            // Native navigation-bar buttons report their visible glyph frame, not system hit slop.
+            assertHittable(
+                cancelScanner,
+                identifier: "barcode-scanner-cancel",
+                phase: "Permission denied"
+            )
+        }
+
+        XCTContext.runActivity(named: "Recover through manual barcode entry") { _ in
+            enterManually.tap()
+            let scannerDismissed = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "exists == false"),
+                object: scannerNavigationTitle
+            )
+            XCTAssertEqual(
+                XCTWaiter.wait(for: [scannerDismissed], timeout: uiTimeout),
+                .completed,
+                "Manual recovery: scanner did not dismiss; \(diagnostic(for: scannerNavigationTitle))"
+            )
+            assertExists(foodToolsTitle, identifier: "Food tools navigation title", phase: "Manual recovery")
+            assertExists(manualBarcode, identifier: "manual-barcode", phase: "Manual recovery")
+            assertExists(done, identifier: "Done", phase: "Manual recovery")
+        }
+
+        XCTContext.runActivity(named: "Keep manual Food tools usable") { _ in
+            assertHittable(done, identifier: "Done", phase: "Manual recovery")
+        }
+    }
+
+    @MainActor
+    func testMealEditorScannerCancelPreservesDraft() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-scanner-permission-denied",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let addMealButton = app.buttons["add-meal"]
+        let mealEditor = app.descendants(matching: .any)
+            .matching(identifier: "meal-editor")
+            .firstMatch
+        let logFoodTitle = app.navigationBars["Log food"]
+        let selectedFoodName = app.staticTexts["selected-food-name"]
+        let amountField = app.textFields["meal-amount"]
+        let decreaseAmount = app.buttons["amount-decrease-10"]
+        let mealEditorScanBarcode = mealEditor.buttons["Scan barcode"]
+        let scannerNavigationTitle = app.navigationBars["Scan barcode"]
+        let scannerState = app.descendants(matching: .any)
+            .matching(identifier: "barcode-scanner-state")
+            .firstMatch
+        let cancelScanner = app.buttons["barcode-scanner-cancel"]
+
+        XCTContext.runActivity(named: "Launch and create distinct meal draft") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertHittable(addMealButton, identifier: "add-meal", phase: "Launch")
+            addMealButton.tap()
+            assertExists(mealEditor, identifier: "meal-editor", phase: "Meal draft")
+            assertExists(logFoodTitle, identifier: "Log food navigation title", phase: "Meal draft")
+            assertLabel(selectedFoodName, expected: "Almond Milk", phase: "Meal draft")
+            assertExactValue(amountField, expected: "100 grams", phase: "Meal draft")
+            assertHittable(decreaseAmount, identifier: "amount-decrease-10", phase: "Meal draft")
+            decreaseAmount.tap()
+            assertExactValue(amountField, expected: "90 grams", phase: "Meal draft")
+        }
+
+        XCTContext.runActivity(named: "Cancel denied scanner back to same meal draft") { _ in
+            assertHittable(
+                mealEditorScanBarcode,
+                identifier: "MealEditor Scan barcode",
+                phase: "Meal draft"
+            )
+            mealEditorScanBarcode.tap()
+            assertExists(
+                scannerNavigationTitle,
+                identifier: "Scan barcode scanner sheet title",
+                phase: "Meal scanner"
+            )
+            assertExists(scannerState, identifier: "barcode-scanner-state", phase: "Meal scanner")
+            assertHittable(cancelScanner, identifier: "barcode-scanner-cancel", phase: "Meal scanner")
+            cancelScanner.tap()
+
+            assertAbsent(scannerNavigationTitle, identifier: "Scan barcode scanner sheet title", phase: "Return")
+            assertExists(mealEditor, identifier: "meal-editor", phase: "Return")
+            assertExists(logFoodTitle, identifier: "Log food navigation title", phase: "Return")
+            assertLabel(selectedFoodName, expected: "Almond Milk", phase: "Return")
+            assertExactValue(amountField, expected: "90 grams", phase: "Return")
+        }
+    }
+
+    @MainActor
+    func testFoodToolsBarcodeOfflineRecoveryThenSuccess() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let moreLoggingOptions = app.buttons["More logging options"]
+        let enterBarcodeOrCreateFood = app.buttons["Enter barcode or create food"]
+        let foodToolsTitle = app.navigationBars["Food tools"]
+        let manualBarcode = app.textFields["manual-barcode"]
+        let lookup = app.buttons["barcode-lookup-button"]
+        let failureTitle = app.staticTexts["barcode-lookup-failure-title"]
+        let customFoodTitle = app.staticTexts["Custom food"]
+        let customFoodName = app.textFields["custom-food-name"]
+        let mealEditor = app.descendants(matching: .any)
+            .matching(identifier: "meal-editor")
+            .firstMatch
+        let logFoodTitle = app.navigationBars["Log food"]
+        let selectedFoodName = app.staticTexts["selected-food-name"]
+        let amountField = app.textFields["meal-amount"]
+        let calculatedTotal = app.descendants(matching: .any)
+            .matching(identifier: "calculated-total")
+            .firstMatch
+
+        XCTContext.runActivity(named: "Launch Food tools from Today toolbar") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertHittable(moreLoggingOptions, identifier: "More logging options", phase: "Launch")
+            moreLoggingOptions.tap()
+            assertHittable(enterBarcodeOrCreateFood, identifier: "Enter barcode or create food", phase: "Toolbar menu")
+            enterBarcodeOrCreateFood.tap()
+            assertExists(foodToolsTitle, identifier: "Food tools navigation title", phase: "Food tools")
+            assertExists(manualBarcode, identifier: "manual-barcode", phase: "Food tools")
+        }
+
+        XCTContext.runActivity(named: "Show inline product-not-found recovery") { _ in
+            replaceText(
+                in: manualBarcode,
+                with: "00000000",
+                app: app,
+                identifier: "manual-barcode",
+                phase: "Not-found barcode"
+            )
+            assertHittable(lookup, identifier: "barcode-lookup-button", phase: "Not found")
+            lookup.tap()
+            assertLabel(failureTitle, expected: "Product not found", phase: "Not found")
+            assertExists(foodToolsTitle, identifier: "Food tools navigation title", phase: "Not found")
+        }
+
+        XCTContext.runActivity(named: "Keep custom-food recovery available while offline") { _ in
+            replaceText(
+                in: manualBarcode,
+                with: "99999999",
+                app: app,
+                identifier: "manual-barcode",
+                phase: "Offline barcode"
+            )
+            assertAbsent(failureTitle, identifier: "barcode-lookup-failure-title", phase: "Offline barcode")
+            lookup.tap()
+            assertLabel(failureTitle, expected: "You’re offline", phase: "Offline")
+            assertExists(customFoodTitle, identifier: "Custom food section", phase: "Offline")
+            assertExists(customFoodName, identifier: "custom-food-name", phase: "Offline")
+            assertExactValue(manualBarcode, expected: "99999999", phase: "Offline")
+            assertLabel(lookup, expected: "Try lookup again", phase: "Offline")
+            assertHittable(lookup, identifier: "barcode-lookup-button", phase: "Offline")
+            assertButtonTarget(lookup, identifier: "barcode-lookup-button", phase: "Offline")
+            assertQueryCount(app.alerts, expected: 0, phase: "Offline")
+        }
+
+        XCTContext.runActivity(named: "Resolve fixture product into Log food") { _ in
+            replaceText(
+                in: manualBarcode,
+                with: "12345678",
+                app: app,
+                identifier: "manual-barcode",
+                phase: "Fixture barcode"
+            )
+            assertAbsent(failureTitle, identifier: "barcode-lookup-failure-title", phase: "Fixture barcode")
+            lookup.tap()
+            assertExists(mealEditor, identifier: "meal-editor", phase: "Fixture success")
+            assertExists(logFoodTitle, identifier: "Log food navigation title", phase: "Fixture success")
+            XCTAssertFalse(
+                foodToolsTitle.exists,
+                "Fixture success: Food tools remained after Log food appeared; \(diagnostic(for: foodToolsTitle))"
+            )
+            assertLabel(selectedFoodName, expected: "Fixture Granola", phase: "Fixture success")
+            assertExactValue(amountField, expected: "45 grams", phase: "Fixture success")
+            assertExactValue(calculatedTotal, expected: "189 calories", phase: "Fixture success")
+        }
+    }
+
+    @MainActor
+    func testOpenFoodFactsSlowSearchEndsWithNoMatches() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let addMealButton = app.buttons["add-meal"]
+        let chooseFoodButton = app.buttons["choose-food"]
+        let searchField = app.searchFields.firstMatch
+        let loading = app.descendants(matching: .any)
+            .matching(identifier: "open-food-facts-loading")
+            .firstMatch
+        let noMatches = app.descendants(matching: .any)
+            .matching(identifier: "open-food-facts-no-matches")
+            .firstMatch
+        let genericSearch = app.buttons["search-open-food-facts"]
+        let savedFoodsSection = app.staticTexts["Saved foods"]
+        let noSavedFoodsMatch = app.staticTexts["No saved foods match."]
+
+        XCTContext.runActivity(named: "Launch Today and open Choose food") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertHittable(addMealButton, identifier: "add-meal", phase: "Launch")
+            addMealButton.tap()
+            assertHittable(chooseFoodButton, identifier: "choose-food", phase: "Open")
+            chooseFoodButton.tap()
+            assertExists(searchField, identifier: "food search field", phase: "Choose food")
+        }
+
+        XCTContext.runActivity(named: "Verify slow search loading then no matches") { _ in
+            searchField.tap()
+            searchField.typeText("zzslow")
+            assertExists(loading, identifier: "open-food-facts-loading", phase: "Slow loading")
+            assertExists(genericSearch, identifier: "search-open-food-facts", phase: "Slow loading")
+            XCTAssertFalse(
+                genericSearch.isEnabled,
+                "Slow loading: search-open-food-facts is enabled while loading; \(diagnostic(for: genericSearch))"
+            )
+            assertExists(noMatches, identifier: "open-food-facts-no-matches", phase: "Slow terminal")
+            assertAbsent(loading, identifier: "open-food-facts-loading", phase: "Slow terminal")
+            assertExists(savedFoodsSection, identifier: "Saved foods section", phase: "Slow terminal")
+            assertExists(noSavedFoodsMatch, identifier: "No saved foods match", phase: "Slow terminal")
+        }
+    }
+
+    @MainActor
+    func testOpenFoodFactsOfflineStateKeepsSavedFoodRecovery() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let addMealButton = app.buttons["add-meal"]
+        let chooseFoodButton = app.buttons["choose-food"]
+        let searchField = app.searchFields.firstMatch
+        let failure = app.descendants(matching: .any)
+            .matching(identifier: "open-food-facts-failure")
+            .firstMatch
+        let genericSearch = app.buttons["search-open-food-facts"]
+        let retry = app.buttons["retry-open-food-facts"]
+        let savedFoodsSection = app.staticTexts["Saved foods"]
+        let noSavedFoodsMatch = app.staticTexts["No saved foods match."]
+        let attribution = app.links["Open Food Facts attribution"]
+        let offlineTitle = app.descendants(matching: .any)
+            .matching(identifier: "open-food-facts-failure-title")
+            .firstMatch
+        let offlineBody = app.descendants(matching: .any)
+            .matching(identifier: "open-food-facts-failure-message")
+            .firstMatch
+
+        XCTContext.runActivity(named: "Launch Today and open Choose food") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertHittable(addMealButton, identifier: "add-meal", phase: "Launch")
+            addMealButton.tap()
+            assertHittable(chooseFoodButton, identifier: "choose-food", phase: "Open")
+            chooseFoodButton.tap()
+            assertExists(searchField, identifier: "food search field", phase: "Choose food")
+        }
+
+        XCTContext.runActivity(named: "Verify offline recovery without duplicate search") { _ in
+            searchField.tap()
+            searchField.typeText("zzoffline")
+            assertExists(offlineTitle, identifier: "offline failure title", phase: "Offline")
+            assertExists(failure, identifier: "open-food-facts-failure", phase: "Offline")
+            assertLabel(offlineTitle, expected: "No connection", phase: "Offline")
+            assertLabel(
+                offlineBody,
+                expected: "Saved foods still work offline. Reconnect, then try again.",
+                phase: "Offline"
+            )
+            assertHittable(retry, identifier: "retry-open-food-facts", phase: "Offline")
+            assertButtonTarget(retry, identifier: "retry-open-food-facts", phase: "Offline")
+            assertAbsent(genericSearch, identifier: "search-open-food-facts", phase: "Offline")
+            assertExists(savedFoodsSection, identifier: "Saved foods section", phase: "Offline")
+            assertExists(noSavedFoodsMatch, identifier: "No saved foods match", phase: "Offline")
+            assertHittable(attribution, identifier: "Open Food Facts attribution", phase: "Offline")
+        }
+    }
+
+    @MainActor
     func testTrackingWeightLogLifecycleAndAnalytics() throws {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -570,6 +946,7 @@ final class CountCaloriesUITests: XCTestCase {
                 in: weightValue,
                 with: "71.2",
                 app: app,
+                identifier: "weight-value",
                 phase: "Edit editor"
             )
             trace("tracking: edit text replaced")
@@ -868,9 +1245,10 @@ final class CountCaloriesUITests: XCTestCase {
         in field: XCUIElement,
         with replacement: String,
         app: XCUIApplication,
+        identifier: String,
         phase: String
     ) {
-        assertExists(field, identifier: "weight-value", phase: phase)
+        assertExists(field, identifier: identifier, phase: phase)
         field.tap()
         field.typeKey("a", modifierFlags: .command)
         field.typeText(replacement)
@@ -1021,6 +1399,17 @@ final class CountCaloriesUITests: XCTestCase {
             .completed,
             "\(phase): expected value '\(expected)'; \(diagnostic(for: element))"
         )
+    }
+
+    private func dailyEatenCalories(_ element: XCUIElement, phase: String) -> Int {
+        let value = element.value.map { String(describing: $0) } ?? ""
+        let leadingValue = value.split(separator: " ").first ?? ""
+        let digits = leadingValue.filter(\.isNumber)
+        guard let calories = Int(digits) else {
+            XCTFail("\(phase): could not parse eaten calories; \(diagnostic(for: element))")
+            return 0
+        }
+        return calories
     }
 
     private func assertDailyTotal(

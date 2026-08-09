@@ -1,14 +1,88 @@
+import Foundation
 import SwiftUI
 
-struct FoodToolsView: View {
-    @Environment(\.dismiss) private var dismiss
+enum BarcodeLookupFailure: Equatable {
+    case invalid
+    case notFound
+    case incomplete
+    case offline
+    case unavailable
+    case saveFailed
+    case generic
 
+    var title: String {
+        switch self {
+        case .invalid: "Check barcode"
+        case .notFound: "Product not found"
+        case .incomplete: "Product details incomplete"
+        case .offline: "You’re offline"
+        case .unavailable: "Lookup unavailable"
+        case .saveFailed: "Couldn’t save product"
+        case .generic: "Couldn’t look up product"
+        }
+    }
+
+    var body: String {
+        switch self {
+        case .invalid: "Enter a barcode with 8 to 14 digits."
+        case .notFound: "Try another barcode or create a custom food below."
+        case .incomplete: "Calorie details are missing. You can create a custom food below."
+        case .offline: "You can still create a custom food below. Reconnect, then try again."
+        case .unavailable: "Open Food Facts is unavailable right now. Try again shortly."
+        case .saveFailed: "Product was found, but could not be saved. Try again."
+        case .generic: "Open Food Facts could not complete this lookup. Try again."
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .invalid: "barcode"
+        case .notFound: "magnifyingglass"
+        case .incomplete: "list.bullet.clipboard"
+        case .offline: "wifi.slash"
+        case .unavailable: "clock"
+        case .saveFailed: "tray.and.arrow.down"
+        case .generic: "exclamationmark.circle"
+        }
+    }
+
+    static func classify(_ error: any Error) -> BarcodeLookupFailure {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost,
+                    .cannotFindHost, .dataNotAllowed:
+                return .offline
+            case .timedOut:
+                return .unavailable
+            default:
+                return .generic
+            }
+        }
+
+        guard let fetchError = error as? FoodNutritionFetchError else {
+            return .generic
+        }
+        switch fetchError {
+        case .invalidBarcode:
+            return .invalid
+        case .timedOut, .serverError:
+            return .unavailable
+        case .invalidResponse:
+            return .generic
+        }
+    }
+}
+
+struct FoodToolsView: View {
     @Binding var barcode: String
     @Binding var foodName: String
     @Binding var calories: Int
     @Binding var servingAmount: Double
 
     let isLookingUpBarcode: Bool
+    let barcodeLookupFailure: BarcodeLookupFailure?
+    let onBarcodeChanged: () -> Void
+    let onDone: () -> Void
     let onLookupBarcode: () -> Void
     let onSaveFood: () -> Void
 
@@ -17,7 +91,7 @@ struct FoodToolsView: View {
     }
 
     private var canLookupBarcode: Bool {
-        normalizedBarcode.count >= 8 && !isLookingUpBarcode
+        (8...14).contains(normalizedBarcode.count) && !isLookingUpBarcode
     }
 
     private var canSaveFood: Bool {
@@ -33,30 +107,70 @@ struct FoodToolsView: View {
                     TextField("Barcode", text: $barcode)
                         .keyboardType(.numberPad)
                         .textContentType(.none)
+                        .disabled(isLookingUpBarcode)
                         .accessibilityIdentifier("manual-barcode")
+                        .onChange(of: barcode) { _, _ in
+                            onBarcodeChanged()
+                        }
+
+                    if isLookingUpBarcode {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Looking up product")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Looking up product")
+                        .accessibilityIdentifier("barcode-lookup-loading")
+                    } else if let barcodeLookupFailure {
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(barcodeLookupFailure.title)
+                                    .font(.headline)
+                                    .accessibilityIdentifier("barcode-lookup-failure-title")
+                                Text(barcodeLookupFailure.body)
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color.primary.opacity(0.72))
+                                    .accessibilityIdentifier("barcode-lookup-failure-message")
+                            }
+                        } icon: {
+                            Image(systemName: barcodeLookupFailure.icon)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("barcode-lookup-failure")
+                    }
 
                     Button {
                         onLookupBarcode()
                     } label: {
-                        Label("Look up product", systemImage: "barcode.viewfinder")
+                        Label(
+                            barcodeLookupFailure == nil ? "Look up product" : "Try lookup again",
+                            systemImage: barcodeLookupFailure == nil ? "barcode.viewfinder" : "arrow.clockwise"
+                        )
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                     }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .accessibilityIdentifier("barcode-lookup-button")
                     .foregroundStyle(
                         canLookupBarcode ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary)
                     )
                     .disabled(!canLookupBarcode)
-
-                    if isLookingUpBarcode {
-                        ProgressView("Looking up product")
-                    }
                 } header: {
                     Text("Barcode")
                 } footer: {
-                    Text("Enter at least 8 digits printed below product barcode.")
+                    Text("Enter 8 to 14 digits printed below the product barcode.")
                 }
 
                 Section {
-                    TextField("Food name", text: $foodName)
-                        .textInputAutocapitalization(.words)
+                    LabeledContent("Name") {
+                        TextField("Food name", text: $foodName)
+                            .textInputAutocapitalization(.words)
+                            .multilineTextAlignment(.trailing)
+                            .accessibilityIdentifier("custom-food-name")
+                    }
 
                     LabeledContent("Calories") {
                         TextField("Calories", value: $calories, format: .number)
@@ -85,7 +199,7 @@ struct FoodToolsView: View {
                 } header: {
                     Text("Custom food")
                 } footer: {
-                    Text("Calories are for the serving amount shown above.")
+                    Text("Enter a name to save calories for the serving amount shown above.")
                 }
             }
             .navigationTitle("Food tools")
@@ -93,8 +207,9 @@ struct FoodToolsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        dismiss()
+                        onDone()
                     }
+                    .accessibilityIdentifier("food-tools-done")
                 }
             }
         }
@@ -110,6 +225,39 @@ struct FoodToolsView: View {
         calories: .constant(120),
         servingAmount: .constant(100),
         isLookingUpBarcode: false,
+        barcodeLookupFailure: nil,
+        onBarcodeChanged: {},
+        onDone: {},
+        onLookupBarcode: {},
+        onSaveFood: {}
+    )
+}
+
+#Preview("Food tools offline") {
+    FoodToolsView(
+        barcode: .constant("99999999"),
+        foodName: .constant(""),
+        calories: .constant(120),
+        servingAmount: .constant(100),
+        isLookingUpBarcode: false,
+        barcodeLookupFailure: .offline,
+        onBarcodeChanged: {},
+        onDone: {},
+        onLookupBarcode: {},
+        onSaveFood: {}
+    )
+}
+
+#Preview("Food tools loading") {
+    FoodToolsView(
+        barcode: .constant("11111111"),
+        foodName: .constant(""),
+        calories: .constant(120),
+        servingAmount: .constant(100),
+        isLookingUpBarcode: true,
+        barcodeLookupFailure: nil,
+        onBarcodeChanged: {},
+        onDone: {},
         onLookupBarcode: {},
         onSaveFood: {}
     )

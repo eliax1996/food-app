@@ -1,41 +1,46 @@
 # Working notes
 
-## Current milestone
+## Current program
 
-`TRACKING-IA-001` — **ACCEPTED — ATTEMPT 01 / COMPLETE**.
+Original autonomous product redesign — **IN PROGRESS**.
 
-Final root:
+Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 
-```text
-Today | Weight | Progress | Settings
-```
+## Completed core milestones
 
-## Architecture
+- Today dashboard, calorie/water hierarchy, meal grouping
+- Meal editor, local/remote food search, custom/barcode tools
+- Cached Open Food Facts search and keyboard-secondary amount controls
+- Progress analytics
+- Dedicated Weight Log
+- Root `Today | Weight | Progress | Settings`
 
-- **Today:** current-day calorie, food, and water actions.
-- **Weight / Weight Log:** raw measurements, basic seven-reading raw chart, current/recent-seven/target context, same-day preservation, independent date/time backdating, edit, confirmed delete, stacked undo, and useful one-reading prompt.
-- **Progress:** fuller fourteen-reading weight analytics only. No weight CRUD. `View full trends` routes directly to Progress / Weight.
-- **Settings:** target weight, age, daily calorie goal, target date, and reminders. No current-weight field or save path.
-- No historical calorie CRUD or generic Calories/Water/Weight table. Future calorie history is separate date-first day diary.
+Latest milestone commit: `96e6ec9 Add dedicated weight tracking tab`.
 
-## Final results
+## Current component
 
-- `just validate 300`: **passed**.
-- Hostless validation: **125 passed / 2 opt-in live skips**.
-- Simulator build, install, and launch: **passed**.
-- `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`.
-- Explicit UI target: **6/6 passed**, covering four tabs; one-reading prompt → two-reading chart; two same-day readings; backdated date regrouping; edit; delete cancel/confirm/undo; Settings; and direct `View full trends` → `Progress` / `Weight`.
-- App-hosted persistence tests passed after final duplicate-profile/future-row correctness fixes and passed again in an integrated run.
-- One later standalone `just test-app-unit 300` timed out before XCTest. External Xcode 27 host instability; not a red product gate.
+`NUTRIENTS-001`: daily carbohydrates, protein, fat, and fiber persistence; explicit coverage; transparent nutrition-balance guidance.
 
-## Visual evidence
+`STATES-001` is accepted attempt 04 and complete.
 
-Accepted TRACKING visual files are only `design-redesign/screenshots/TRACKING-IA-001/attempt-01-*`.
+## Remaining sequence
 
-- `superseded-three-tab-*` files remain historical.
-- `rejected-one-reading-chart.png` remains rejected evidence.
+1. NUTRIENTS-001 — daily carbohydrates/protein/fat/fiber split plus transparent nutrition-balance guidance
+2. REFINE-001 — deferred until NUTRIENTS completes; full onboarding/calorie-goal/weight-adaptation/custom-reminder/Settings scope is preserved under `COMPLETION-PLAN.md#refine`
+3. AUXILIARY-001 — Widget and Live Activity
+4. CONSISTENCY-001
+5. ROBUSTNESS-001
+6. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
 
-## Next work
+## Current validation baseline
 
-1. empty/error/loading states
-2. global consistency, dark mode, Dynamic Type, and small-device checks
+- exact-tree `just validate 300`: passed
+- `just iterate 240`: passed
+- hostless: 130 passed / 2 opt-in live skips
+- functional UI target: 11/11 passed through `just test-ui 420`
+- simulator build/install/launch: passed
+- app-host persistence: passed after final tracking correctness fixes; one later standalone host attempt timed out before XCTest
+
+## Immediate action
+
+Research NUTRIENTS-001 source completeness and target/range rules, then specify migration-safe Food/PlateEntry nutrient snapshots and coverage behavior before implementation. REFINE-001 stays deferred until nutrients are accepted.

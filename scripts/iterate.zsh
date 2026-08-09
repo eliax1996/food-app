@@ -284,6 +284,15 @@ case "$action" in
             "-only-testing:count_caloriesUITests" \
             "-skip-testing:count_caloriesUITests/CountCaloriesUITests/testLaunchPerformance"
         ;;
+    test-ui-one)
+        if [[ -z "$argument" ]]; then
+            print -u2 -- "error: test-ui-one requires an XCTest filter such as CountCaloriesUITests/testAddingDefaultMealUpdatesToday"
+            exit 64
+        fi
+        reset_simulator
+        run_simulator_tests "Selected functional UI test" \
+            "-only-testing:count_caloriesUITests/$argument"
+        ;;
     test-app-unit)
         run_simulator_tests "App-hosted unit tests" "-only-testing:count_caloriesTests"
         ;;

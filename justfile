@@ -65,6 +65,9 @@ test-one identifier timeout=iteration_timeout: (_run "test-one" timeout identifi
 # Run functional UI smoke tests without launch-performance measurement.
 test-ui timeout=validation_timeout: (_run "test-ui" timeout "")
 
+# Run one functional UI XCTest filter (Class/method) for focused authoring and diagnosis.
+test-ui-one identifier timeout=validation_timeout: (_run "test-ui-one" timeout identifier)
+
 # Run the app-hosted unit target when iOS-specific test hosting needs verification.
 test-app-unit timeout=validation_timeout: (_run "test-app-unit" timeout "")
 
