@@ -191,7 +191,7 @@ struct WeightLogView: View {
                 get: { operationError != nil },
                 set: { if !$0 { operationError = nil } }
             )) {
-                Button("OK", role: .cancel) {}
+                Button("Dismiss", role: .cancel) {}
             } message: {
                 Text(operationError?.message ?? "Unknown error")
             }
@@ -292,7 +292,17 @@ struct WeightLogView: View {
     private func beginRecording() {
         editorPresentation = WeightEditorPresentation(
             entry: nil,
-            defaultKilograms: validProfileCurrentWeight ?? 70
+            defaultKilograms: WeightEntryDraft.defaultKilograms(
+                measurements: rawEntries.map {
+                    WeightProgressPoint(
+                        date: $0.date,
+                        kilograms: $0.kilograms,
+                        stableID: $0.stableID,
+                        sequence: $0.sequence
+                    )
+                },
+                profileCurrentWeight: validProfileCurrentWeight
+            )
         )
     }
 
@@ -317,12 +327,14 @@ struct WeightLogView: View {
         } else {
             try store.add(kilograms: kilograms, date: date)
         }
+        rescheduleReminders()
     }
 
     @MainActor
     private func deleteWeight(_ entry: WeightEntry) {
         do {
             deletedMeasurements.append(try WeightMeasurementStore(modelContext: modelContext).delete(entry))
+            rescheduleReminders()
         } catch {
             operationError = .delete
         }
@@ -335,8 +347,34 @@ struct WeightLogView: View {
         do {
             _ = try WeightMeasurementStore(modelContext: modelContext).restore(deletedMeasurement)
             deletedMeasurements.removeLast()
+            rescheduleReminders()
         } catch {
             operationError = .restore
+        }
+    }
+
+    private func rescheduleReminders() {
+        let meals = ((try? modelContext.fetch(FetchDescriptor<PlateEntry>())) ?? []).map {
+            MealReminderRecord(mealType: $0.mealType, date: $0.date)
+        }
+        let water = ((try? modelContext.fetch(FetchDescriptor<WaterDay>())) ?? []).map {
+            WaterReminderRecord(
+                date: $0.date,
+                glasses: $0.glasses,
+                lastRecordedAt: $0.lastRecordedAt
+            )
+        }
+        let weights = ((try? modelContext.fetch(FetchDescriptor<WeightEntry>())) ?? []).map {
+            WeightReminderRecord(date: $0.date)
+        }
+
+        Task {
+            await ReminderNotificationManager.shared.reschedule(
+                meals: meals,
+                water: water,
+                weights: weights,
+                preferences: .stored()
+            )
         }
     }
 
@@ -464,7 +502,9 @@ private struct WeightEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     @Environment(\.calendar) private var calendar
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    @FocusState private var weightFieldIsFocused: Bool
     @State private var kilogramsText: String
     @State private var selectedDate: Date
     @State private var selectedTime: Date
@@ -473,6 +513,21 @@ private struct WeightEditor: View {
     private let isEditing: Bool
     private let originalTimestamp: Date?
     private let onSave: @MainActor (Double, Date) throws -> Void
+
+    private struct Adjustment: Identifiable {
+        let title: String
+        let delta: Double
+        let identifier: String
+
+        var id: String { identifier }
+    }
+
+    private let adjustments = [
+        Adjustment(title: "−1", delta: -1, identifier: "weight-decrease-1"),
+        Adjustment(title: "−0.1", delta: -0.1, identifier: "weight-decrease-0.1"),
+        Adjustment(title: "+0.1", delta: 0.1, identifier: "weight-increase-0.1"),
+        Adjustment(title: "+1", delta: 1, identifier: "weight-increase-1")
+    ]
 
     init(
         entry: WeightEntry?,
@@ -493,15 +548,24 @@ private struct WeightEditor: View {
         NavigationStack {
             Form {
                 Section("Weight") {
-                    HStack {
-                        TextField("Weight", text: $kilogramsText)
-                            .keyboardType(.decimalPad)
-                            .accessibilityIdentifier("weight-value")
-                            .accessibilityLabel("Weight in kilograms")
-                            .accessibilityValue(kilogramsText)
-                        Text("kg")
-                            .foregroundStyle(.secondary)
+                    VStack(spacing: 16) {
+                        HStack {
+                            TextField("Weight", text: $kilogramsText)
+                                .keyboardType(.decimalPad)
+                                .focused($weightFieldIsFocused)
+                                .font(.title3.weight(.semibold))
+                                .multilineTextAlignment(.trailing)
+                                .textFieldStyle(.roundedBorder)
+                                .accessibilityIdentifier("weight-value")
+                                .accessibilityLabel("Weight in kilograms")
+                                .accessibilityValue(kilogramsText)
+                            Text("kg")
+                                .foregroundStyle(.secondary)
+                        }
+
+                        adjustmentControls
                     }
+                    .padding(.vertical, 4)
                 }
 
                 Section("When") {
@@ -523,6 +587,13 @@ private struct WeightEditor: View {
                     Button("Save", action: save)
                         .accessibilityIdentifier("weight-save")
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        weightFieldIsFocused = false
+                    }
+                    .accessibilityIdentifier("weight-keyboard-done")
+                }
             }
         }
         .accessibilityIdentifier("weight-editor")
@@ -532,10 +603,62 @@ private struct WeightEditor: View {
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("OK", role: .cancel) {}
+            Button("Dismiss", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "Unknown error")
         }
+    }
+
+    @ViewBuilder
+    private var adjustmentControls: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 12),
+                    GridItem(.flexible(), spacing: 12)
+                ],
+                spacing: 12
+            ) {
+                ForEach(adjustments) { adjustment in
+                    adjustmentButton(adjustment)
+                }
+            }
+        } else {
+            HStack(spacing: 8) {
+                ForEach(adjustments) { adjustment in
+                    adjustmentButton(adjustment)
+                }
+            }
+        }
+    }
+
+    private func adjustmentButton(_ adjustment: Adjustment) -> some View {
+        let adjusted = parsedKilograms().flatMap {
+            WeightEntryDraft.adjustedKilograms($0, by: adjustment.delta)
+        }
+        let action = adjustment.delta < 0 ? "Decrease" : "Increase"
+        let magnitude = abs(adjustment.delta)
+        let unit = magnitude == 1 ? "kilogram" : "kilograms"
+
+        return Button {
+            guard let adjusted else { return }
+            kilogramsText = adjusted.formatted(
+                .number
+                    .precision(.fractionLength(1))
+                    .locale(locale)
+            )
+            errorMessage = nil
+        } label: {
+            Text(adjustment.title)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .disabled(adjusted == nil)
+        .accessibilityLabel("\(action) weight by \(magnitude.formatted(.number.locale(locale))) \(unit)")
+        .accessibilityValue("Current \(kilogramsText) kilograms")
+        .accessibilityHint("Date and time stay unchanged.")
+        .accessibilityIdentifier(adjustment.identifier)
     }
 
     private func save() {
@@ -583,5 +706,14 @@ private struct WeightEditor: View {
 #Preview("Weight Log — Empty") {
     WeightLogView(onViewProgress: {})
         .modelContainer(PreviewData.makeContainer(state: .empty))
+}
+
+#Preview("Weight Editor") {
+    WeightEditor(
+        entry: nil,
+        defaultKilograms: 71.2,
+        now: .now,
+        onSave: { _, _ in }
+    )
 }
 #endif

@@ -15,17 +15,17 @@ Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 - Dedicated Weight Log
 - Root `Today | Weight | Progress | Settings`
 
-Latest committed milestone: `83b68a1 Add resilient food lookup recovery`. NUTRIENTS-001 is accepted and ready for its focused commit.
+Latest committed milestone: `0a19ef6 Add truthful daily nutrition balance`. REFINE-001 attempt 01 Slices A/B and WEIGHT-ENTRY-001 are accepted and ready for a focused commit.
 
 ## Current component
 
 `REFINE-001`: competitor/safety research, welcome/setup, explainable Plan and calorie goal, NUTRITION-GOALS-001 theoretical macro/fiber references versus measured actuals, weight adaptation, configurable reminders, and hierarchical Settings.
 
-`STATES-001` and `NUTRIENTS-001` are accepted and complete.
+`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A/B, and WEIGHT-ENTRY-001 are accepted and complete.
 
 ## Remaining sequence
 
-1. REFINE-001 — prerequisite complete; full onboarding/calorie-goal/weight-adaptation/custom-reminder/Settings scope plus NUTRITION-GOALS-001 calorie-goal-derived macro/fiber reference composition versus measured actuals is preserved under `COMPLETION-PLAN.md#refine`
+1. REFINE-001 — Slice C welcome/setup and explainable calculated calorie plan, then Slice D evidence-gated weight adaptation. Hierarchical Settings, Plan references, reminders, and numeric-entry follow-up are complete.
 2. AUXILIARY-001 — Widget and Live Activity
 3. CONSISTENCY-001
 4. ROBUSTNESS-001
@@ -34,12 +34,12 @@ Latest committed milestone: `83b68a1 Add resilient food lookup recovery`. NUTRIE
 ## Current validation baseline
 
 - exact-tree `just validate 300`: passed
-- hostless: 140 passed / 2 opt-in live skips
-- functional UI target: 12/12 passed through `just test-ui 420`
+- hostless: 155 passed / 2 opt-in live skips
+- functional UI target: 14/14 passed through `just test-ui 600`
 - simulator build/install/launch: passed
-- app-hosted: 167 passed / 2 opt-in live skips after one bounded host recovery
-- NUTRIENTS critical/high visual acceptance: 3/3 APPROVE
+- app-hosted: 184 passed / 2 opt-in live skips
+- REFINE and WEIGHT-ENTRY critical/high visual/code review: APPROVE
 
 ## Immediate action
 
-Create focused NUTRIENTS-001 commit excluding `.TASK_NOTES.md`, then begin REFINE-001 competitor and nutrition-safety research/specification. Include NUTRITION-GOALS-001: derive theoretical macro gram ranges and Fiber reference from calorie goal, then compare them with real measured intake without calling one composition universally ideal.
+Create focused REFINE-001 attempt-01 + WEIGHT-ENTRY-001 commit excluding `.TASK_NOTES.md`, then begin REFINE Slice C supported-population/equation specification before onboarding implementation.

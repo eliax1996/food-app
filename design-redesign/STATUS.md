@@ -15,10 +15,12 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - HISTORY-001 / PROGRESS-001 / WEIGHT-001: accepted attempt 02. `History` is now `Progress`; target-aware seven-day calories, fourteen-reading weight trend, useful empty Weight action, and locale-safe Cancel/Save recording are verified as pre-TRACKING baseline.
 - STATES-001: accepted attempt 04. Truthful remote loading/terminal empty/offline states, permission-specific scanner recovery, draft-preserving scanner cancellation, and inline barcode loading/not-found/offline/success recovery are visually and functionally verified.
 - NUTRIENTS-001: accepted attempt 01. Optional carbohydrate/protein/fat/fiber API mapping, cache migration, Food serving facts, immutable PlateEntry snapshots, custom-food entry, explicit coverage, and transparent general-adult measured guidance are visually and functionally verified.
+- REFINE-001 Slices A/B: accepted attempt 01. Calorie-goal-derived Plan references, hierarchical Settings, explicit Plan/Profile/Reminder transactions, exact meal times, Daily/Weekly weight reminders, contextual notification authorization, denied recovery, and authorization-return rescheduling are verified.
+- WEIGHT-ENTRY-001: accepted attempt 01. Latest-measure defaults, direct `−1/−0.1/+0.1/+1` kg controls, and keyboard Done across all numeric entry surfaces are verified.
 
 ## Current component
 
-REFINE-001 — **NEXT / READY FOR COMPETITOR AND SAFETY RESEARCH**.
+REFINE-001 — **IN PROGRESS; ATTEMPT 01 SLICES A/B ACCEPTED. SLICE C NEXT**.
 
 Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCEPTED — ATTEMPT 01 / COMPLETE** with final root order:
 
@@ -26,11 +28,11 @@ Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCE
 Today | Weight | Progress | Settings
 ```
 
-STATES-001 and NUTRIENTS-001 are complete. Current work begins REFINE-001 onboarding, explainable Plan/calorie goals, NUTRITION-GOALS-001 theoretical references versus measured actuals, weight adaptation, configurable reminders, and hierarchical Settings before auxiliary/global/final review.
+STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders, and WEIGHT-ENTRY-001 are complete. Current work continues with skippable welcome/setup, explainable calculated calorie goals, then evidence-gated weight adaptation before auxiliary/global/final review.
 
 ## Next components
 
-1. REFINE-001 — prerequisite complete; welcome setup, explainable calorie-goal calculator, calorie-goal-derived macro/fiber reference composition versus measured actuals (NUTRITION-GOALS-001), weight reminders/adaptive tuning, custom meal windows, and hierarchical Settings. Full scope: `COMPLETION-PLAN.md#refine`.
+1. REFINE-001 — Slice C welcome/setup and explainable calorie-goal calculator, then Slice D evidence-gated adaptive tuning. Plan references, exact reminders, hierarchical Settings, and numeric-entry follow-up are accepted. Full scope: `COMPLETION-PLAN.md#refine`.
 2. AUXILIARY-001 — Widget and Live Activity
 3. CONSISTENCY-001
 4. ROBUSTNESS-001
@@ -67,7 +69,8 @@ STATES-001 and NUTRIENTS-001 are complete. Current work begins REFINE-001 onboar
 - HIGH VALUE: keyboard-free ±10/±1 amount editor — implemented and accepted; recent/frequent foods — recents implemented; target-aware calorie trend — implemented and accepted in Progress analytics.
 - HIGH VALUE: revised TRACKING-IA-001 Weight root/log and Progress handoff — **accepted attempt 01 / complete**.
 - HIGH VALUE: NUTRIENTS-001 daily macro/fiber summary and transparent nutrition-balance guidance — implemented and accepted attempt 01.
-- HIGH VALUE: NUTRITION-GOALS-001 theoretical adult macro/fiber reference values derived from calorie goal versus real measured intake — backlog, scheduled inside REFINE-001 after NUTRIENTS acceptance.
+- HIGH VALUE: NUTRITION-GOALS-001 theoretical adult macro/fiber reference values derived from calorie goal versus real measured intake — implemented and accepted with REFINE attempt 01.
+- HIGH VALUE: latest-measure weight defaults, coarse/fine adjustments, and explicit numeric-keyboard Done — implemented and accepted as WEIGHT-ENTRY-001 attempt 01.
 
 Detailed active backlog: `PRODUCT-BACKLOG.md`.
 
@@ -76,25 +79,24 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 - Best balance between one global Log Food action and per-meal add actions.
 - Exact evidence-based calorie equation, required inputs, safety bounds, adjustment cadence, and confidence rules for deferred REFINE-001.
 - Whether deferred personal macro targets should be editable in addition to transparent adult population reference defaults.
-- Whether meal reminders should use exact times or configurable windows after competitor research.
 - Future cross-device consistency.
 
 ## Technical debt discovered
 
 - Dashboard owns food library, scanner, persistence, widget, activity, reminders, and presentation state.
 - No reusable semantic accessibility summary for daily status.
-- Food Tools keyboard activation emits an iOS 27 SwiftUI `Invalid frame dimension (negative or non-finite).` runtime diagnostic in both barcode and custom-food UI tests; both flows pass with no visible defect and no source frame.
+- Numeric keyboard activation emits source-less iOS 27 SwiftUI `Invalid frame dimension (negative or non-finite).` runtime diagnostics in Food Tools and related UI tests; every flow passes with no visible defect or source frame.
 - Weight raw same-day/backdated persistence is implemented; duplicate-profile and future-row correctness fixes are covered by passing app-hosted persistence runs.
 
 ## Validation snapshot
 
 - Latest exact-tree `just validate 300`: **passed**.
-- Hostless validation: **140 passed / 2 opt-in live skips**.
+- Hostless validation: **155 passed / 2 opt-in live skips**.
 - Simulator compile, install, and launch: **passed**.
 - `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`.
-- Latest explicit UI target: **12/12 passed** through `just test-ui 420`, covering core logging/tracking, remote/scanner/barcode recovery, and custom nutrient entry → logged snapshot → daily balance.
-- App-hosted tests: **167 passed / 2 opt-in live skips** after one bounded recovery from a corrupt timed-out host result.
-- Full UI results retain two source-less iOS 27 Food Tools keyboard runtime diagnostics; no test or rendered flow failed.
+- Latest explicit UI target: **14/14 passed** through `just test-ui 600`, covering core logging/tracking, Plan/Settings/reminders, populated Today tab clearance, latest-default weight adjustments, keyboard Done, remote/scanner/barcode recovery, and custom nutrients.
+- App-hosted tests: **184 passed / 2 opt-in live skips**.
+- Full UI results retain source-less iOS 27 `Invalid frame dimension (negative or non-finite).` diagnostics while numeric keyboards open; no test or rendered flow failed.
 
 ## Visual evidence
 
@@ -113,3 +115,7 @@ Superseded three-tab captures remain historical only: `superseded-three-tab-two-
 Accepted STATES-001 evidence is under `screenshots/STATES-001/`; `attempt-04-remote-offline.png` is the final live post-fix remote capture. Attempt 02 scanner and attempt 03 barcode captures are accepted supporting state/accessibility evidence; `attempt-01-remote-offline-small-retry.png` remains explicitly rejected.
 
 Accepted NUTRIENTS-001 attempt-01 evidence is under `screenshots/NUTRIENTS-001/`: Today, complete, measured-gap, partial, AX3-dark, custom-food entry, and normal/AX3-dark nutrient editor captures. Final critical/high visual judgment: **3/3 APPROVE**.
+
+Accepted REFINE-001 attempt-01 evidence is under `screenshots/REFINE-001/`: Settings, Plan/reference/editor/partial, reminders/editor/denied/small/AX3-dark, Today, and corrected nutrition detail.
+
+Accepted WEIGHT-ENTRY-001 evidence is under `screenshots/WEIGHT-ENTRY-001/`: normal editor and AX3-dark adaptive editor. Final bounded visual and code judgments: **APPROVE**.

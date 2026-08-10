@@ -438,7 +438,7 @@ Expose carbohydrate, protein, fat, and Fiber without converting missing crowdsou
 
 Open Food Facts v3.6, v2, and search now map independently optional facts into nutrient-aware caches. `Food` stores facts for its serving; each `PlateEntry` stores consumed snapshots, so later food edits never rewrite historical intake. Custom food uses a focused optional Nutrients editor with explicit Done draft commit.
 
-Today keeps remaining calories primary and adds a compact macro-energy split separated from Fiber, coverage, and one neutral headline. Detail uses native List sections for measured grams, adult ranges, energy-scaled Fiber reference, at most two measured-gap suggestions, exact coverage, source links, label caveat, and nonmedical scope. Macro/Fiber comparisons require 100% corresponding coverage; reported calories remain separate from 4/4/9 split math.
+Today keeps remaining calories primary and adds a compact macro-only energy split separated from Fiber, coverage, and one neutral headline. Detail uses native List sections for measured grams, adult ranges, energy-scaled Fiber reference, at most two measured-gap suggestions, exact coverage, source links, label caveat, and nonmedical scope. Macro/Fiber comparisons require 100% corresponding coverage; adult-range macro shares use reported logged calories as denominator while the colored 4/4/9 split stays explicitly normalized across the three measured macros.
 
 ### Iteration
 
@@ -456,3 +456,35 @@ Accepted attempt-01 files under `../screenshots/NUTRIENTS-001/` cover Today, com
 - Final critical/high visual judgment: 3/3 `APPROVE`.
 
 **ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: REFINE-001, including queued NUTRITION-GOALS-001 theoretical calorie-goal-derived ranges versus measured actuals.
+
+## [REFINE-001] Plan references, focused Settings, and configurable reminders
+
+### Accepted implementation
+
+Settings now separates Plan, Profile, and Reminders. Existing calorie goals stay explicitly Manual. Focused editors use draft state, Save/Cancel, and no swipe-to-discard. Plan derives adult carbohydrate/protein/fat gram ranges and Fiber reference from the current calorie goal, shows method/scope, and keeps partial measured data honest.
+
+Meal reminders use independent exact times. Weight reminders support Daily/Weekly; weekly waits seven local-calendar days after latest weight. Water remains independent. Permission is requested only after Save expresses intent; denial preserves selected preferences and exposes iOS Settings recovery; returning authorization reschedules immediately.
+
+### Critical iterations
+
+Review corrected overdue weekly timing, localized reminder windows, accidental sheet dismissal, unsupported goal-history copy, authorization-return rescheduling, and AMDR denominator math. Today now labels the normalized colored bar macro-only, shows grams, and uses reported logged calories only for adult-range shares. Compact meal rows preserve all four groups above the floating tab bar.
+
+### Evidence and validation
+
+Evidence under `screenshots/REFINE-001/` covers Settings, Plan/editor/partial, reminder summary/editor/denied/small/AX3-dark, Today, and nutrition detail. Three bounded visual groups and bounded domain/UI reviewers approved final critical/high state.
+
+- `just validate 300`: 155 pass / 2 live skips; simulator build/install/launch passed.
+- `just test-app-unit 420`: 184 pass / 2 live skips.
+- `just test-ui 600`: 14/14 pass.
+
+**ATTEMPT 01 ACCEPTED — SLICES A/B COMPLETE.** REFINE continues with welcome/setup and explainable calculated calorie plan.
+
+## [WEIGHT-ENTRY-001] Low-friction weight and numeric entry
+
+### Accepted implementation
+
+Weight → toolbar add → editor → Save remains two deliberate actions. New drafts use latest valid nonfuture measurement, then profile current weight, then 70 kg. `−1`, `−0.1`, `+0.1`, and `+1` kg controls update one-decimal value without keyboard; exact input/date/time remain available. Every numeric pad now has native keyboard Done that dismisses focus only, never saves.
+
+Normal and AX3-dark screenshots passed bounded visual review. Deterministic rules, focused latest-default/adjustment/Done UI flow, meal keyboard Done, Plan keyboard Done, exact-tree validation, and final 14/14 UI suite passed.
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE.**

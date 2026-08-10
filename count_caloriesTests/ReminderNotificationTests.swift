@@ -164,8 +164,208 @@ final class ReminderNotificationTests: XCTestCase {
         )
 
         XCTAssertEqual(plans.count, 55)
-        XCTAssertLessThanOrEqual(plans.count, 64)
+        XCTAssertLessThanOrEqual(plans.count, ReminderSchedulePlanner.pendingNotificationLimit)
         XCTAssertEqual(Set(plans.map(\.identifier)).count, plans.count)
+    }
+
+    func testCustomMealTimesStayIndependentAndSuppressOnlyMatchingMeal() throws {
+        let calendar = utcCalendar()
+        let now = try date(2026, 6, 10, 7, 0, calendar: calendar)
+        let preferences = ReminderPreferences(
+            breakfastEnabled: true,
+            lunchEnabled: true,
+            breakfastTime: ReminderTime(hour: 8, minute: 15),
+            lunchTime: ReminderTime(hour: 14, minute: 45)
+        )
+        let breakfast = MealReminderRecord(
+            mealType: ReminderMeal.breakfast.rawValue,
+            date: try date(2026, 6, 10, 7, 30, calendar: calendar)
+        )
+
+        let plans = ReminderSchedulePlanner.plans(
+            now: now,
+            calendar: calendar,
+            preferences: preferences,
+            meals: [breakfast],
+            water: []
+        )
+
+        XCTAssertFalse(plans.contains {
+            $0.kind == .meal(.breakfast) && calendar.isDate($0.fireDate, inSameDayAs: now)
+        })
+        XCTAssertEqual(
+            plans.first { $0.kind == .meal(.lunch) }?.fireDate,
+            try date(2026, 6, 10, 14, 45, calendar: calendar)
+        )
+        XCTAssertEqual(
+            plans.first { $0.kind == .meal(.breakfast) }?.fireDate,
+            try date(2026, 6, 11, 8, 15, calendar: calendar)
+        )
+    }
+
+    func testDailyWeightReminderSkipsDaysWithMeasurements() throws {
+        let calendar = utcCalendar()
+        let now = try date(2026, 6, 10, 7, 0, calendar: calendar)
+        let preferences = ReminderPreferences(
+            weightEnabled: true,
+            weightTime: ReminderTime(hour: 9, minute: 30),
+            weightFrequency: .daily
+        )
+        let todayWeight = WeightReminderRecord(
+            date: try date(2026, 6, 10, 6, 30, calendar: calendar)
+        )
+
+        let plans = ReminderSchedulePlanner.plans(
+            now: now,
+            calendar: calendar,
+            preferences: preferences,
+            meals: [],
+            water: [],
+            weights: [todayWeight]
+        )
+
+        XCTAssertEqual(plans.count, 4)
+        XCTAssertTrue(plans.allSatisfy { $0.kind == .weight })
+        XCTAssertFalse(plans.contains { calendar.isDate($0.fireDate, inSameDayAs: now) })
+        XCTAssertEqual(
+            plans.first?.fireDate,
+            try date(2026, 6, 11, 9, 30, calendar: calendar)
+        )
+    }
+
+    func testWeeklyWeightReminderWaitsSevenCalendarDaysAfterLatestMeasurement() throws {
+        let calendar = utcCalendar()
+        let now = try date(2026, 6, 10, 7, 0, calendar: calendar)
+        let preferences = ReminderPreferences(
+            weightEnabled: true,
+            weightTime: ReminderTime(hour: 8, minute: 45),
+            weightFrequency: .weekly
+        )
+        let latestWeight = WeightReminderRecord(
+            date: try date(2026, 6, 8, 20, 0, calendar: calendar)
+        )
+
+        let plans = ReminderSchedulePlanner.plans(
+            now: now,
+            calendar: calendar,
+            preferences: preferences,
+            meals: [],
+            water: [],
+            weights: [latestWeight]
+        )
+
+        XCTAssertEqual(plans, [
+            ReminderNotificationPlan(
+                identifier: "count-calories.reminder.weight.2026-6-15-8-45-0",
+                kind: .weight,
+                fireDate: try date(2026, 6, 15, 8, 45, calendar: calendar)
+            )
+        ])
+    }
+
+    func testOverdueWeeklyWeightReminderUsesNextChosenTime() throws {
+        let calendar = utcCalendar()
+        let now = try date(2026, 6, 10, 10, 0, calendar: calendar)
+        let preferences = ReminderPreferences(
+            weightEnabled: true,
+            weightTime: ReminderTime(hour: 9, minute: 0),
+            weightFrequency: .weekly
+        )
+        let oldWeight = WeightReminderRecord(
+            date: try date(2026, 5, 1, 8, 0, calendar: calendar)
+        )
+
+        let plans = ReminderSchedulePlanner.plans(
+            now: now,
+            calendar: calendar,
+            preferences: preferences,
+            meals: [],
+            water: [],
+            weights: [oldWeight]
+        )
+
+        XCTAssertEqual(plans.map(\.fireDate), [
+            try date(2026, 6, 11, 9, 0, calendar: calendar)
+        ])
+    }
+
+    func testOverdueWeeklyWeightReminderUsesTodayWhenChosenTimeIsStillAhead() throws {
+        let calendar = utcCalendar()
+        let now = try date(2026, 6, 10, 7, 0, calendar: calendar)
+        let preferences = ReminderPreferences(
+            weightEnabled: true,
+            weightTime: ReminderTime(hour: 9, minute: 0),
+            weightFrequency: .weekly
+        )
+        let oldWeight = WeightReminderRecord(
+            date: try date(2026, 5, 1, 8, 0, calendar: calendar)
+        )
+
+        let plans = ReminderSchedulePlanner.plans(
+            now: now,
+            calendar: calendar,
+            preferences: preferences,
+            meals: [],
+            water: [],
+            weights: [oldWeight]
+        )
+
+        XCTAssertEqual(plans.map(\.fireDate), [
+            try date(2026, 6, 10, 9, 0, calendar: calendar)
+        ])
+    }
+
+    func testFullScheduleIncludingDailyWeightStaysBelowSystemLimit() throws {
+        let calendar = utcCalendar()
+        let now = try date(2026, 6, 10, 7, 0, calendar: calendar)
+        let preferences = ReminderPreferences(
+            breakfastEnabled: true,
+            lunchEnabled: true,
+            snackEnabled: true,
+            dinnerEnabled: true,
+            waterEnabled: true,
+            weightEnabled: true,
+            weightFrequency: .daily
+        )
+
+        let plans = ReminderSchedulePlanner.plans(
+            now: now,
+            calendar: calendar,
+            preferences: preferences,
+            meals: [],
+            water: [],
+            weights: []
+        )
+
+        XCTAssertEqual(plans.count, 60)
+        XCTAssertLessThanOrEqual(plans.count, ReminderSchedulePlanner.pendingNotificationLimit)
+        XCTAssertEqual(Set(plans.map(\.identifier)).count, plans.count)
+    }
+
+    func testSpringDSTMovesNonexistentMealTimeForwardWithoutChangingDay() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        let now = try date(2026, 3, 7, 23, 0, calendar: calendar)
+        let preferences = ReminderPreferences(
+            breakfastEnabled: true,
+            breakfastTime: ReminderTime(hour: 2, minute: 30)
+        )
+
+        let plans = ReminderSchedulePlanner.plans(
+            now: now,
+            calendar: calendar,
+            preferences: preferences,
+            meals: [],
+            water: []
+        )
+        let first = try XCTUnwrap(plans.first)
+        let components = calendar.dateComponents([.year, .month, .day, .hour], from: first.fireDate)
+
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 3)
+        XCTAssertEqual(components.day, 8)
+        XCTAssertEqual(components.hour, 3)
+        XCTAssertGreaterThan(first.fireDate, now)
     }
 
 #if !SWIFT_PACKAGE
@@ -194,6 +394,51 @@ final class ReminderNotificationTests: XCTestCase {
         XCTAssertFalse(preferences.snackEnabled)
         XCTAssertFalse(preferences.dinnerEnabled)
         XCTAssertTrue(preferences.waterEnabled)
+    }
+
+    func testStoredPreferencesRoundTripTimesWeightAndLegacyDefaults() throws {
+        let suiteName = "ReminderNotificationTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let legacy = ReminderPreferences.stored(in: defaults)
+        XCTAssertEqual(legacy.breakfastTime, ReminderTime(hour: 9, minute: 0))
+        XCTAssertEqual(legacy.lunchTime, ReminderTime(hour: 13, minute: 0))
+        XCTAssertEqual(legacy.snackTime, ReminderTime(hour: 16, minute: 0))
+        XCTAssertEqual(legacy.dinnerTime, ReminderTime(hour: 20, minute: 0))
+        XCTAssertFalse(legacy.weightEnabled)
+        XCTAssertEqual(legacy.weightFrequency, .weekly)
+
+        let expected = ReminderPreferences(
+            breakfastEnabled: true,
+            snackEnabled: true,
+            waterEnabled: true,
+            weightEnabled: true,
+            breakfastTime: ReminderTime(hour: 7, minute: 25),
+            lunchTime: ReminderTime(hour: 12, minute: 10),
+            snackTime: ReminderTime(hour: 15, minute: 35),
+            dinnerTime: ReminderTime(hour: 19, minute: 50),
+            weightTime: ReminderTime(hour: 8, minute: 5),
+            weightFrequency: .daily
+        )
+        expected.store(in: defaults)
+
+        XCTAssertEqual(ReminderPreferences.stored(in: defaults), expected)
+    }
+
+    func testInvalidStoredTimesFallBackIndependently() throws {
+        let suiteName = "ReminderNotificationTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(-1, forKey: ReminderPreferenceKey.breakfastTime)
+        defaults.set(24 * 60, forKey: ReminderPreferenceKey.lunchTime)
+        defaults.set(17 * 60 + 12, forKey: ReminderPreferenceKey.snackTime)
+
+        let preferences = ReminderPreferences.stored(in: defaults)
+
+        XCTAssertEqual(preferences.breakfastTime, ReminderTime(hour: 9, minute: 0))
+        XCTAssertEqual(preferences.lunchTime, ReminderTime(hour: 13, minute: 0))
+        XCTAssertEqual(preferences.snackTime, ReminderTime(hour: 17, minute: 12))
     }
 
     func testAllDisabledPreferencesProduceNoPlans() throws {

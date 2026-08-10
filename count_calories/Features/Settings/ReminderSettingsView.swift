@@ -1,0 +1,525 @@
+import SwiftData
+import SwiftUI
+
+struct ReminderSettingsView: View {
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
+    @Query(sort: \PlateEntry.date, order: .reverse) private var entries: [PlateEntry]
+    @Query(sort: \WaterDay.date, order: .reverse) private var waterDays: [WaterDay]
+    @Query(sort: \WeightEntry.date, order: .reverse) private var weights: [WeightEntry]
+
+    let onSaved: (ReminderPreferences, ReminderAuthorizationState) -> Void
+    private let refreshesAuthorization: Bool
+
+    @State private var preferences: ReminderPreferences
+    @State private var authorizationState: ReminderAuthorizationState
+    @State private var showingEditor = false
+
+    init(
+        preferences: ReminderPreferences,
+        authorizationState: ReminderAuthorizationState,
+        refreshesAuthorization: Bool = true,
+        onSaved: @escaping (ReminderPreferences, ReminderAuthorizationState) -> Void
+    ) {
+        self.onSaved = onSaved
+        self.refreshesAuthorization = refreshesAuthorization
+        _preferences = State(initialValue: preferences)
+        _authorizationState = State(initialValue: authorizationState)
+    }
+
+    private var enabledMeals: [ReminderMeal] {
+        ReminderMeal.allCases.filter(preferences.isEnabled)
+    }
+
+    private var plannedReminders: [ReminderNotificationPlan] {
+        ReminderSchedulePlanner.plans(
+            now: .now,
+            calendar: .current,
+            preferences: preferences,
+            meals: entries.map {
+                MealReminderRecord(mealType: $0.mealType, date: $0.date)
+            },
+            water: waterDays.map {
+                WaterReminderRecord(
+                    date: $0.date,
+                    glasses: $0.glasses,
+                    lastRecordedAt: $0.lastRecordedAt
+                )
+            },
+            weights: weights.map { WeightReminderRecord(date: $0.date) }
+        )
+    }
+
+    var body: some View {
+        List {
+            mealSection
+            weightSection
+            waterSection
+            deliverySection
+            nextReminderSection
+        }
+        .navigationTitle("Reminders")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("reminder-settings")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Edit") {
+                    showingEditor = true
+                }
+                .accessibilityIdentifier("reminders-edit")
+            }
+        }
+        .sheet(isPresented: $showingEditor) {
+            ReminderEditor(
+                initialPreferences: preferences,
+                authorizationState: authorizationState,
+                onSave: save
+            )
+            .interactiveDismissDisabled()
+        }
+        .task {
+            guard refreshesAuthorization else { return }
+            await refreshAuthorization()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard refreshesAuthorization, newPhase == .active else { return }
+            Task { await refreshAuthorization() }
+        }
+    }
+
+    private var mealSection: some View {
+        Section {
+            if enabledMeals.isEmpty {
+                Text("Off")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(enabledMeals, id: \.self) { meal in
+                    LabeledContent(meal.rawValue) {
+                        Text(timeText(preferences.time(for: meal)))
+                            .monospacedDigit()
+                    }
+                    .accessibilityIdentifier("\(meal.identifierComponent)-reminder-summary")
+                }
+            }
+        } header: {
+            Text("Meal reminders")
+        } footer: {
+            Text("A meal reminder is omitted when that meal is already logged for the local day.")
+        }
+    }
+
+    private var weightSection: some View {
+        Section {
+            if preferences.weightEnabled {
+                LabeledContent("Frequency", value: weightFrequencyText)
+                LabeledContent("Time") {
+                    Text(timeText(preferences.weightTime))
+                        .monospacedDigit()
+                }
+            } else {
+                Text("Off")
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Weight check-in")
+        } footer: {
+            if preferences.weightEnabled, preferences.weightFrequency == .weekly {
+                Text("Weekly reminder waits seven days after the latest recorded weight.")
+            } else {
+                Text("Consistent readings help reveal trend; one reading never changes your calorie goal.")
+            }
+        }
+    }
+
+    private var waterSection: some View {
+        Section("Water") {
+            if preferences.waterEnabled {
+                Text("After 2 hours without a glass · \(waterReminderWindowText)")
+            } else {
+                Text("Off")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var deliverySection: some View {
+        Section {
+            LabeledContent("Notification access", value: authorizationText)
+                .accessibilityIdentifier("reminder-authorization-status")
+
+            if authorizationState == .denied,
+               let systemSettingsURL = ReminderNotificationManager.systemSettingsURL {
+                Button {
+                    openURL(systemSettingsURL)
+                } label: {
+                    Label("Open Notification Settings", systemImage: "bell.slash")
+                        .frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("open-notification-settings")
+            }
+        } header: {
+            Text("Delivery")
+        } footer: {
+            switch authorizationState {
+            case .authorized:
+                Text("Selected reminders can be delivered. iOS may delay them for Focus or scheduled summaries.")
+            case .notDetermined:
+                Text("Access is requested only after you save at least one reminder.")
+            case .denied:
+                Text("Reminder choices are saved, but no notification can arrive until access is allowed in iOS Settings.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var nextReminderSection: some View {
+        Section("Next selected reminder") {
+            if let next = plannedReminders.first {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(next.kind.title)
+                        .font(.body.weight(.medium))
+                    Text(next.fireDate.formatted(date: .abbreviated, time: .shortened))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("next-reminder")
+            } else {
+                Text(preferences.hasEnabledReminder ? "No reminder is currently due." : "Turn on a reminder to preview its next time.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var weightFrequencyText: String {
+        switch preferences.weightFrequency {
+        case .daily: "Daily"
+        case .weekly: "Weekly"
+        }
+    }
+
+    private var authorizationText: String {
+        switch authorizationState {
+        case .authorized: "Allowed"
+        case .notDetermined: "Not requested"
+        case .denied: "Off in iOS Settings"
+        }
+    }
+
+    @MainActor
+    private func save(_ draft: ReminderPreferences) async -> String? {
+        draft.store()
+
+        var requestError: String?
+        if draft.hasEnabledReminder {
+            do {
+                _ = try await ReminderNotificationManager.shared.requestAuthorizationIfNeeded()
+            } catch {
+                requestError = "Notification access could not be requested. Your reminder choices were saved; try again."
+            }
+        }
+
+        let state = await ReminderNotificationManager.shared.authorizationState()
+        await reschedule(preferences: draft)
+        preferences = draft
+        authorizationState = state
+        onSaved(draft, state)
+        return requestError
+    }
+
+    @MainActor
+    private func refreshAuthorization() async {
+        let state = await ReminderNotificationManager.shared.authorizationState()
+        await reschedule(preferences: preferences)
+        authorizationState = state
+        onSaved(preferences, state)
+    }
+
+    private func reschedule(preferences: ReminderPreferences) async {
+        await ReminderNotificationManager.shared.reschedule(
+            meals: entries.map {
+                MealReminderRecord(mealType: $0.mealType, date: $0.date)
+            },
+            water: waterDays.map {
+                WaterReminderRecord(
+                    date: $0.date,
+                    glasses: $0.glasses,
+                    lastRecordedAt: $0.lastRecordedAt
+                )
+            },
+            weights: weights.map { WeightReminderRecord(date: $0.date) },
+            preferences: preferences
+        )
+    }
+}
+
+private struct ReminderEditor: View {
+    @Environment(\.calendar) private var calendar
+    @Environment(\.dismiss) private var dismiss
+
+    let authorizationState: ReminderAuthorizationState
+    let onSave: (ReminderPreferences) async -> String?
+
+    @State private var draft: ReminderPreferences
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(
+        initialPreferences: ReminderPreferences,
+        authorizationState: ReminderAuthorizationState,
+        onSave: @escaping (ReminderPreferences) async -> String?
+    ) {
+        self.authorizationState = authorizationState
+        self.onSave = onSave
+        _draft = State(initialValue: initialPreferences)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    ForEach(ReminderMeal.allCases, id: \.self) { meal in
+                        Toggle(meal.rawValue, isOn: enabledBinding(for: meal))
+                            .accessibilityIdentifier("\(meal.identifierComponent)-reminder-toggle")
+                        if draft.isEnabled(meal) {
+                            DatePicker(
+                                "Time",
+                                selection: timeBinding(for: meal),
+                                displayedComponents: .hourAndMinute
+                            )
+                            .accessibilityIdentifier("\(meal.identifierComponent)-reminder-time")
+                        }
+                    }
+                } header: {
+                    Text("Meals")
+                } footer: {
+                    Text("Each meal has an independent exact time and only reminds you when that meal is not logged.")
+                }
+
+                Section {
+                    Toggle("Weight check-in", isOn: $draft.weightEnabled)
+                        .accessibilityIdentifier("weight-reminder-toggle")
+                    if draft.weightEnabled {
+                        Picker("Frequency", selection: $draft.weightFrequency) {
+                            Text("Daily").tag(WeightReminderFrequency.daily)
+                            Text("Weekly").tag(WeightReminderFrequency.weekly)
+                        }
+                        .pickerStyle(.menu)
+                        .accessibilityIdentifier("weight-reminder-frequency")
+
+                        DatePicker(
+                            "Time",
+                            selection: timeBinding(\.weightTime),
+                            displayedComponents: .hourAndMinute
+                        )
+                        .accessibilityIdentifier("weight-reminder-time")
+                    }
+                } header: {
+                    Text("Weight")
+                } footer: {
+                    Text(draft.weightFrequency == .weekly
+                         ? "Weekly waits seven days after your latest weight."
+                         : "Daily skips a day as soon as you record a weight.")
+                }
+
+                Section {
+                    Toggle("Water", isOn: $draft.waterEnabled)
+                        .accessibilityIdentifier("water-reminder-toggle")
+                } header: {
+                    Text("Water")
+                } footer: {
+                    Text("Every two hours from \(waterReminderStartText) to \(waterReminderEndText) when no glass was logged recently; stops at 8 glasses.")
+                }
+
+                if authorizationState == .denied, draft.hasEnabledReminder {
+                    Section {
+                        Label("Notification access is off", systemImage: "bell.slash")
+                    } footer: {
+                        Text("Save keeps these choices. Allow notifications from the Reminders screen to start delivery.")
+                    }
+                }
+            }
+            .navigationTitle("Edit Reminders")
+            .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("reminder-editor")
+            .disabled(isSaving)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .disabled(isSaving)
+                    .accessibilityIdentifier("reminders-cancel")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSaving ? "Saving…" : "Save") {
+                        save()
+                    }
+                    .disabled(isSaving)
+                    .accessibilityIdentifier("reminders-save")
+                }
+            }
+            .alert("Could not complete reminder setup", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("Dismiss", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "Unknown error")
+            }
+        }
+    }
+
+    private func enabledBinding(for meal: ReminderMeal) -> Binding<Bool> {
+        Binding(
+            get: { draft.isEnabled(meal) },
+            set: { enabled in
+                switch meal {
+                case .breakfast: draft.breakfastEnabled = enabled
+                case .lunch: draft.lunchEnabled = enabled
+                case .snack: draft.snackEnabled = enabled
+                case .dinner: draft.dinnerEnabled = enabled
+                }
+            }
+        )
+    }
+
+    private func timeBinding(for meal: ReminderMeal) -> Binding<Date> {
+        switch meal {
+        case .breakfast: timeBinding(\.breakfastTime)
+        case .lunch: timeBinding(\.lunchTime)
+        case .snack: timeBinding(\.snackTime)
+        case .dinner: timeBinding(\.dinnerTime)
+        }
+    }
+
+    private func timeBinding(
+        _ keyPath: WritableKeyPath<ReminderPreferences, ReminderTime>
+    ) -> Binding<Date> {
+        Binding(
+            get: { date(for: draft[keyPath: keyPath]) },
+            set: { date in
+                let components = calendar.dateComponents([.hour, .minute], from: date)
+                guard let hour = components.hour, let minute = components.minute else { return }
+                draft[keyPath: keyPath] = ReminderTime(hour: hour, minute: minute)
+            }
+        )
+    }
+
+    private func date(for time: ReminderTime) -> Date {
+        calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2001,
+            month: 1,
+            day: 1,
+            hour: time.hour,
+            minute: time.minute
+        )) ?? .now
+    }
+
+    private func save() {
+        isSaving = true
+        Task { @MainActor in
+            if let message = await onSave(draft) {
+                errorMessage = message
+                isSaving = false
+            } else {
+                dismiss()
+            }
+        }
+    }
+}
+
+private var waterReminderStartText: String {
+    timeText(ReminderTime(
+        hour: ReminderSchedulePlanner.waterReminderStartHour,
+        minute: 0
+    ))
+}
+
+private var waterReminderEndText: String {
+    timeText(ReminderTime(
+        hour: ReminderSchedulePlanner.waterReminderEndHour,
+        minute: 0
+    ))
+}
+
+private var waterReminderWindowText: String {
+    "\(waterReminderStartText)–\(waterReminderEndText)"
+}
+
+private func timeText(_ time: ReminderTime) -> String {
+    let calendar = Calendar.current
+    let date = calendar.date(from: DateComponents(
+        timeZone: calendar.timeZone,
+        year: 2001,
+        month: 1,
+        day: 1,
+        hour: time.hour,
+        minute: time.minute
+    )) ?? .now
+    return date.formatted(date: .omitted, time: .shortened)
+}
+
+#if DEBUG
+#Preview("Reminders") {
+    NavigationStack {
+        ReminderSettingsView(
+            preferences: ReminderPreferences(
+                breakfastEnabled: true,
+                dinnerEnabled: true,
+                waterEnabled: true,
+                weightEnabled: true
+            ),
+            authorizationState: .authorized,
+            refreshesAuthorization: false,
+            onSaved: { _, _ in }
+        )
+    }
+    .modelContainer(PreviewData.makeContainer())
+}
+
+#Preview("Reminder editor") {
+    ReminderEditor(
+        initialPreferences: ReminderPreferences(
+            breakfastEnabled: true,
+            dinnerEnabled: true,
+            waterEnabled: true,
+            weightEnabled: true
+        ),
+        authorizationState: .authorized,
+        onSave: { _ in nil }
+    )
+}
+
+#Preview("Reminders denied") {
+    NavigationStack {
+        ReminderSettingsView(
+            preferences: ReminderPreferences(
+                breakfastEnabled: true,
+                dinnerEnabled: true,
+                weightEnabled: true
+            ),
+            authorizationState: .denied,
+            refreshesAuthorization: false,
+            onSaved: { _, _ in }
+        )
+    }
+    .modelContainer(PreviewData.makeContainer())
+}
+
+#Preview("Reminder editor — Small", traits: .fixedLayout(width: 375, height: 667)) {
+    ReminderEditor(
+        initialPreferences: ReminderPreferences(
+            breakfastEnabled: true,
+            dinnerEnabled: true,
+            waterEnabled: true,
+            weightEnabled: true
+        ),
+        authorizationState: .authorized,
+        onSave: { _ in nil }
+    )
+}
+#endif

@@ -12,10 +12,10 @@ struct CountCaloriesApp: App {
     var body: some Scene {
         WindowGroup {
 #if DEBUG
-            if arguments.contains("-design-review") {
-                DesignReviewRoot()
-            } else if arguments.contains("-ui-testing") {
+            if arguments.contains("-ui-testing") {
                 UITestingRoot()
+            } else if arguments.contains("-design-review") {
+                DesignReviewRoot()
             } else {
                 ContentView()
             }
@@ -69,6 +69,7 @@ private struct UITestingRoot: View {
         for profile in try modelContext.fetch(FetchDescriptor<UserProfile>()) {
             modelContext.delete(profile)
         }
+        ReminderPreferences().store()
         try modelContext.save()
     }
 }

@@ -6,60 +6,52 @@ struct NutritionBalanceRow: View {
     let summary: DailyNutritionSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Nutrition balance", systemImage: "chart.bar.fill")
-                .font(.headline)
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: dynamicTypeSize.isAccessibilitySize ? 10 : 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Label("Nutrition balance", systemImage: "chart.bar.fill")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                if summary.hasEntries && !dynamicTypeSize.isAccessibilitySize {
+                    Spacer(minLength: 8)
+                    Text(summary.hasCompleteCoverage ? "\(summary.entryCount)/\(summary.entryCount) foods" : "Partial data")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
 
             if summary.hasEntries {
-                if let split = summary.macroSplit {
-                    if dynamicTypeSize.isAccessibilitySize {
-                        Text("Macro energy split")
+                if dynamicTypeSize.isAccessibilitySize {
+                    if let split = summary.macroSplit {
+                        Text("Macro-only energy split")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         MacroSplitBar(split: split)
-                        accessibilityMetrics
-                    } else {
-                        HStack(alignment: .bottom, spacing: 12) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Macro energy split")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                MacroSplitBar(split: split)
-                                HStack(alignment: .top, spacing: 10) {
-                                    metric(for: .carbohydrates)
-                                    metric(for: .protein)
-                                    metric(for: .fat)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                            Divider()
-                                .frame(height: 56)
-
-                            fiberMetric
-                                .frame(minWidth: 58, maxWidth: 68, alignment: .leading)
-                        }
                     }
-                } else if dynamicTypeSize.isAccessibilitySize {
                     accessibilityMetrics
+                    Text(coverageText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text(guidanceHeadline)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
                 } else {
-                    HStack(alignment: .top, spacing: 14) {
+                    if let split = summary.macroSplit {
+                        MacroSplitBar(split: split)
+                    }
+                    HStack(alignment: .top, spacing: 12) {
                         metric(for: .carbohydrates)
                         metric(for: .protein)
                         metric(for: .fat)
                         fiberMetric
                     }
+                    Text(summary.hasCompleteCoverage ? compactGuidanceHeadline : coverageText)
+                        .font(.footnote.weight(summary.hasCompleteCoverage ? .medium : .regular))
+                        .foregroundStyle(summary.hasCompleteCoverage ? Color.primary : Color.secondary)
+                        .lineLimit(2)
                 }
-
-                Text(coverageText)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                Text(guidanceHeadline)
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
             } else {
                 Text("Log food with nutrient details to see today’s macro and fiber balance.")
                     .font(.subheadline)
@@ -112,10 +104,7 @@ struct NutritionBalanceRow: View {
     }
 
     private func metricValue(for nutrient: Macronutrient) -> String {
-        if let split = summary.macroSplit {
-            return percentText(split.fraction(for: nutrient))
-        }
-        return gramsText(summary.knownNutrients.grams(for: nutrient))
+        gramsText(summary.knownNutrients.grams(for: nutrient))
     }
 
     private var coverageText: String {
@@ -125,19 +114,23 @@ struct NutritionBalanceRow: View {
         return "Macros \(summary.macroCompleteCount)/\(summary.entryCount) foods · Fiber \(summary.fiberKnownCount)/\(summary.entryCount)"
     }
 
+    private var compactGuidanceHeadline: String {
+        "Macro-only split · \(guidanceHeadline)"
+    }
+
     private var guidanceHeadline: String {
         guard summary.hasCompleteMacroCoverage, let first = summary.guidance.first else {
             return "Guidance paused until macro coverage is complete."
         }
         if first.status == .withinReferences {
-            return "All measured macros are inside general adult ranges."
+            return "Logged-energy shares are inside general adult ranges."
         }
         guard let nutrient = first.nutrient else { return "Measured balance available." }
         switch first.status {
         case .belowReference:
-            return "\(nutrient.rawValue) is below the adult reference range."
+            return "\(nutrient.rawValue) logged-energy share is below the adult range."
         case .aboveReference:
-            return "\(nutrient.rawValue) is above the adult reference range."
+            return "\(nutrient.rawValue) logged-energy share is above the adult range."
         case .withinReferences:
             return "Measured split is within adult reference ranges."
         }
@@ -147,9 +140,14 @@ struct NutritionBalanceRow: View {
         guard summary.hasEntries else {
             return "No logged nutrient data today"
         }
-        let values = Macronutrient.allCases.map {
+        var values = Macronutrient.allCases.map {
             "\($0.rawValue) \(metricValue(for: $0))"
         } + ["Fiber \(gramsText(summary.knownNutrients.fiberGrams))"]
+        if let split = summary.macroSplit {
+            values.append(
+                "Macro-only energy split: carbs \(percentText(split.carbohydrates)), protein \(percentText(split.protein)), fat \(percentText(split.fat))"
+            )
+        }
         return (values + [coverageText, guidanceHeadline]).joined(separator: ", ")
     }
 }
@@ -184,8 +182,13 @@ struct DailyNutritionView: View {
         Section("Macronutrients") {
             if let split = summary.macroSplit {
                 if !dynamicTypeSize.isAccessibilitySize {
-                    MacroSplitBar(split: split)
-                        .padding(.vertical, 4)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Macro-only energy split")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        MacroSplitBar(split: split)
+                    }
+                    .padding(.vertical, 4)
                 }
             } else {
                 Text("Macro percentages appear only when every logged food has carbohydrate, protein, and fat data.")
@@ -229,8 +232,10 @@ struct DailyNutritionView: View {
     }
 
     private func macroDetail(for nutrient: Macronutrient) -> Text {
-        if let split = summary.macroSplit {
-            Text("\(percentText(split.fraction(for: nutrient))) · adult range \(rangeText(nutrient.referenceRange))")
+        if let share = summary.macroEnergyShare {
+            Text("\(percentText(share.fraction(for: nutrient))) of logged energy · adult range \(rangeText(nutrient.referenceRange))")
+        } else if summary.hasCompleteMacroCoverage {
+            Text("Logged-energy comparison unavailable")
         } else {
             Text("\(summary.knownCount(for: nutrient)) of \(summary.entryCount) foods")
         }
@@ -272,7 +277,7 @@ struct DailyNutritionView: View {
 
     private var guidanceSection: some View {
         Section("Measured guidance") {
-            if summary.hasCompleteMacroCoverage, summary.macroSplit != nil {
+            if summary.hasCompleteMacroCoverage, summary.macroEnergyShare != nil {
                 ForEach(Array(summary.guidance.enumerated()), id: \.offset) { index, guidance in
                     Label {
                         VStack(alignment: .leading, spacing: 4) {
@@ -322,7 +327,7 @@ struct DailyNutritionView: View {
 
     private var methodSection: some View {
         Section("How this works") {
-            Text("Macro percentages use measured carbohydrate and protein at 4 kcal/g and fat at 9 kcal/g. Food-label calories remain separate.")
+            Text("The colored split normalizes measured carbohydrate and protein at 4 kcal/g and fat at 9 kcal/g. Adult-range comparisons divide each macro’s estimated energy by logged food-label calories, so rounding and other energy sources can keep the shares from totaling 100%.")
             Text("Adult population reference ranges: carbs 45–65%, protein 10–35%, and fat 20–35%. Fiber uses 14 g per 1,000 kcal.")
             Text("General information only—not medical advice or a personal prescription.")
                 .font(.footnote)
@@ -357,7 +362,7 @@ struct DailyNutritionView: View {
             return "All measured macro shares fall inside adult population reference ranges. These ranges are general information, not personal targets."
         }
 
-        let measurement = "\(nutrient.rawValue) provides \(percentText(measured)) of measured macro energy; adult reference is \(rangeText(range))."
+        let measurement = "\(nutrient.rawValue) provides about \(percentText(measured)) of logged food-label energy; adult reference is \(rangeText(range))."
         let action: String
         switch (nutrient, guidance.status) {
         case (.protein, .belowReference):
@@ -400,7 +405,7 @@ private struct MacroSplitBar: View {
         .frame(height: 8)
         .clipShape(Capsule())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Measured macro energy split")
+        .accessibilityLabel("Normalized measured macro energy split")
         .accessibilityValue(
             "Carbs \(percentText(split.carbohydrates)), protein \(percentText(split.protein)), fat \(percentText(split.fat))"
         )

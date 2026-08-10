@@ -12,6 +12,7 @@ final class DailyNutritionTests: XCTestCase {
         XCTAssertFalse(summary.hasEntries)
         XCTAssertFalse(summary.hasCompleteMacroCoverage)
         XCTAssertNil(summary.macroSplit)
+        XCTAssertNil(summary.macroEnergyShare)
         XCTAssertEqual(summary.guidance, [])
         XCTAssertEqual(summary.fiberReferenceGrams ?? -1, 23.8, accuracy: 0.000_001)
     }
@@ -53,6 +54,10 @@ final class DailyNutritionTests: XCTestCase {
         XCTAssertEqual(split.carbohydrates, 200.0 / 780.0, accuracy: 0.000_001)
         XCTAssertEqual(split.protein, 40.0 / 780.0, accuracy: 0.000_001)
         XCTAssertEqual(split.fat, 540.0 / 780.0, accuracy: 0.000_001)
+        let share = try XCTUnwrap(summary.macroEnergyShare)
+        XCTAssertEqual(share.carbohydrates, 200.0 / 800.0, accuracy: 0.000_001)
+        XCTAssertEqual(share.protein, 40.0 / 800.0, accuracy: 0.000_001)
+        XCTAssertEqual(share.fat, 540.0 / 800.0, accuracy: 0.000_001)
         XCTAssertEqual(summary.guidance.count, 2)
         XCTAssertEqual(summary.guidance.map(\.nutrient), [.fat, .carbohydrates])
         XCTAssertEqual(summary.guidance.map(\.status), [.aboveReference, .belowReference])
@@ -92,6 +97,7 @@ final class DailyNutritionTests: XCTestCase {
         XCTAssertFalse(summary.hasCompleteMacroCoverage)
         XCTAssertFalse(summary.hasCompleteFiberCoverage)
         XCTAssertNil(summary.macroSplit)
+        XCTAssertNil(summary.macroEnergyShare)
         XCTAssertTrue(summary.guidance.isEmpty)
     }
 
@@ -115,6 +121,7 @@ final class DailyNutritionTests: XCTestCase {
         XCTAssertEqual(summary.carbohydrateKnownCount, 1)
         XCTAssertEqual(summary.fiberKnownCount, 1)
         XCTAssertNil(summary.macroSplit)
+        XCTAssertNil(summary.macroEnergyShare)
         XCTAssertTrue(summary.guidance.isEmpty)
     }
 
@@ -138,6 +145,38 @@ final class DailyNutritionTests: XCTestCase {
         XCTAssertEqual(split.carbohydrates, 0.5, accuracy: 0.000_001)
         XCTAssertEqual(split.protein, 0.25, accuracy: 0.000_001)
         XCTAssertEqual(split.fat, 0.25, accuracy: 0.000_001)
+        let share = try XCTUnwrap(summary.macroEnergyShare)
+        XCTAssertEqual(share.carbohydrates, 0.5, accuracy: 0.000_001)
+        XCTAssertEqual(share.protein, 0.25, accuracy: 0.000_001)
+        XCTAssertEqual(share.fat, 0.25, accuracy: 0.000_001)
+        XCTAssertEqual(summary.guidance, [.withinReferences])
+    }
+
+    func testAdultRangeGuidanceUsesFoodLabelEnergyNotNormalizedMacroSplit() throws {
+        let summary = DailyNutrition.summary(
+            records: [
+                LoggedNutrition(
+                    calories: 1_000,
+                    nutrients: FoodNutrients(
+                        carbohydratesGrams: 112.5,
+                        proteinGrams: 25,
+                        fatGrams: 22.222_222,
+                        fiberGrams: 14
+                    )
+                )
+            ],
+            calorieGoal: 2_000
+        )
+
+        let split = try XCTUnwrap(summary.macroSplit)
+        XCTAssertEqual(split.carbohydrates, 0.6, accuracy: 0.000_001)
+        XCTAssertEqual(split.protein, 0.133_333, accuracy: 0.000_001)
+        XCTAssertEqual(split.fat, 0.266_667, accuracy: 0.000_001)
+
+        let share = try XCTUnwrap(summary.macroEnergyShare)
+        XCTAssertEqual(share.carbohydrates, 0.45, accuracy: 0.000_001)
+        XCTAssertEqual(share.protein, 0.10, accuracy: 0.000_001)
+        XCTAssertEqual(share.fat, 0.20, accuracy: 0.000_001)
         XCTAssertEqual(summary.guidance, [.withinReferences])
     }
 
@@ -175,5 +214,8 @@ final class DailyNutritionTests: XCTestCase {
         XCTAssertEqual(summary.totalCalories, 999)
         XCTAssertEqual(summary.macroSplit?.carbohydrates, 0.5)
         XCTAssertEqual(summary.macroSplit?.protein, 0.5)
+        XCTAssertEqual(summary.macroEnergyShare?.carbohydrates ?? -1, 100.0 / 999.0, accuracy: 0.000_001)
+        XCTAssertEqual(summary.macroEnergyShare?.protein ?? -1, 100.0 / 999.0, accuracy: 0.000_001)
+        XCTAssertNotEqual(summary.guidance, [.withinReferences])
     }
 }

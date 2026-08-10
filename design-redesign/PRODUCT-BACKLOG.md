@@ -245,9 +245,44 @@ Acceptance gates are closed. TRACKING-IA-001 is accepted and complete.
 
 ---
 
+## Priority 3A — [WEIGHT-ENTRY-001] Low-friction weight and numeric entry
+
+**Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
+**Priority:** HIGH VALUE
+**Origin:** User requested fewer weight-recording actions, latest-measure defaults, direct fine/coarse adjustments, and an obvious numeric-keyboard dismissal action.
+
+### User problem
+
+Weight check-ins are repeated, low-complexity actions. Re-entering the previous value or fighting a decimal keyboard adds avoidable work. Numeric pads also have no Return key, so every numeric entry surface needs an explicit way to close the keyboard without accidentally saving.
+
+### Required product behavior
+
+1. From Weight, recording an unchanged check-in requires no intermediate navigation: one action opens the editor with a useful value and one explicit Save records it.
+2. New weight defaults to the chronologically latest valid recorded measurement, not profile setup weight. Fall back to valid profile current weight, then 70 kg only when no measurement exists.
+3. Provide direct `−1`, `−0.1`, `+0.1`, and `+1` kg controls. Update the field immediately, preserve one-decimal precision, prevent nonpositive/nonfinite values, and keep exact keyboard entry available.
+4. Keep date and time editable in the same editor; do not add a second confirmation screen or silently record from one tap.
+5. Every app-owned numeric pad/decimal pad exposes a trailing keyboard **Done** action that only dismisses the keyboard. This includes weight, meal amount/servings, manual barcode, custom calories/serving/nutrients, Plan target weight, and future numeric setup fields.
+6. Use Apple’s native `ToolbarItemGroup(placement: .keyboard)` plus focus state. Keep modal Save/Cancel semantically separate from keyboard Done.
+7. Adjustment controls and keyboard Done remain VoiceOver-labeled, localized, dark-mode compatible, and at least 44 points where app-owned hit regions apply.
+8. Add deterministic default/adjustment tests, focused UI proof for keyboard dismissal and value changes, normal/dark/large-text screenshots, and exact-tree validation.
+
+### Success criteria
+
+- Existing latest reading `71.2 kg` opens as `71.2`, regardless of older profile current weight.
+- One tap can reach `70.2`, `71.1`, `71.3`, or `72.2`; controls never change date/time.
+- Weight tab → editor → unchanged Save is two deliberate actions.
+- Numeric keyboards always show Done and dismiss without committing the surrounding form.
+- Existing amount controls, custom-food draft semantics, and explicit Save/Cancel flows remain intact.
+
+### Result
+
+Attempt 01 accepted. Latest chronological default and adjustment math have deterministic coverage; focused weight, meal-keyboard, and Plan-keyboard UI flows passed; normal and AX3-dark evidence passed critical/high review; exact-tree validation passed; final functional UI suite passed 14/14.
+
+---
+
 ## Priority 4 — [NUTRITION-GOALS-001] Reference nutrition composition in Plan
 
-**Status:** QUEUED — SCHEDULED WITH ACTIVE REFINE-001
+**Status:** ACCEPTED WITH REFINE-001 SLICE A — ATTEMPT 01
 **Priority:** HIGH VALUE
 **Origin:** User requested a theoretical healthy carbohydrate, protein, fat, and fiber composition beside measured intake.
 
@@ -257,10 +292,10 @@ A calorie goal alone does not explain what a broadly balanced adult macro compos
 
 ### Required product behavior
 
-1. In the future Plan/goal surface, show general adult **reference ranges**, not a universal “ideal”: carbohydrates 45–65%, protein 10–35%, and fat 20–35% of macro energy.
+1. In the Plan/goal surface, show general adult **reference ranges**, not a universal “ideal”: carbohydrates 45–65%, protein 10–35%, and fat 20–35% of total energy.
 2. Convert those percentages into theoretical gram ranges for the selected daily calorie goal using 4 kcal/g for carbohydrate and protein and 9 kcal/g for fat. Show both percentages and grams, plus the calculation basis.
 3. Show fiber’s energy-scaled adult reference of 14 g per 1,000 kcal as a daily gram value for the selected calorie goal.
-4. Compare today’s real measured composition with the reference beside it: actual grams and macro-energy percentages versus reference ranges, plus measured fiber versus its reference.
+4. Compare today’s real measured composition with the reference beside it: actual grams and estimated shares of reported logged calories versus reference ranges, plus measured fiber versus its reference. Keep the normalized colored macro-only split explicitly separate.
 5. Gate actual-versus-reference comparisons on 100% relevant nutrient coverage. Keep known partial grams visible, but never estimate missing values or treat them as zero.
 6. Keep food-label calories authoritative and separate from 4/4/9-derived macro energy; explain why the values may not reconcile exactly.
 7. Recalculate theoretical ranges when the calorie goal changes. Do not silently alter logged foods, calorie goals, or user choices.

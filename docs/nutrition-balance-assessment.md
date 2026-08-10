@@ -24,15 +24,18 @@ Adult Acceptable Macronutrient Distribution Ranges are population references, no
 
 Fiber uses the energy-scaled adult reference of 14 g per 1,000 kcal. It is an Adequate Intake reference, not a diagnosis or guaranteed individual requirement.
 
-Macro-energy calculation uses label factors only for the balance split:
+Macro-energy calculation uses label factors for two distinct views:
 
 ```text
 carbohydrate kcal = carbohydrate grams × 4
 protein kcal      = protein grams × 4
 fat kcal          = fat grams × 9
+
+colored macro-only split = each macro kcal ÷ summed carbohydrate/protein/fat kcal
+adult-range share        = each macro kcal ÷ reported logged food calories
 ```
 
-Reported food calories remain authoritative for the calorie budget. Macro-derived energy never replaces them because labels can differ through rounding, fiber definitions, sugar alcohols, alcohol, organic acids, and incomplete data.
+Reported food calories remain authoritative for the calorie budget and the AMDR denominator. Macro-derived energy never replaces them because labels can differ through rounding, fiber definitions, sugar alcohols, alcohol, organic acids, and incomplete data. The colored split therefore describes only the relative 4/4/9 energy of the three measured macros. Adult-range shares can legitimately total above or below 100%; UI identifies them as approximate logged-energy shares rather than treating the normalized colored split as an AMDR percentage.
 
 ## Open Food Facts mapping
 
@@ -80,7 +83,7 @@ Coverage is count-based and explicit:
 - fiber coverage = logged entries with fiber / all logged entries;
 - complete coverage = logged entries with all four facts / all logged entries.
 
-Known totals can be displayed as partial logged values. Macro percentages, AMDR comparisons, and macro suggestions appear only at 100% macro coverage. Fiber reference comparison appears only at 100% fiber coverage. This 100% gate is conservative product policy, not a scientific confidence score and not a claim that crowdsourced values are accurate.
+Known totals can be displayed as partial logged values. The macro-only split appears only at 100% macro coverage and positive derived macro energy. AMDR comparisons and suggestions additionally require positive reported logged calories so each macro can use total food-label energy as its denominator. Fiber reference comparison appears only at 100% fiber coverage. These gates are conservative product policy, not a scientific confidence score and not a claim that crowdsourced values are accurate.
 
 When coverage is incomplete, use direct copy such as:
 
@@ -91,7 +94,7 @@ Never call partial totals daily totals without a coverage qualifier.
 ## Guidance policy
 
 - Show no composite health score.
-- Rank measured percentage-point gaps from adult AMDR boundaries and show at most two items.
+- Rank percentage-point gaps between estimated logged-energy shares and adult AMDR boundaries; never compare the normalized macro-only split directly with AMDR.
 - Cite measured value and reference range in every suggestion.
 - Use neutral language: “below range,” “above range,” “consider,” and “if it fits your needs.”
 - Never recommend skipping food, compensating, fasting, supplements, or automatic calorie changes.

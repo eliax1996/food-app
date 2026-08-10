@@ -145,12 +145,13 @@ struct CalorieCounterView: View {
                         calories: todaysCalories,
                         calorieGoal: dailyCalorieGoal
                     )
-                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
                     WaterTrackerRow(
                         glasses: waterBinding,
                         goal: waterGoal
                     )
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 
                     NavigationLink {
                         DailyNutritionView(summary: todaysNutritionSummary)
@@ -158,6 +159,7 @@ struct CalorieCounterView: View {
                         NutritionBalanceRow(summary: todaysNutritionSummary)
                     }
                     .accessibilityIdentifier("nutrition-balance-link")
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
 
                 Section("Meals") {
@@ -188,6 +190,8 @@ struct CalorieCounterView: View {
                                 calories: calories(for: mealType)
                             )
                         }
+                        .accessibilityIdentifier("meal-summary-\(mealType.rawValue.lowercased())")
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                     }
                 }
 
@@ -295,7 +299,7 @@ struct CalorieCounterView: View {
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
             )) {
-                Button("OK", role: .cancel) {}
+                Button("Dismiss", role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "Unknown error")
             }
@@ -759,6 +763,7 @@ struct CalorieCounterView: View {
     private func rescheduleReminders() {
         let persistedEntries = (try? modelContext.fetch(FetchDescriptor<PlateEntry>())) ?? entries
         let persistedWaterDays = (try? modelContext.fetch(FetchDescriptor<WaterDay>())) ?? waterDays
+        let persistedWeights = (try? modelContext.fetch(FetchDescriptor<WeightEntry>())) ?? []
         let mealRecords = persistedEntries.map {
             MealReminderRecord(mealType: $0.mealType, date: $0.date)
         }
@@ -770,10 +775,13 @@ struct CalorieCounterView: View {
             )
         }
 
+        let weightRecords = persistedWeights.map { WeightReminderRecord(date: $0.date) }
+
         Task {
             await ReminderNotificationManager.shared.reschedule(
                 meals: mealRecords,
                 water: waterRecords,
+                weights: weightRecords,
                 preferences: .stored()
             )
         }

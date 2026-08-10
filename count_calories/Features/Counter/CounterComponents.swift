@@ -133,6 +133,8 @@ struct WaterTrackerRow: View {
 }
 
 struct MealSummaryRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let mealType: MealType
     let entries: [PlateEntry]
     let calories: Int
@@ -149,29 +151,53 @@ struct MealSummaryRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(mealType.rawValue)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.primary)
-                Text(detail)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.primary.opacity(0.65))
-                    .lineLimit(1)
-            }
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        title
+                        detailText
+                    }
 
-            Spacer(minLength: 8)
-
-            if calories > 0 {
-                Text("\(calories) kcal")
-                    .font(.subheadline.weight(.semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
+                    calorieText
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    title
+                    detailText
+                    Spacer(minLength: 4)
+                    calorieText
+                }
+                .frame(minHeight: 44)
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(mealType.rawValue)
         .accessibilityValue("\(detail), \(calories) calories")
+    }
+
+    private var title: some View {
+        Text(mealType.rawValue)
+            .font(.body.weight(.medium))
+            .foregroundStyle(.primary)
+    }
+
+    private var detailText: some View {
+        Text(detail)
+            .font(.subheadline)
+            .foregroundStyle(Color.primary.opacity(0.65))
+            .lineLimit(1)
+    }
+
+    @ViewBuilder
+    private var calorieText: some View {
+        if calories > 0 {
+            Text("\(calories) kcal")
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+        }
     }
 }
 

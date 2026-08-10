@@ -56,6 +56,20 @@ nonisolated struct MacroEnergySplit: Equatable, Sendable {
     }
 }
 
+nonisolated struct MacroEnergyShare: Equatable, Sendable {
+    let carbohydrates: Double
+    let protein: Double
+    let fat: Double
+
+    func fraction(for nutrient: Macronutrient) -> Double {
+        switch nutrient {
+        case .carbohydrates: carbohydrates
+        case .protein: protein
+        case .fat: fat
+        }
+    }
+}
+
 nonisolated enum MacroGuidanceStatus: Equatable, Sendable {
     case belowReference
     case aboveReference
@@ -87,6 +101,7 @@ nonisolated struct DailyNutritionSummary: Equatable, Sendable {
     let macroCompleteCount: Int
     let completeCount: Int
     let macroSplit: MacroEnergySplit?
+    let macroEnergyShare: MacroEnergyShare?
     let fiberReferenceGrams: Double?
     let guidance: [MacroGuidance]
 
@@ -105,6 +120,8 @@ nonisolated struct DailyNutritionSummary: Equatable, Sendable {
 }
 
 nonisolated enum DailyNutrition {
+    private static let referenceTolerance = 0.000_001
+
     static func summary(
         records: [LoggedNutrition],
         calorieGoal: Int
@@ -152,12 +169,16 @@ nonisolated enum DailyNutrition {
             fatGrams: fatTotal,
             fiberGrams: fiberTotal
         )
+        let totalCalories = records.reduce(0) { $0 + $1.calories }
         let macrosAreComplete = !records.isEmpty && macroCompleteCount == records.count
         let split = macrosAreComplete ? macroEnergySplit(for: knownNutrients) : nil
+        let energyShare = macrosAreComplete
+            ? macroEnergyShare(for: knownNutrients, totalCalories: totalCalories)
+            : nil
 
         return DailyNutritionSummary(
             entryCount: records.count,
-            totalCalories: records.reduce(0) { $0 + $1.calories },
+            totalCalories: totalCalories,
             knownNutrients: knownNutrients,
             carbohydrateKnownCount: carbohydrateKnownCount,
             proteinKnownCount: proteinKnownCount,
@@ -166,8 +187,9 @@ nonisolated enum DailyNutrition {
             macroCompleteCount: macroCompleteCount,
             completeCount: completeCount,
             macroSplit: split,
+            macroEnergyShare: energyShare,
             fiberReferenceGrams: calorieGoal > 0 ? 14 * Double(calorieGoal) / 1_000 : nil,
-            guidance: split.map(guidance(for:)) ?? []
+            guidance: energyShare.map(guidance(for:)) ?? []
         )
     }
 
@@ -191,11 +213,36 @@ nonisolated enum DailyNutrition {
         )
     }
 
-    private static func guidance(for split: MacroEnergySplit) -> [MacroGuidance] {
+    private static func macroEnergyShare(
+        for nutrients: FoodNutrients,
+        totalCalories: Int
+    ) -> MacroEnergyShare? {
+        guard
+            totalCalories > 0,
+            let carbohydrates = nutrients.carbohydratesGrams,
+            let protein = nutrients.proteinGrams,
+            let fat = nutrients.fatGrams
+        else { return nil }
+
+        let calories = Double(totalCalories)
+        let share = MacroEnergyShare(
+            carbohydrates: carbohydrates * 4 / calories,
+            protein: protein * 4 / calories,
+            fat: fat * 9 / calories
+        )
+        guard
+            share.carbohydrates.isFinite,
+            share.protein.isFinite,
+            share.fat.isFinite
+        else { return nil }
+        return share
+    }
+
+    private static func guidance(for share: MacroEnergyShare) -> [MacroGuidance] {
         let gaps = Macronutrient.allCases.compactMap { nutrient -> (Double, MacroGuidance)? in
-            let measured = split.fraction(for: nutrient)
+            let measured = share.fraction(for: nutrient)
             let range = nutrient.referenceRange
-            if measured < range.lowerBound {
+            if measured < range.lowerBound - referenceTolerance {
                 return (
                     range.lowerBound - measured,
                     MacroGuidance(
@@ -206,7 +253,7 @@ nonisolated enum DailyNutrition {
                     )
                 )
             }
-            if measured > range.upperBound {
+            if measured > range.upperBound + referenceTolerance {
                 return (
                     measured - range.upperBound,
                     MacroGuidance(

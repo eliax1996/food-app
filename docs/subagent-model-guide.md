@@ -250,6 +250,22 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Strength: surfaced cross-cutting risks that narrow implementation review could miss.
 - Policy effect: empirical entry only; no standing model-policy change.
 
+### 2026-08-10 — Luna `max`: bounded visual acceptance groups
+
+- Shape: two to four final screenshots with neutral critical/high criteria.
+- Outcome: fast, concise judgments found a real conflicting-percentage presentation and approved the corrected grams-versus-logged-energy design, reminder states, and Weight editor.
+- Strength: strong pixel-level hierarchy/value consistency when evidence sets stayed small.
+- Weakness: nine-image and repository-wide prompts repeatedly exceeded 240–300 second bounds without output.
+- Policy effect: keep Luna `max` for small visual groups; split broad evidence instead of extending timeout.
+
+### 2026-08-10 — Sol `medium`: bounded critical code reviews
+
+- Shape: two to four attached interacting Swift files, no tools, critical/high correctness only.
+- Outcome: completed quickly and found three material issues: unsupported goal-history copy/swipe transaction semantics, AMDR denominator misuse, and missing reminder reschedule after authorization recovery. Follow-up reviews approved fixes.
+- Strength: high signal on cross-file semantics, safety, and state transitions at modest effort.
+- Weakness: initial isolated reminder review missed parent Config rescheduling context, so parent still had to evaluate finding scope.
+- Policy effect: after one bounded Luna code-review timeout, prefer Sol `medium` with attached files for critical cross-file read-only review; parent supplies all interacting owners and verifies every finding.
+
 Do not change standing model policy absent repeated evidence.
 
 ## Record template

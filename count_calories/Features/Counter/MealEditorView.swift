@@ -4,6 +4,13 @@ import UIKit
 struct MealEditorView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    private enum NumericField: Hashable {
+        case amount
+        case servings
+    }
+
+    @FocusState private var focusedNumericField: NumericField?
+
     let foods: [Food]
     let recentFoods: [Food]
     let isEditing: Bool
@@ -218,6 +225,7 @@ struct MealEditorView: View {
                                 format: .number.precision(.fractionLength(0...2))
                             )
                             .keyboardType(.decimalPad)
+                            .focused($focusedNumericField, equals: .amount)
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.roundedBorder)
                             .frame(minWidth: 88)
@@ -239,6 +247,7 @@ struct MealEditorView: View {
                             format: .number.precision(.fractionLength(0...2))
                         )
                         .keyboardType(.decimalPad)
+                        .focused($focusedNumericField, equals: .servings)
                         .multilineTextAlignment(.trailing)
                         .textFieldStyle(.roundedBorder)
                         .frame(minWidth: 88)
@@ -316,6 +325,14 @@ struct MealEditorView: View {
                     }
                     .disabled(!canSave)
                     .accessibilityIdentifier("save-meal")
+                }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        focusedNumericField = nil
+                    }
+                    .accessibilityIdentifier("meal-editor-keyboard-done")
                 }
             }
         }

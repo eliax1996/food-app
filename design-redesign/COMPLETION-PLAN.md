@@ -38,7 +38,7 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
 2. **NUTRIENTS-001 — COMPLETE: daily macros, fiber, coverage, and measured guidance**
    - Optional carbohydrate, protein, fat, and fiber survive v3.6/v2/search, cache projection migration, Food serving persistence, and immutable consumed PlateEntry snapshots without inventing missing values.
    - Today and daily detail expose measured grams, macro-energy split, Fiber, explicit coverage, methodology, and at most two neutral range-citing suggestions.
-   - Macro and Fiber comparisons require 100% relevant coverage; reported calories remain authoritative and separate from 4/4/9 macro energy.
+   - Macro and Fiber comparisons require 100% relevant coverage. Reported calories remain budget-authoritative and provide the adult-range denominator; the colored 4/4/9 macro-only split stays separately normalized.
    - Focused custom-food nutrient editor, complete/partial/dark/AX3 evidence, hostless/app-hosted tests, 12/12 UI target, and 3/3 critical/high visual approval are accepted.
    - Calorie-goal-derived theoretical gram ranges requested for Plan remain tracked as NUTRITION-GOALS-001 inside REFINE-001.
 
@@ -99,7 +99,7 @@ For each component:
 | Completion audit | COMPLETE | Original program correctly classified incomplete; this plan created. |
 | STATES-001 | COMPLETE | Accepted attempt 04. Post-fix live remote screenshot proves one `69.7 × 44.0` Retry; scanner permission plus AX3-dark and barcode loading/offline evidence accepted; functional UI target passed 11/11. |
 | NUTRIENTS-001 | COMPLETE | Accepted attempt 01: optional API/cache facts, immutable snapshots, custom entry, coverage-gated balance, 3/3 critical/high visual approval, 140 hostless pass / 2 skips, 167 app-host pass / 2 skips, and 12/12 UI. |
-| REFINE-001 | NEXT | NUTRIENTS prerequisite is complete. Begin competitor/safety research, specification, onboarding/Plan architecture, NUTRITION-GOALS-001, reminders, adaptive tuning, and hierarchical Settings below. |
+| REFINE-001 | IN PROGRESS | Attempt 01 Slices A/B accepted: research, Plan references, reminders, hierarchical Settings, and numeric-entry follow-up complete. Slice C welcome/calculator next; Slice D adaptation follows. |
 | AUXILIARY-001 | PENDING | No widget/Live Activity visual audit yet. |
 | CONSISTENCY-001 | PENDING | Requires completed component set. |
 | ROBUSTNESS-001 | PENDING | Partial Meal/Amount/Weight evidence only. |
@@ -108,7 +108,7 @@ For each component:
 
 ## Refine
 
-**Execution status:** NEXT / READY. User’s NUTRIENTS-001 prerequisite is accepted. Execute every item below autonomously, beginning with research and specification before implementation.
+**Execution status:** IN PROGRESS. Attempt 01 Slices A/B accepted. Continue autonomously with Slice C welcome/setup and explainable calculated calorie plan, then Slice D evidence-gated adaptation.
 
 ### 1. Competitor and safety research
 
@@ -172,12 +172,12 @@ Add optional weight-entry reminders with configurable frequency/time and explain
 
 Research minimum observation window, trend method, confidence/data-coverage rules, adjustment cadence, and safe change bounds. Keep raw weight log intact; adaptive analysis consumes trend, never overwrites measurements.
 
-### 5. Configurable meal reminder windows
+### 5. Configurable meal reminder times — ATTEMPT 01 COMPLETE
 
-Evaluate whether fixed times or configurable windows best match user needs. Candidate design:
+Competitor research supported exact times over ambiguous windows. Implemented design:
 
 - independent Breakfast, Lunch, Snack, and Dinner reminder toggles;
-- editable time or start/end window per meal, with sensible defaults;
+- editable exact local time per meal, with legacy defaults;
 - clear “only when not logged” behavior;
 - local-calendar, timezone, DST, and overnight-window rules;
 - collision/deduplication policy and system pending-notification cap;
@@ -223,4 +223,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-Begin REFINE-001 competitor and nutrition-safety research. Specify onboarding inputs, explainable calorie-goal math and safety bounds, NUTRITION-GOALS-001 theoretical reference-versus-real presentation, reminder state machines, adaptive-tuning evidence rules, migration, and hierarchical Settings before implementation.
+REFINE-001 attempt 01 completed hierarchical Settings, NUTRITION-GOALS-001, configurable meal/weight reminders, permission recovery, and user-requested numeric-entry refinement. Begin Slice C by finalizing supported adult population, equation inputs, safety bounds, migration, and resumable welcome state machine before calculator/onboarding code.

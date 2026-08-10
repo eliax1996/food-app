@@ -66,6 +66,7 @@ final class ReminderNotificationManager {
     func reschedule(
         meals: [MealReminderRecord],
         water: [WaterReminderRecord],
+        weights: [WeightReminderRecord] = [],
         preferences: ReminderPreferences,
         now: Date = .now,
         calendar: Calendar = .current
@@ -107,7 +108,8 @@ final class ReminderNotificationManager {
             calendar: calendar,
             preferences: preferences,
             meals: meals,
-            water: water
+            water: water,
+            weights: weights
         )
 
         var scheduledCount = 0

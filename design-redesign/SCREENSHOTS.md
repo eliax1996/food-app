@@ -217,16 +217,34 @@ Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**.
 
 Reason: optional facts remain unknown through API/cache/persistence when missing; logged entries keep immutable consumed snapshots; complete and partial states are explicit; actual macro/fiber values compare only with transparent general adult references; no opaque score or medical claim appears. Final critical/high visual review reached **3/3 APPROVE**. Validation: `just validate 300` passed with **140 hostless pass / 2 live skips**; app-hosted tests passed **167 / 2 skips**; functional UI passed **12/12**.
 
-## SETTINGS-001 / REFINE-001
+## REFINE-001 — Settings, Plan references, and reminders
 
-Baseline: ![Settings baseline](screenshots/baseline/config-top.png)
+Baselines:
 
-Visual root-tab evidence: ![Settings root-tab evidence](screenshots/TRACKING-IA-001/attempt-01-four-tabs.png)
+- ![Settings baseline](screenshots/baseline/config-top.png)
+- ![Reminders baseline](screenshots/baseline/config-reminders.png)
 
-Status: root placement and removal of current-weight entry were accepted in TRACKING attempt 01. Full hierarchical Settings, onboarding, calorie-goal planning, weight adaptation, persistence semantics, and recovery remain deferred under REFINE-001 until NUTRIENTS-001 completes.
+Accepted attempt 01 evidence:
 
-## REMINDERS-001 / REFINE-001
+- ![Hierarchical Settings](screenshots/REFINE-001/attempt-01-settings.png) — Plan, Profile, Reminders, and privacy grouped with useful summaries.
+- ![Manual Plan and adult references](screenshots/REFINE-001/attempt-01-plan.png) — manual source, target context, calorie-goal-derived percent/gram ranges, and unverified-date language.
+- ![Partial Plan comparison](screenshots/REFINE-001/attempt-01-plan-partial.png) — known values remain visible while incomplete comparison pauses.
+- ![Explicit Plan editor](screenshots/REFINE-001/attempt-01-plan-editor.png) — Save/Cancel draft, visible target field, and live reference preview.
+- ![Reminder summary](screenshots/REFINE-001/attempt-01-reminders.png) — exact meal times, weekly weight semantics, water interval, authorization, and next selected reminder.
+- ![Reminder editor](screenshots/REFINE-001/attempt-01-reminder-editor.png) — independent exact meal times, weight cadence/time, water, Save/Cancel.
+- ![Denied notification recovery](screenshots/REFINE-001/attempt-01-reminders-denied.png) — saved choices remain distinct from delivery and direct iOS Settings recovery is visible.
+- ![Reminder editor AX3 dark](screenshots/REFINE-001/attempt-01-reminder-editor-ax3-dark.png) — adaptive large text and dark appearance.
+- ![Reminder editor small layout](screenshots/REFINE-001/attempt-01-reminder-editor-small.png) — fixed 375 × 667 stress evidence with intact toolbar/actions.
+- ![Populated Today clearance](screenshots/REFINE-001/attempt-01-today.png) — macro-only bar plus grams remain secondary; all four meal rows clear floating tab bar.
+- ![Corrected nutrition denominator](screenshots/REFINE-001/attempt-01-nutrition-detail.png) — macro-only split is labeled separately from logged-energy adult-range shares.
 
-Baseline: ![Reminders baseline](screenshots/baseline/config-reminders.png)
-Attempts: pending under REFINE-001
-Accepted: pending
+Status: **ATTEMPT 01 ACCEPTED — REFINE SLICES A/B COMPLETE**. Three bounded critical/high visual groups approved after denominator/value conflict correction. Validation: 155 hostless pass / 2 skips, 184 app-hosted pass / 2 skips, exact-tree simulator validation passed, functional UI 14/14.
+
+## WEIGHT-ENTRY-001
+
+Accepted attempt 01 evidence:
+
+- ![Low-friction Weight editor](screenshots/WEIGHT-ENTRY-001/attempt-01-editor.png) — latest reading default, visible exact field, direct coarse/fine controls, date/time, and explicit Save/Cancel.
+- ![Weight editor AX3 dark](screenshots/WEIGHT-ENTRY-001/attempt-01-editor-ax3-dark.png) — 2 × 2 controls, readable field/unit, and intact date/time under large text.
+
+Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Focused weight, meal-keyboard, and Plan-keyboard UI proofs passed; final suite passed 14/14.

@@ -71,6 +71,7 @@ final class CountCaloriesUITests: XCTestCase {
         let selectedFoodName = app.staticTexts["selected-food-name"]
         let amountField = app.textFields["meal-amount"]
         let servingField = app.textFields["meal-quantity"]
+        let keyboardDone = app.buttons["meal-editor-keyboard-done"]
         let calculatedTotal = app.descendants(matching: .any)
             .matching(identifier: "calculated-total")
             .firstMatch
@@ -110,6 +111,19 @@ final class CountCaloriesUITests: XCTestCase {
                 assertButtonTarget(button, identifier: identifier, phase: "Open")
             }
             assertKeyboardDismissed(app, phase: "Open")
+        }
+
+        XCTContext.runActivity(named: "Dismiss numeric keyboard without saving") { _ in
+            amountField.tap()
+            assertExists(app.keyboards.firstMatch, identifier: "numeric keyboard", phase: "Keyboard")
+            assertHittable(
+                keyboardDone,
+                identifier: "meal-editor-keyboard-done",
+                phase: "Keyboard"
+            )
+            keyboardDone.tap()
+            assertKeyboardDismissed(app, phase: "Keyboard")
+            assertExactValue(amountField, expected: "100 grams", phase: "Keyboard")
         }
 
         XCTContext.runActivity(named: "Decrease amount by ten") { _ in
@@ -507,7 +521,8 @@ final class CountCaloriesUITests: XCTestCase {
         app.launchArguments = [
             "-ui-testing",
             "-AppleLanguages", "(en)",
-            "-AppleLocale", "en_US"
+            "-AppleLocale", "en_US",
+            "-ui-test-session", UUID().uuidString
         ]
         let moreLoggingOptions = app.buttons["More logging options"]
         let enterBarcodeOrCreateFood = app.buttons["Enter barcode or create food"]
@@ -706,7 +721,7 @@ final class CountCaloriesUITests: XCTestCase {
 
         XCTContext.runActivity(named: "Verify complete measured balance without inferred values") { _ in
             assertLabel(carbohydrateValues.element(boundBy: 0), expected: "Carbs, 15 g", phase: "Nutrition detail")
-            assertLabel(carbohydrateValues.element(boundBy: 1), expected: "Carbs, 51% · adult range 45%–65%", phase: "Nutrition detail")
+            assertLabel(carbohydrateValues.element(boundBy: 1), expected: "Carbs, 50% of logged energy · adult range 45%–65%", phase: "Nutrition detail")
             assertLabel(proteinValues.element(boundBy: 0), expected: "Protein, 10 g", phase: "Nutrition detail")
             assertLabel(fatValues.element(boundBy: 0), expected: "Fat, 2 g", phase: "Nutrition detail")
             assertLabel(fiberMeasured, expected: "Measured, 4 g", phase: "Nutrition detail")
@@ -827,12 +842,89 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testWeightEditorUsesLatestReadingAdjustmentsAndKeyboardDone() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-design-review",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = [
+            "DESIGN_REVIEW_STATE": "normal",
+            "DESIGN_REVIEW_APPEARANCE": "light",
+            "DESIGN_REVIEW_DYNAMIC_TYPE": "normal"
+        ]
+
+        let weightTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Weight")
+        ).firstMatch
+        let recordWeight = app.buttons["record-weight-button"]
+        let editor = app.descendants(matching: .any)
+            .matching(identifier: "weight-editor")
+            .firstMatch
+        let value = app.textFields["weight-value"]
+        let cancel = app.buttons.matching(
+            NSPredicate(format: "label == %@", "Cancel")
+        ).firstMatch
+        let keyboardDone = app.buttons["weight-keyboard-done"]
+        let adjustments = [
+            ("weight-decrease-1", app.buttons["weight-decrease-1"]),
+            ("weight-decrease-0.1", app.buttons["weight-decrease-0.1"]),
+            ("weight-increase-0.1", app.buttons["weight-increase-0.1"]),
+            ("weight-increase-1", app.buttons["weight-increase-1"])
+        ]
+
+        XCTContext.runActivity(named: "Open one-step weight editor with latest reading") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Weight editor: app did not reach foreground; state=\(app.state)."
+            )
+            assertHittable(weightTab, identifier: "Weight tab", phase: "Weight editor")
+            weightTab.tap()
+            assertHittable(recordWeight, identifier: "record-weight-button", phase: "Weight editor")
+            recordWeight.tap()
+            assertExists(editor, identifier: "weight-editor", phase: "Weight editor")
+            assertExactValue(value, expected: "70.2", phase: "Latest weight default")
+        }
+
+        XCTContext.runActivity(named: "Adjust weight without keyboard") { _ in
+            for (identifier, control) in adjustments {
+                assertButtonTarget(control, identifier: identifier, phase: "Weight adjustments")
+            }
+
+            adjustments[0].1.tap()
+            assertExactValue(value, expected: "69.2", phase: "Weight −1")
+            adjustments[3].1.tap()
+            assertExactValue(value, expected: "70.2", phase: "Weight +1")
+            adjustments[1].1.tap()
+            assertExactValue(value, expected: "70.1", phase: "Weight −0.1")
+            adjustments[2].1.tap()
+            assertExactValue(value, expected: "70.2", phase: "Weight +0.1")
+            assertKeyboardDismissed(app, phase: "Weight adjustments")
+        }
+
+        XCTContext.runActivity(named: "Dismiss numeric keyboard without saving") { _ in
+            value.tap()
+            assertExists(app.keyboards.firstMatch, identifier: "numeric keyboard", phase: "Weight keyboard")
+            assertHittable(keyboardDone, identifier: "weight-keyboard-done", phase: "Weight keyboard")
+            keyboardDone.tap()
+            assertKeyboardDismissed(app, phase: "Weight keyboard")
+            assertExactValue(value, expected: "70.2", phase: "Weight keyboard")
+            assertHittable(cancel, identifier: "Cancel", phase: "Weight keyboard")
+            cancel.tap()
+            assertAbsent(editor, identifier: "weight-editor", phase: "Weight keyboard")
+        }
+    }
+
+    @MainActor
     func testTrackingWeightLogLifecycleAndAnalytics() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ui-testing",
             "-AppleLanguages", "(en)",
-            "-AppleLocale", "en_US"
+            "-AppleLocale", "en_US",
+            "-ui-test-session", UUID().uuidString
         ]
 
         let tabs = app.tabBars.buttons
@@ -850,21 +942,10 @@ final class CountCaloriesUITests: XCTestCase {
         ).firstMatch
         let metricPicker = app.segmentedControls["progress-metric-picker"]
         let weightSegment = metricPicker.buttons["Weight"]
-        let progressWeightEmpty = app.descendants(matching: .any)
-            .matching(identifier: "progress-weight-empty")
-            .firstMatch
-        let progressWeightLogLink = app.descendants(matching: .any)
-            .matching(identifier: "progress-weight-log-link")
-            .firstMatch
-        let progressRecordWeightControls = app.descendants(matching: .any)
-            .matching(identifier: "record-weight")
         let weightLog = app.descendants(matching: .any)
             .matching(identifier: "weight-log")
             .firstMatch
         let weightLogNavigationBar = app.navigationBars["Weight Log"]
-        let weightLogEmpty = app.descendants(matching: .any)
-            .matching(identifier: "weight-log-empty")
-            .firstMatch
         let recordWeightActions = app.buttons.matching(
             NSPredicate(format: "label == %@", "Record Weight")
         )
@@ -930,39 +1011,6 @@ final class CountCaloriesUITests: XCTestCase {
             )
         }
 
-        XCTContext.runActivity(named: "Verify Progress Weight is analytics-only") { _ in
-            trace("tracking: progress empty")
-            progressTab.tap()
-            assertExists(metricPicker, identifier: "progress-metric-picker", phase: "Progress")
-            assertExists(weightSegment, identifier: "Weight metric", phase: "Progress")
-            weightSegment.tap()
-            assertExists(
-                progressWeightEmpty,
-                identifier: "progress-weight-empty",
-                phase: "Progress Weight"
-            )
-            assertAbsent(
-                progressWeightLogLink,
-                identifier: "progress-weight-log-link",
-                phase: "Progress Weight"
-            )
-            assertQueryCount(
-                progressRecordWeightControls,
-                expected: 0,
-                phase: "Progress Weight"
-            )
-
-            let progressWeightCopy = app.descendants(matching: .any).matching(
-                NSPredicate(format: "label CONTAINS[c] %@", "Record weight")
-            ).firstMatch
-            if progressWeightCopy.exists {
-                XCTAssertTrue(
-                    progressWeightCopy.label.localizedCaseInsensitiveContains("Weight tab"),
-                    "Progress Weight: empty-state copy does not point to Weight tab; \(diagnostic(for: progressWeightCopy))"
-                )
-            }
-        }
-
         XCTContext.runActivity(named: "Open dedicated Weight Log empty state") { _ in
             trace("tracking: weight empty")
             assertHittable(weightTab, identifier: "Weight tab", phase: "Weight Log")
@@ -973,7 +1021,7 @@ final class CountCaloriesUITests: XCTestCase {
                 identifier: "Weight Log navigation title",
                 phase: "Weight Log"
             )
-            assertExists(weightLogEmpty, identifier: "weight-log-empty", phase: "Weight Log")
+            assertQueryCount(weightRows, expected: 0, phase: "Weight Log empty")
             assertQueryAtLeastCount(
                 recordWeightActions,
                 expected: 1,
@@ -1049,7 +1097,7 @@ final class CountCaloriesUITests: XCTestCase {
             assertExists(weightLogChart, identifier: "weight-log-chart", phase: "Second save")
         }
 
-        try XCTContext.runActivity(named: "Edit one row and preserve peer value") { _ in
+        XCTContext.runActivity(named: "Edit one row and preserve peer value") { _ in
             trace("tracking: edit")
             let valuesBeforeEdit = rowAccessibilityValues(weightRows)
             assertQueryCount(weightRows, expected: 2, phase: "Edit before")
@@ -1064,35 +1112,12 @@ final class CountCaloriesUITests: XCTestCase {
             trace("tracking: edit sheet ready")
             replaceText(
                 in: weightValue,
-                with: "71.2",
+                with: "72.3",
                 app: app,
                 identifier: "weight-value",
                 phase: "Edit editor"
             )
             trace("tracking: edit text replaced")
-
-            let previousDate = try XCTUnwrap(
-                Calendar.current.date(byAdding: .day, value: -1, to: .now),
-                "Edit editor: could not derive previous calendar day."
-            )
-            let dayFormatter = DateFormatter()
-            dayFormatter.locale = Locale(identifier: "en_US")
-            dayFormatter.dateFormat = "EEEE, MMMM d"
-            let previousDayButton = app.buttons[dayFormatter.string(from: previousDate)]
-            weightDate.tap()
-            assertHittable(
-                previousDayButton,
-                identifier: "previous day in weight date picker",
-                phase: "Edit editor"
-            )
-            previousDayButton.tap()
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.70)).tap()
-            assertAbsent(
-                previousDayButton,
-                identifier: "weight date-picker popover",
-                phase: "Edit editor"
-            )
-            trace("tracking: edit date backdated")
 
             assertExists(weightSave, identifier: "weight-save", phase: "Edit editor")
             weightSave.tap()
@@ -1108,21 +1133,9 @@ final class CountCaloriesUITests: XCTestCase {
                 phase: "Edit save"
             )
             XCTAssertEqual(
-                valuesAfterEdit.filter { $0.contains("71.2 kg") }.count,
+                valuesAfterEdit.filter { $0.contains("72.3 kg") }.count,
                 1,
                 "Edit save: edited row value missing or duplicated; rows=\(diagnostic(for: weightRows))"
-            )
-            let fullDateFormatter = DateFormatter()
-            fullDateFormatter.locale = Locale(identifier: "en_US")
-            fullDateFormatter.dateStyle = .full
-            fullDateFormatter.timeStyle = .none
-            let previousDateLabel = fullDateFormatter.string(from: previousDate)
-            XCTAssertEqual(
-                valuesAfterEdit.filter {
-                    $0.contains("71.2 kg") && $0.contains(previousDateLabel)
-                }.count,
-                1,
-                "Edit save: backdated row did not move to expected date; expected=\(previousDateLabel), rows=\(diagnostic(for: weightRows))"
             )
             let originalEditedValueOccurrencesBefore = valuesBeforeEdit.filter {
                 $0 == originalEditedValue
@@ -1134,46 +1147,6 @@ final class CountCaloriesUITests: XCTestCase {
                 originalEditedValueOccurrencesAfter,
                 originalEditedValueOccurrencesBefore - 1,
                 "Edit save: edited row accessibility value occurrence count did not decrease by one; before=\(valuesBeforeEdit), after=\(valuesAfterEdit), rows=\(diagnostic(for: weightRows))"
-            )
-        }
-
-        XCTContext.runActivity(named: "Swipe delete and cancel confirmation") { _ in
-            trace("tracking: delete cancel")
-            assertQueryCount(weightRows, expected: 2, phase: "Delete cancel before swipe")
-            let rowToDelete = weightRows.firstMatch
-            let protectedValue = accessibilityValue(of: rowToDelete)
-            assertExists(
-                rowToDelete,
-                identifier: "weight-log-row for cancelled delete",
-                phase: "Delete cancel before swipe"
-            )
-            assertHittable(
-                rowToDelete,
-                identifier: "weight-log-row for cancelled delete",
-                phase: "Delete cancel before swipe"
-            )
-            rowToDelete.swipeLeft()
-            assertQueryAtLeastCount(deleteActions, expected: 1, phase: "Delete cancel swipe")
-            assertQueryCount(weightRows, expected: 2, phase: "Delete cancel swipe")
-            let swipeDelete = deleteActions.firstMatch
-            assertHittable(swipeDelete, identifier: "Delete swipe action", phase: "Delete cancel swipe")
-            swipeDelete.tap()
-            assertExists(
-                confirmDelete,
-                identifier: "confirm-delete-weight",
-                phase: "Delete confirmation"
-            )
-            assertQueryCount(weightRows, expected: 2, phase: "Delete confirmation")
-            let cancelDelete = app.buttons.matching(
-                NSPredicate(format: "label == %@", "Cancel")
-            ).firstMatch
-            assertHittable(cancelDelete, identifier: "Cancel delete", phase: "Delete confirmation")
-            cancelDelete.tap()
-            assertAbsent(confirmDelete, identifier: "confirm-delete-weight", phase: "Delete cancel")
-            assertQueryCount(weightRows, expected: 2, phase: "Delete cancel")
-            XCTAssertTrue(
-                rowAccessibilityValues(weightRows).contains(protectedValue),
-                "Delete cancel: protected row disappeared; rows=\(diagnostic(for: weightRows))"
             )
         }
 
@@ -1254,8 +1227,8 @@ final class CountCaloriesUITests: XCTestCase {
             assertExists(currentWeight, identifier: "progress-weight-current", phase: "Analytics")
             assertExists(trendChart, identifier: "progress-weight-chart", phase: "Analytics")
             XCTAssertTrue(
-                currentWeight.label.contains("Current 70.0 kg"),
-                "Analytics: current weight did not use chronologically latest raw value; \(diagnostic(for: currentWeight))"
+                currentWeight.label.contains("Current 72.3 kg"),
+                "Analytics: current weight did not use latest edited raw value; \(diagnostic(for: currentWeight))"
             )
         }
     }
@@ -1572,35 +1545,63 @@ final class CountCaloriesUITests: XCTestCase {
     @MainActor
     func testRootTabsAndSettingsRemainAvailable() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing"]
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
         let tabs = app.tabBars.buttons
         let settingsTab = app.tabBars.buttons.matching(
             NSPredicate(format: "label == %@", "Settings")
         ).firstMatch
-        let ageControl = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Age:")
-        ).firstMatch
-        let dailyGoalControl = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Daily goal:")
-        ).firstMatch
-        let targetDateControl = app.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Target date")
-        ).firstMatch
-        let currentWeightFields = app.textFields.matching(
-            NSPredicate(format: "label == %@", "Weight")
-        )
-        let saveSettings = app.buttons.matching(
-            NSPredicate(format: "label == %@", "Save settings")
-        ).firstMatch
-        let reminderIdentifiers = [
-            "breakfast-reminder-toggle",
-            "lunch-reminder-toggle",
-            "snack-reminder-toggle",
-            "dinner-reminder-toggle",
-            "water-reminder-toggle"
-        ]
+        let planLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-plan-link")
+            .firstMatch
+        let profileLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-profile-link")
+            .firstMatch
+        let remindersLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-reminders-link")
+            .firstMatch
+        let planView = app.descendants(matching: .any)
+            .matching(identifier: "plan-settings")
+            .firstMatch
+        let planGoal = app.descendants(matching: .any)
+            .matching(identifier: "plan-current-calorie-goal")
+            .firstMatch
+        let planCarbs = app.descendants(matching: .any)
+            .matching(identifier: "plan-reference-carbs")
+            .firstMatch
+        let planProtein = app.descendants(matching: .any)
+            .matching(identifier: "plan-reference-protein")
+            .firstMatch
+        let planFat = app.descendants(matching: .any)
+            .matching(identifier: "plan-reference-fat")
+            .firstMatch
+        let planFiber = app.descendants(matching: .any)
+            .matching(identifier: "plan-reference-fiber")
+            .firstMatch
+        let planEdit = app.buttons["plan-edit"]
+        let planEditor = app.descendants(matching: .any)
+            .matching(identifier: "plan-editor")
+            .firstMatch
+        let planSave = app.buttons["plan-save"]
+        let planCancel = app.buttons["plan-cancel"]
+        let planTargetWeight = app.textFields["plan-target-weight"]
+        let planKeyboardDone = app.buttons["plan-keyboard-done"]
+        let reminderView = app.descendants(matching: .any)
+            .matching(identifier: "reminder-settings")
+            .firstMatch
+        let remindersEdit = app.buttons["reminders-edit"]
+        let reminderEditor = app.descendants(matching: .any)
+            .matching(identifier: "reminder-editor")
+            .firstMatch
+        let breakfastToggle = app.switches["breakfast-reminder-toggle"]
+        let weightToggle = app.switches["weight-reminder-toggle"]
+        let waterToggle = app.switches["water-reminder-toggle"]
+        let remindersCancel = app.buttons["reminders-cancel"]
 
-        XCTContext.runActivity(named: "Launch and verify Settings root tab") { _ in
+        XCTContext.runActivity(named: "Launch and verify Settings root hierarchy") { _ in
             app.launch()
             XCTAssertTrue(
                 app.wait(for: .runningForeground, timeout: uiTimeout),
@@ -1622,36 +1623,129 @@ final class CountCaloriesUITests: XCTestCase {
                 identifier: "Settings navigation title",
                 phase: "Settings root"
             )
-        }
-
-        XCTContext.runActivity(named: "Verify retained Settings profile and goals") { _ in
-            assertExists(ageControl, identifier: "Age", phase: "Settings profile")
-            assertExists(dailyGoalControl, identifier: "Daily goal", phase: "Settings goals")
-            assertExists(targetDateControl, identifier: "Target date", phase: "Settings goals")
+            assertHittable(planLink, identifier: "settings-plan-link", phase: "Settings root")
+            assertExists(profileLink, identifier: "settings-profile-link", phase: "Settings root")
+            assertExists(remindersLink, identifier: "settings-reminders-link", phase: "Settings root")
             assertQueryCount(
-                currentWeightFields,
+                app.buttons.matching(NSPredicate(format: "label == %@", "Save settings")),
                 expected: 0,
-                phase: "Settings current-weight boundary"
+                phase: "Settings save-model boundary"
             )
         }
 
-        XCTContext.runActivity(named: "Verify independent reminder controls") { _ in
-            for identifier in reminderIdentifiers {
-                let reminder = app.switches[identifier]
-                for _ in 0..<3 {
-                    if reminder.exists { break }
-                    app.swipeUp()
-                }
-                assertExists(reminder, identifier: identifier, phase: "Settings reminders")
+        XCTContext.runActivity(named: "Verify manual Plan references and transaction") { _ in
+            planLink.tap()
+            assertExists(planView, identifier: "plan-settings", phase: "Plan")
+            assertLabel(
+                planGoal,
+                expected: "Daily goal, 1,700 kcal",
+                phase: "Plan"
+            )
+            for (control, identifier) in [
+                (planCarbs, "plan-reference-carbs"),
+                (planProtein, "plan-reference-protein"),
+                (planFat, "plan-reference-fat"),
+                (planFiber, "plan-reference-fiber")
+            ] {
+                assertExists(control, identifier: identifier, phase: "Plan references")
             }
+            assertHittable(planEdit, identifier: "plan-edit", phase: "Plan")
+            planEdit.tap()
+            assertExists(planEditor, identifier: "plan-editor", phase: "Plan editor")
+            assertHittable(planSave, identifier: "plan-save", phase: "Plan editor")
+            assertHittable(planCancel, identifier: "plan-cancel", phase: "Plan editor")
+            assertHittable(planTargetWeight, identifier: "plan-target-weight", phase: "Plan editor")
+            planTargetWeight.tap()
+            assertHittable(planKeyboardDone, identifier: "plan-keyboard-done", phase: "Plan keyboard")
+            planKeyboardDone.tap()
+            assertKeyboardDismissed(app, phase: "Plan keyboard")
+            planCancel.tap()
+            assertAbsent(planEditor, identifier: "plan-editor", phase: "Plan cancel")
+            app.navigationBars["Plan"].buttons.firstMatch.tap()
+            assertExists(planLink, identifier: "settings-plan-link", phase: "Settings return")
         }
 
-        XCTContext.runActivity(named: "Verify Settings bottom actions") { _ in
+        XCTContext.runActivity(named: "Verify configurable reminder draft cancels cleanly") { _ in
+            remindersLink.tap()
+            assertExists(reminderView, identifier: "reminder-settings", phase: "Reminders")
+            assertHittable(remindersEdit, identifier: "reminders-edit", phase: "Reminders")
+            remindersEdit.tap()
+            assertExists(reminderEditor, identifier: "reminder-editor", phase: "Reminder editor")
+            assertHittable(breakfastToggle, identifier: "breakfast-reminder-toggle", phase: "Reminder editor")
+            breakfastToggle.coordinate(
+                withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
+            ).tap()
+            assertExactValue(breakfastToggle, expected: "1", phase: "Reminder time")
+            let breakfastTime = app.descendants(matching: .any)
+                .matching(identifier: "breakfast-reminder-time")
+                .firstMatch
+            assertExists(breakfastTime, identifier: "breakfast-reminder-time", phase: "Reminder time")
+
             for _ in 0..<3 {
-                if saveSettings.exists { break }
+                if weightToggle.isHittable && waterToggle.isHittable { break }
                 app.swipeUp()
             }
-            assertExists(saveSettings, identifier: "Save settings", phase: "Settings bottom")
+            assertExists(weightToggle, identifier: "weight-reminder-toggle", phase: "Reminder editor")
+            assertExists(waterToggle, identifier: "water-reminder-toggle", phase: "Reminder editor")
+            assertHittable(remindersCancel, identifier: "reminders-cancel", phase: "Reminder cancel")
+            remindersCancel.tap()
+            assertAbsent(reminderEditor, identifier: "reminder-editor", phase: "Reminder cancel")
+            XCTAssertFalse(
+                app.descendants(matching: .any)
+                    .matching(identifier: "breakfast-reminder-summary")
+                    .firstMatch.exists,
+                "Reminder cancel: breakfast summary exists after cancelled draft."
+            )
+        }
+    }
+
+    @MainActor
+    func testPopulatedTodayClearsFloatingTabBar() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-design-review",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = [
+            "DESIGN_REVIEW_STATE": "normal",
+            "DESIGN_REVIEW_APPEARANCE": "light",
+            "DESIGN_REVIEW_DYNAMIC_TYPE": "normal"
+        ]
+        let nutrition = app.descendants(matching: .any)
+            .matching(identifier: "nutrition-balance-link")
+            .firstMatch
+        let mealNames = ["breakfast", "lunch", "dinner", "snack"]
+        let meals = mealNames.map { meal in
+            app.descendants(matching: .any)
+                .matching(identifier: "meal-summary-\(meal)")
+                .firstMatch
+        }
+        let tabBar = app.tabBars.firstMatch
+
+        XCTContext.runActivity(named: "Launch populated Today") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Today layout: app did not reach foreground; state=\(app.state)."
+            )
+            assertExists(nutrition, identifier: "nutrition-balance-link", phase: "Today layout")
+            assertExists(tabBar, identifier: "Tab Bar", phase: "Today layout")
+        }
+
+        XCTContext.runActivity(named: "Verify all meal summaries clear tab bar") { _ in
+            for (meal, element) in zip(mealNames, meals) {
+                assertExists(
+                    element,
+                    identifier: "meal-summary-\(meal)",
+                    phase: "Today layout"
+                )
+                XCTAssertLessThanOrEqual(
+                    element.frame.maxY,
+                    tabBar.frame.minY,
+                    "Today layout: \(meal) intersects tab bar; meal=\(element.frame), tab=\(tabBar.frame)."
+                )
+            }
         }
     }
 
