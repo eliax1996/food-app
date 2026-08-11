@@ -14,6 +14,7 @@ struct ReminderSettingsView: View {
     @State private var preferences: ReminderPreferences
     @State private var authorizationState: ReminderAuthorizationState
     @State private var showingEditor = false
+    @State private var editorSection = ReminderEditorSection.meals
 
     init(
         preferences: ReminderPreferences,
@@ -25,10 +26,6 @@ struct ReminderSettingsView: View {
         self.refreshesAuthorization = refreshesAuthorization
         _preferences = State(initialValue: preferences)
         _authorizationState = State(initialValue: authorizationState)
-    }
-
-    private var enabledMeals: [ReminderMeal] {
-        ReminderMeal.allCases.filter(preferences.isEnabled)
     }
 
     private var plannedReminders: [ReminderNotificationPlan] {
@@ -64,7 +61,7 @@ struct ReminderSettingsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") {
-                    showingEditor = true
+                    openEditor(at: .meals)
                 }
                 .accessibilityIdentifier("reminders-edit")
             }
@@ -73,6 +70,7 @@ struct ReminderSettingsView: View {
             ReminderEditor(
                 initialPreferences: preferences,
                 authorizationState: authorizationState,
+                initialSection: editorSection,
                 onSave: save
             )
             .interactiveDismissDisabled()
@@ -89,37 +87,55 @@ struct ReminderSettingsView: View {
 
     private var mealSection: some View {
         Section {
-            if enabledMeals.isEmpty {
-                Text("Off")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(enabledMeals, id: \.self) { meal in
-                    LabeledContent(meal.rawValue) {
-                        Text(timeText(preferences.time(for: meal)))
-                            .monospacedDigit()
-                    }
-                    .accessibilityIdentifier("\(meal.identifierComponent)-reminder-summary")
+            ForEach(ReminderMeal.allCases, id: \.self) { meal in
+                Button {
+                    openEditor(at: .meals)
+                } label: {
+                    EditableReminderSummaryRow(
+                        title: meal.rawValue,
+                        value: preferences.isEnabled(meal)
+                            ? timeText(preferences.time(for: meal))
+                            : "Off"
+                    )
                 }
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(meal.rawValue) reminder")
+                .accessibilityValue(preferences.isEnabled(meal)
+                    ? timeText(preferences.time(for: meal))
+                    : "Off")
+                .accessibilityHint("Opens reminder editor")
+                .accessibilityIdentifier("\(meal.identifierComponent)-reminder-summary")
             }
         } header: {
             Text("Meal reminders")
         } footer: {
-            Text("A meal reminder is omitted when that meal is already logged for the local day.")
+            Text("Tap a meal to edit its time. A reminder is omitted when that meal is already logged for the local day.")
         }
     }
 
     private var weightSection: some View {
         Section {
-            if preferences.weightEnabled {
-                LabeledContent("Frequency", value: weightFrequencyText)
-                LabeledContent("Time") {
-                    Text(timeText(preferences.weightTime))
-                        .monospacedDigit()
-                }
-            } else {
-                Text("Off")
-                    .foregroundStyle(.secondary)
+            Button {
+                openEditor(at: .weight)
+            } label: {
+                EditableReminderSummaryRow(
+                    title: "Schedule",
+                    value: preferences.weightEnabled
+                        ? "\(weightFrequencyText) · \(timeText(preferences.weightTime))"
+                        : "Off"
+                )
             }
+            .buttonStyle(.plain)
+            .frame(minHeight: 44)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Weight check-in reminder")
+            .accessibilityValue(preferences.weightEnabled
+                ? "\(weightFrequencyText), \(timeText(preferences.weightTime))"
+                : "Off")
+            .accessibilityHint("Opens reminder editor")
+            .accessibilityIdentifier("weight-reminder-summary")
         } header: {
             Text("Weight check-in")
         } footer: {
@@ -132,12 +148,31 @@ struct ReminderSettingsView: View {
     }
 
     private var waterSection: some View {
-        Section("Water") {
+        Section {
+            Button {
+                openEditor(at: .water)
+            } label: {
+                EditableReminderSummaryRow(
+                    title: "Schedule",
+                    value: preferences.waterEnabled ? waterReminderWindowText : "Off"
+                )
+            }
+            .buttonStyle(.plain)
+            .frame(minHeight: 44)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Water reminder")
+            .accessibilityValue(preferences.waterEnabled
+                ? "After 2 hours without a glass, \(waterReminderWindowText)"
+                : "Off")
+            .accessibilityHint("Opens reminder editor")
+            .accessibilityIdentifier("water-reminder-summary")
+        } header: {
+            Text("Water")
+        } footer: {
             if preferences.waterEnabled {
-                Text("After 2 hours without a glass · \(waterReminderWindowText)")
+                Text("After two hours without a glass during this daily window; stops at 8 glasses.")
             } else {
-                Text("Off")
-                    .foregroundStyle(.secondary)
+                Text("Tap Schedule to configure the two-hour reminder window.")
             }
         }
     }
@@ -207,6 +242,11 @@ struct ReminderSettingsView: View {
         }
     }
 
+    private func openEditor(at section: ReminderEditorSection) {
+        editorSection = section
+        showingEditor = true
+    }
+
     @MainActor
     private func save(_ draft: ReminderPreferences) async -> String? {
         draft.store()
@@ -254,11 +294,56 @@ struct ReminderSettingsView: View {
     }
 }
 
+private enum ReminderEditorSection: String {
+    case meals
+    case weight
+    case water
+}
+
+private struct EditableReminderSummaryRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: dynamicTypeSize.isAccessibilitySize ? .top : .center, spacing: 12) {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .foregroundStyle(.primary)
+                    Text(value)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            } else {
+                Text(title)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
+                Text(value)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+                    .monospacedDigit()
+            }
+            if dynamicTypeSize.isAccessibilitySize {
+                Spacer(minLength: 8)
+            }
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .contentShape(Rectangle())
+    }
+}
+
 private struct ReminderEditor: View {
     @Environment(\.calendar) private var calendar
     @Environment(\.dismiss) private var dismiss
 
     let authorizationState: ReminderAuthorizationState
+    let initialSection: ReminderEditorSection
     let onSave: (ReminderPreferences) async -> String?
 
     @State private var draft: ReminderPreferences
@@ -268,16 +353,19 @@ private struct ReminderEditor: View {
     init(
         initialPreferences: ReminderPreferences,
         authorizationState: ReminderAuthorizationState,
+        initialSection: ReminderEditorSection = .meals,
         onSave: @escaping (ReminderPreferences) async -> String?
     ) {
         self.authorizationState = authorizationState
+        self.initialSection = initialSection
         self.onSave = onSave
         _draft = State(initialValue: initialPreferences)
     }
 
     var body: some View {
         NavigationStack {
-            Form {
+            ScrollViewReader { proxy in
+                Form {
                 Section {
                     ForEach(ReminderMeal.allCases, id: \.self) { meal in
                         Toggle(meal.rawValue, isOn: enabledBinding(for: meal))
@@ -296,6 +384,7 @@ private struct ReminderEditor: View {
                 } footer: {
                     Text("Each meal has an independent exact time and only reminds you when that meal is not logged.")
                 }
+                .id(ReminderEditorSection.meals)
 
                 Section {
                     Toggle("Weight check-in", isOn: $draft.weightEnabled)
@@ -322,6 +411,7 @@ private struct ReminderEditor: View {
                          ? "Weekly waits seven days after your latest weight."
                          : "Daily skips a day as soon as you record a weight.")
                 }
+                .id(ReminderEditorSection.weight)
 
                 Section {
                     Toggle("Water", isOn: $draft.waterEnabled)
@@ -331,6 +421,7 @@ private struct ReminderEditor: View {
                 } footer: {
                     Text("Every two hours from \(waterReminderStartText) to \(waterReminderEndText) when no glass was logged recently; stops at 8 glasses.")
                 }
+                .id(ReminderEditorSection.water)
 
                 if authorizationState == .denied, draft.hasEnabledReminder {
                     Section {
@@ -367,6 +458,11 @@ private struct ReminderEditor: View {
                 Button("Dismiss", role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "Unknown error")
+            }
+            .task {
+                await Task.yield()
+                proxy.scrollTo(initialSection, anchor: .top)
+            }
             }
         }
     }

@@ -29,15 +29,33 @@ final class UserProfile {
     var age: Int
     var dailyCalorieGoal: Int
     var targetDate: Date
+    // Defaults preserve existing profiles as manual without fabricating calculation inputs.
+    var planGoalSourceRawValue: String = PlanGoalSource.manual.rawValue
+    var calculatedPlanData: Data?
     // Persisted high-water mark prevents sequence reuse after deletion.
     var nextWeightSequence: Int64 = 0
 
-    init(currentWeight: Double = 70, targetWeight: Double = 68, age: Int = 30, dailyCalorieGoal: Int = 1700, targetDate: Date = .now.addingTimeInterval(60 * 60 * 24 * 90), nextWeightSequence: Int64 = 0) {
+    init(
+        currentWeight: Double = 70,
+        targetWeight: Double = 68,
+        age: Int = 30,
+        dailyCalorieGoal: Int = 1700,
+        targetDate: Date = Calendar.current.date(
+            byAdding: .day,
+            value: 90,
+            to: .now
+        ) ?? .now,
+        planGoalSource: PlanGoalSource = .manual,
+        calculatedPlanData: Data? = nil,
+        nextWeightSequence: Int64 = 0
+    ) {
         self.currentWeight = currentWeight
         self.targetWeight = targetWeight
         self.age = age
         self.dailyCalorieGoal = dailyCalorieGoal
         self.targetDate = targetDate
+        self.planGoalSourceRawValue = planGoalSource.rawValue
+        self.calculatedPlanData = calculatedPlanData
         self.nextWeightSequence = nextWeightSequence
     }
 }

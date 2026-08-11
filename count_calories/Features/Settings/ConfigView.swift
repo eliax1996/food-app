@@ -30,7 +30,7 @@ struct ConfigView: View {
                                 title: "Plan",
                                 systemImage: "target",
                                 value: "\(profile.dailyCalorieGoal.formatted()) kcal",
-                                detail: "Manual goal · Target \(weightText(profile.targetWeight))"
+                                detail: "\(profile.planGoalSource == .calculated ? "Calculated estimate" : "Manual goal") · Target \(weightText(planTargetWeight(profile)))"
                             )
                         }
                         .accessibilityIdentifier("settings-plan-link")
@@ -42,7 +42,9 @@ struct ConfigView: View {
                                 title: "Profile",
                                 systemImage: "person.crop.circle",
                                 value: "Age \(profile.age)",
-                                detail: "Saved on this device"
+                                detail: profile.storedCalculatedPlan.map {
+                                    "\($0.plan.input.activityLevel.title) routine · On device"
+                                } ?? "Saved on this device"
                             )
                         }
                         .accessibilityIdentifier("settings-profile-link")
@@ -200,6 +202,14 @@ private struct SettingsSummaryRow: View {
         .accessibilityLabel(title)
         .accessibilityValue("\(value), \(detail)")
     }
+}
+
+private func planTargetWeight(_ profile: UserProfile) -> Double {
+    if profile.planGoalSource == .calculated,
+       let stored = profile.storedCalculatedPlan {
+        return stored.plan.input.targetWeightKilograms
+    }
+    return profile.targetWeight
 }
 
 private func weightText(_ kilograms: Double) -> String {

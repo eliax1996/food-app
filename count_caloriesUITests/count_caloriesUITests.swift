@@ -613,7 +613,7 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
-    func testCustomFoodNutrientsReachDailyBalance() throws {
+    func testCustomFoodNutrientEditorSavesDraftFood() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ui-testing",
@@ -638,26 +638,6 @@ final class CountCaloriesUITests: XCTestCase {
         let keyboardDone = app.buttons["food-tools-keyboard-done"]
         let addMealButton = app.buttons["add-meal"]
         let selectedFoodName = app.staticTexts["selected-food-name"]
-        let saveMeal = app.buttons["save-meal"]
-        let nutritionLink = app.descendants(matching: .any)
-            .matching(identifier: "nutrition-balance-link")
-            .firstMatch
-        let nutritionDetail = app.descendants(matching: .any)
-            .matching(identifier: "daily-nutrition-detail")
-            .firstMatch
-        let carbohydrateValues = app.staticTexts.matching(identifier: "nutrition-macro-carbs")
-        let proteinValues = app.staticTexts.matching(identifier: "nutrition-macro-protein")
-        let fatValues = app.staticTexts.matching(identifier: "nutrition-macro-fat")
-        let fiberMeasured = app.staticTexts["nutrition-fiber-measured"]
-        let fatGuidance = app.staticTexts.matching(
-            NSPredicate(format: "identifier == %@ AND label == %@", "nutrition-guidance", "Fat below range")
-        ).firstMatch
-        let macroCoverage = app.descendants(matching: .any)
-            .matching(identifier: "nutrition-macro-coverage")
-            .firstMatch
-        let fiberCoverage = app.descendants(matching: .any)
-            .matching(identifier: "nutrition-fiber-coverage")
-            .firstMatch
 
         XCTContext.runActivity(named: "Launch Food tools") { _ in
             app.launch()
@@ -708,28 +688,59 @@ final class CountCaloriesUITests: XCTestCase {
             assertAbsent(foodToolsTitle, identifier: "Food tools navigation title", phase: "Custom saved")
         }
 
-        XCTContext.runActivity(named: "Log custom food and open daily nutrition") { _ in
+        XCTContext.runActivity(named: "Open saved custom food in meal editor") { _ in
             assertHittable(addMealButton, identifier: "add-meal", phase: "Custom saved")
             addMealButton.tap()
             assertLabel(selectedFoodName, expected: "Fixture Bowl", phase: "Meal editor")
-            assertHittable(saveMeal, identifier: "save-meal", phase: "Meal editor")
-            saveMeal.tap()
-            assertHittable(nutritionLink, identifier: "nutrition-balance-link", phase: "Today nutrition")
-            nutritionLink.tap()
-            assertExists(nutritionDetail, identifier: "daily-nutrition-detail", phase: "Nutrition detail")
         }
+    }
 
-        XCTContext.runActivity(named: "Verify complete measured balance without inferred values") { _ in
-            assertLabel(carbohydrateValues.element(boundBy: 0), expected: "Carbs, 15 g", phase: "Nutrition detail")
-            assertLabel(carbohydrateValues.element(boundBy: 1), expected: "Carbs, 50% of logged energy · adult range 45%–65%", phase: "Nutrition detail")
-            assertLabel(proteinValues.element(boundBy: 0), expected: "Protein, 10 g", phase: "Nutrition detail")
-            assertLabel(fatValues.element(boundBy: 0), expected: "Fat, 2 g", phase: "Nutrition detail")
-            assertLabel(fiberMeasured, expected: "Measured, 4 g", phase: "Nutrition detail")
-            app.swipeUp()
-            assertExists(fatGuidance, identifier: "Fat below range", phase: "Nutrition detail")
-            assertExists(macroCoverage, identifier: "nutrition-macro-coverage", phase: "Nutrition coverage")
-            assertExists(fiberCoverage, identifier: "nutrition-fiber-coverage", phase: "Nutrition coverage")
-        }
+    @MainActor
+    func testLoggedCustomNutrientsReachDailyBalance() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-design-review",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = [
+            "DESIGN_REVIEW_STATE": "customNutrition",
+            "DESIGN_REVIEW_APPEARANCE": "light",
+            "DESIGN_REVIEW_DYNAMIC_TYPE": "normal"
+        ]
+        let nutritionLink = app.descendants(matching: .any)
+            .matching(identifier: "nutrition-balance-link")
+            .firstMatch
+        let nutritionDetail = app.descendants(matching: .any)
+            .matching(identifier: "daily-nutrition-detail")
+            .firstMatch
+        let carbohydrateValues = app.staticTexts.matching(identifier: "nutrition-macro-carbs")
+        let proteinValues = app.staticTexts.matching(identifier: "nutrition-macro-protein")
+        let fatValues = app.staticTexts.matching(identifier: "nutrition-macro-fat")
+        let fiberMeasured = app.staticTexts["nutrition-fiber-measured"]
+        let fatGuidance = app.staticTexts.matching(
+            NSPredicate(format: "identifier == %@ AND label == %@", "nutrition-guidance", "Fat below range")
+        ).firstMatch
+
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Nutrition fixture launch: app did not reach foreground; state=\(app.state)."
+        )
+        assertHittable(nutritionLink, identifier: "nutrition-balance-link", phase: "Nutrition fixture")
+        nutritionLink.tap()
+        assertExists(nutritionDetail, identifier: "daily-nutrition-detail", phase: "Nutrition detail")
+        assertLabel(carbohydrateValues.element(boundBy: 0), expected: "Carbs, 15 g", phase: "Nutrition detail")
+        assertLabel(
+            carbohydrateValues.element(boundBy: 1),
+            expected: "Carbs, 50% of logged energy · adult range 45%–65%",
+            phase: "Nutrition detail"
+        )
+        assertLabel(proteinValues.element(boundBy: 0), expected: "Protein, 10 g", phase: "Nutrition detail")
+        assertLabel(fatValues.element(boundBy: 0), expected: "Fat, 2 g", phase: "Nutrition detail")
+        assertLabel(fiberMeasured, expected: "Measured, 4 g", phase: "Nutrition detail")
+        app.swipeUp()
+        assertExists(fatGuidance, identifier: "Fat below range", phase: "Nutrition detail")
     }
 
     @MainActor
@@ -956,6 +967,8 @@ final class CountCaloriesUITests: XCTestCase {
         let recordWeightTitle = app.navigationBars["Record Weight"]
         let editWeightTitle = app.navigationBars["Edit Weight"]
         let weightValue = app.textFields["weight-value"]
+        let weightIncreasePointOne = app.buttons["weight-increase-0.1"]
+        let weightIncreaseOne = app.buttons["weight-increase-1"]
         let weightDate = app.descendants(matching: .any)
             .matching(identifier: "weight-date")
             .firstMatch
@@ -1110,14 +1123,23 @@ final class CountCaloriesUITests: XCTestCase {
             assertExists(weightEditor, identifier: "weight-editor", phase: "Edit editor")
             assertExists(editWeightTitle, identifier: "Edit Weight title", phase: "Edit editor")
             trace("tracking: edit sheet ready")
-            replaceText(
-                in: weightValue,
-                with: "72.3",
-                app: app,
-                identifier: "weight-value",
+            assertButtonTarget(
+                weightIncreasePointOne,
+                identifier: "weight-increase-0.1",
                 phase: "Edit editor"
             )
-            trace("tracking: edit text replaced")
+            assertButtonTarget(
+                weightIncreaseOne,
+                identifier: "weight-increase-1",
+                phase: "Edit editor"
+            )
+            weightIncreaseOne.tap()
+            weightIncreaseOne.tap()
+            weightIncreasePointOne.tap()
+            weightIncreasePointOne.tap()
+            weightIncreasePointOne.tap()
+            assertExactValue(weightValue, expected: "72.3", phase: "Edit editor")
+            trace("tracking: edit value adjusted")
 
             assertExists(weightSave, identifier: "weight-save", phase: "Edit editor")
             weightSave.tap()
@@ -1478,6 +1500,28 @@ final class CountCaloriesUITests: XCTestCase {
         )
     }
 
+    private func assertPlanGoal(
+        _ element: XCUIElement,
+        calories: Int,
+        phase: String
+    ) {
+        let expectedGoal = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let element = object as? XCUIElement else { return false }
+                return element.exists
+                    && element.label.hasPrefix("Daily goal, ")
+                    && element.label.hasSuffix(" kcal")
+                    && Int(element.label.filter(\.isNumber)) == calories
+            },
+            object: element
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectedGoal], timeout: uiTimeout),
+            .completed,
+            "\(phase): expected localized daily goal \(calories) kcal; \(diagnostic(for: element))"
+        )
+    }
+
     private func assertExactValue(
         _ element: XCUIElement,
         expected: String,
@@ -1540,6 +1584,352 @@ final class CountCaloriesUITests: XCTestCase {
             atomically: true,
             encoding: .utf8
         )
+    }
+
+    @MainActor
+    func testCalculatedSetupCanBeSkippedWithoutChangingManualGoal() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-ui-testing-calculated-setup",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let setup = app.descendants(matching: .any)
+            .matching(identifier: "calculated-plan-setup")
+            .firstMatch
+        let keepManual = app.buttons["keep-manual-goal"]
+        let settingsTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Settings")
+        ).firstMatch
+        let planLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-plan-link")
+            .firstMatch
+        let planSource = app.descendants(matching: .any)
+            .matching(identifier: "plan-goal-source")
+            .firstMatch
+        let planGoal = app.descendants(matching: .any)
+            .matching(identifier: "plan-current-calorie-goal")
+            .firstMatch
+
+        XCTContext.runActivity(named: "Launch optional welcome") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Calculated skip launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertExists(app.navigationBars["Welcome"], identifier: "Welcome", phase: "Calculated skip")
+            assertExists(setup, identifier: "calculated-plan-setup", phase: "Calculated skip")
+            assertHittable(keepManual, identifier: "keep-manual-goal", phase: "Calculated skip")
+        }
+
+        XCTContext.runActivity(named: "Keep existing manual goal") { _ in
+            keepManual.tap()
+            assertAbsent(setup, identifier: "calculated-plan-setup", phase: "Calculated skip")
+            assertHittable(settingsTab, identifier: "Settings tab", phase: "Calculated skip")
+            settingsTab.tap()
+            assertHittable(planLink, identifier: "settings-plan-link", phase: "Calculated skip")
+            planLink.tap()
+            assertLabel(planSource, expected: "Source, Manual", phase: "Calculated skip")
+            assertPlanGoal(planGoal, calories: 1_700, phase: "Calculated skip")
+        }
+    }
+
+    @MainActor
+    func testCalculatedSetupCollectsRequiredInputsThroughPace() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-ui-testing-calculated-setup",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let setup = app.descendants(matching: .any)
+            .matching(identifier: "calculated-plan-setup")
+            .firstMatch
+        let eligibility = app.switches["calculated-setup-eligibility"]
+        let continueButton = app.buttons["calculated-setup-continue"]
+        let loseGoal = app.buttons["calculated-goal-lose"]
+        let heightField = app.textFields["calculated-height-centimeters"]
+        let keyboardDone = app.buttons["calculated-setup-keyboard-done"]
+        let femaleEquation = app.buttons["calculated-equation-female"]
+        let moderateActivity = app.buttons["calculated-activity-moderate"]
+        let gentleRate = app.buttons["calculated-rate-gentle"]
+
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Calculated launch: app did not reach foreground; state=\(app.state)."
+        )
+        assertExists(app.navigationBars["Welcome"], identifier: "Welcome", phase: "Calculated welcome")
+        assertExists(setup, identifier: "calculated-plan-setup", phase: "Calculated welcome")
+        eligibility.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
+        ).tap()
+        assertExactValue(eligibility, expected: "1", phase: "Calculated welcome")
+        continueButton.tap()
+        assertHittable(loseGoal, identifier: "calculated-goal-lose", phase: "Calculated goal")
+        loseGoal.tap()
+        continueButton.tap()
+
+        assertExists(app.navigationBars["Body Details"], identifier: "Body Details", phase: "Calculated body")
+        app.swipeUp()
+        if !heightField.isHittable {
+            app.swipeUp()
+        }
+        replaceText(
+            in: heightField,
+            with: "170",
+            app: app,
+            identifier: "calculated-height-centimeters",
+            phase: "Calculated body"
+        )
+        assertHittable(keyboardDone, identifier: "calculated-setup-keyboard-done", phase: "Calculated body")
+        keyboardDone.tap()
+        assertKeyboardDismissed(app, phase: "Calculated body")
+        assertHittable(continueButton, identifier: "calculated-setup-continue", phase: "Calculated body")
+        continueButton.tap()
+
+        assertHittable(femaleEquation, identifier: "calculated-equation-female", phase: "Calculated equation")
+        femaleEquation.tap()
+        continueButton.tap()
+        assertHittable(moderateActivity, identifier: "calculated-activity-moderate", phase: "Calculated activity")
+        moderateActivity.tap()
+        continueButton.tap()
+        assertExists(app.navigationBars["Pace"], identifier: "Pace", phase: "Calculated pace")
+        assertHittable(gentleRate, identifier: "calculated-rate-gentle", phase: "Calculated pace")
+    }
+
+    @MainActor
+    func testCalculatedPaceContinuesToExplainedReview() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-ui-testing-calculated-pace",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let reviewGoal = app.descendants(matching: .any)
+            .matching(identifier: "calculated-review-goal")
+            .firstMatch
+
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Calculated pace launch: app did not reach foreground; state=\(app.state)."
+        )
+        assertExists(app.navigationBars["Pace"], identifier: "Pace", phase: "Calculated pace")
+        app.buttons["calculated-setup-continue"].tap()
+        assertExists(reviewGoal, identifier: "calculated-review-goal", phase: "Calculated review")
+        XCTAssertTrue(
+            reviewGoal.label.contains("1,730 kcal")
+                || reviewGoal.label.contains("1.730 kcal"),
+            "Calculated review: expected localized 1,730 kcal; \(diagnostic(for: reviewGoal))"
+        )
+    }
+
+    @MainActor
+    func testCalculatedReviewAppliesAndPersistsGoal() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-ui-testing-calculated-review",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let setup = app.descendants(matching: .any)
+            .matching(identifier: "calculated-plan-setup")
+            .firstMatch
+        let reviewGoal = app.descendants(matching: .any)
+            .matching(identifier: "calculated-review-goal")
+            .firstMatch
+        let settingsTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Settings")
+        ).firstMatch
+        let planLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-plan-link")
+            .firstMatch
+        let planSource = app.descendants(matching: .any)
+            .matching(identifier: "plan-goal-source")
+            .firstMatch
+        let planGoal = app.descendants(matching: .any)
+            .matching(identifier: "plan-current-calorie-goal")
+            .firstMatch
+
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Calculated review launch: app did not reach foreground; state=\(app.state)."
+        )
+        assertExists(reviewGoal, identifier: "calculated-review-goal", phase: "Calculated review")
+        app.buttons["use-calculated-goal"].tap()
+        assertAbsent(setup, identifier: "calculated-plan-setup", phase: "Calculated apply")
+        settingsTab.tap()
+        assertHittable(planLink, identifier: "settings-plan-link", phase: "Calculated result")
+        planLink.tap()
+        assertLabel(planSource, expected: "Source, Calculated", phase: "Calculated result")
+        assertPlanGoal(planGoal, calories: 1_730, phase: "Calculated result")
+        assertExists(
+            app.staticTexts["Calculated basis"],
+            identifier: "Calculated basis",
+            phase: "Calculated result"
+        )
+    }
+
+    @MainActor
+    func testSettingsCalculatedSetupOpensContinuesAndResumes() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let settingsTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Settings")
+        ).firstMatch
+        let planLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-plan-link")
+            .firstMatch
+        let startSetup = app.buttons["start-calculated-setup"]
+        let eligibility = app.switches["calculated-setup-eligibility"]
+        let continueButton = app.buttons["calculated-setup-continue"]
+        let closeSetup = app.buttons["calculated-setup-close"]
+        let planSource = app.descendants(matching: .any)
+            .matching(identifier: "plan-goal-source")
+            .firstMatch
+        let planGoal = app.descendants(matching: .any)
+            .matching(identifier: "plan-current-calorie-goal")
+            .firstMatch
+
+        XCTContext.runActivity(named: "Open calculated setup from Plan") { _ in
+            app.launch()
+            XCTAssertTrue(
+                app.wait(for: .runningForeground, timeout: uiTimeout),
+                "Settings setup launch: app did not reach foreground; state=\(app.state)."
+            )
+            assertHittable(settingsTab, identifier: "Settings tab", phase: "Settings setup")
+            settingsTab.tap()
+            assertHittable(planLink, identifier: "settings-plan-link", phase: "Settings setup")
+            planLink.tap()
+            assertHittable(startSetup, identifier: "start-calculated-setup", phase: "Settings setup")
+            startSetup.tap()
+            assertExists(app.navigationBars["Welcome"], identifier: "Welcome", phase: "Settings setup")
+        }
+
+        XCTContext.runActivity(named: "Continue then close without changing manual goal") { _ in
+            assertHittable(eligibility, identifier: "calculated-setup-eligibility", phase: "Settings setup")
+            eligibility.coordinate(
+                withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
+            ).tap()
+            assertExactValue(eligibility, expected: "1", phase: "Settings setup")
+            continueButton.tap()
+            assertExists(app.navigationBars["Goal"], identifier: "Goal", phase: "Settings setup")
+            closeSetup.tap()
+            assertExists(app.navigationBars["Plan"], identifier: "Plan", phase: "Settings setup")
+            assertLabel(planSource, expected: "Source, Manual", phase: "Settings setup")
+            assertPlanGoal(planGoal, calories: 1_700, phase: "Settings setup")
+        }
+
+        XCTContext.runActivity(named: "Resume persisted Goal step from Plan") { _ in
+            assertHittable(startSetup, identifier: "start-calculated-setup", phase: "Settings resume")
+            startSetup.tap()
+            assertExists(app.navigationBars["Goal"], identifier: "Goal", phase: "Settings resume")
+            assertHittable(closeSetup, identifier: "calculated-setup-close", phase: "Settings resume")
+            closeSetup.tap()
+            assertLabel(planSource, expected: "Source, Manual", phase: "Settings resume")
+            assertPlanGoal(planGoal, calories: 1_700, phase: "Settings resume")
+        }
+    }
+
+    @MainActor
+    func testMealReminderSummaryOpensEditorWithoutSaving() throws {
+        let app = launchReminderSettings()
+        let reminderEditor = app.descendants(matching: .any)
+            .matching(identifier: "reminder-editor")
+            .firstMatch
+        let breakfastSummary = app.descendants(matching: .any)
+            .matching(identifier: "breakfast-reminder-summary")
+            .firstMatch
+
+        assertHittable(breakfastSummary, identifier: "breakfast-reminder-summary", phase: "Meal summary")
+        assertExactValue(breakfastSummary, expected: "Off", phase: "Meal summary")
+        breakfastSummary.tap()
+        assertExists(reminderEditor, identifier: "reminder-editor", phase: "Meal summary")
+        assertHittable(
+            app.switches["breakfast-reminder-toggle"],
+            identifier: "breakfast-reminder-toggle",
+            phase: "Meal summary"
+        )
+        app.buttons["reminders-cancel"].tap()
+        assertExactValue(breakfastSummary, expected: "Off", phase: "Meal summary cancel")
+    }
+
+    @MainActor
+    func testWeightAndWaterReminderSummariesOpenEditorWithoutSaving() throws {
+        let app = launchReminderSettings()
+        let reminderEditor = app.descendants(matching: .any)
+            .matching(identifier: "reminder-editor")
+            .firstMatch
+        let weightSummary = app.descendants(matching: .any)
+            .matching(identifier: "weight-reminder-summary")
+            .firstMatch
+        let waterSummary = app.descendants(matching: .any)
+            .matching(identifier: "water-reminder-summary")
+            .firstMatch
+
+        for _ in 0..<3 where !weightSummary.isHittable {
+            app.swipeUp()
+        }
+        assertHittable(weightSummary, identifier: "weight-reminder-summary", phase: "Weight summary")
+        weightSummary.tap()
+        assertExists(reminderEditor, identifier: "reminder-editor", phase: "Weight summary")
+        assertHittable(
+            app.switches["weight-reminder-toggle"],
+            identifier: "weight-reminder-toggle",
+            phase: "Weight summary"
+        )
+        app.buttons["reminders-cancel"].tap()
+        assertExactValue(weightSummary, expected: "Off", phase: "Weight summary cancel")
+
+        for _ in 0..<3 where !waterSummary.isHittable {
+            app.swipeUp()
+        }
+        assertHittable(waterSummary, identifier: "water-reminder-summary", phase: "Water summary")
+        waterSummary.tap()
+        assertExists(reminderEditor, identifier: "reminder-editor", phase: "Water summary")
+        assertHittable(
+            app.switches["water-reminder-toggle"],
+            identifier: "water-reminder-toggle",
+            phase: "Water summary"
+        )
+        app.buttons["reminders-cancel"].tap()
+        assertExactValue(waterSummary, expected: "Off", phase: "Water summary cancel")
+    }
+
+    @MainActor
+    private func launchReminderSettings() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Reminder summary launch: app did not reach foreground; state=\(app.state)."
+        )
+        let settingsTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label == %@", "Settings")
+        ).firstMatch
+        let remindersLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-reminders-link")
+            .firstMatch
+        assertHittable(settingsTab, identifier: "Settings tab", phase: "Reminder summary")
+        settingsTab.tap()
+        assertHittable(remindersLink, identifier: "settings-reminders-link", phase: "Reminder summary")
+        remindersLink.tap()
+        return app
     }
 
     @MainActor
@@ -1636,11 +2026,7 @@ final class CountCaloriesUITests: XCTestCase {
         XCTContext.runActivity(named: "Verify manual Plan references and transaction") { _ in
             planLink.tap()
             assertExists(planView, identifier: "plan-settings", phase: "Plan")
-            assertLabel(
-                planGoal,
-                expected: "Daily goal, 1,700 kcal",
-                phase: "Plan"
-            )
+            assertPlanGoal(planGoal, calories: 1_700, phase: "Plan")
             for (control, identifier) in [
                 (planCarbs, "plan-reference-carbs"),
                 (planProtein, "plan-reference-protein"),
@@ -1690,12 +2076,15 @@ final class CountCaloriesUITests: XCTestCase {
             assertHittable(remindersCancel, identifier: "reminders-cancel", phase: "Reminder cancel")
             remindersCancel.tap()
             assertAbsent(reminderEditor, identifier: "reminder-editor", phase: "Reminder cancel")
-            XCTAssertFalse(
-                app.descendants(matching: .any)
-                    .matching(identifier: "breakfast-reminder-summary")
-                    .firstMatch.exists,
-                "Reminder cancel: breakfast summary exists after cancelled draft."
+            let breakfastSummary = app.descendants(matching: .any)
+                .matching(identifier: "breakfast-reminder-summary")
+                .firstMatch
+            assertExists(
+                breakfastSummary,
+                identifier: "breakfast-reminder-summary",
+                phase: "Reminder cancel"
             )
+            assertExactValue(breakfastSummary, expected: "Off", phase: "Reminder cancel")
         }
     }
 

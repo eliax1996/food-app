@@ -6,7 +6,7 @@ Assessment date: 2026-08-10
 
 Count Calories currently asks people to edit age, target weight, a manual calorie goal, target date, and five reminder switches in one flat form. Meal times are hard-coded, notification permission can be denied while switches still look effective, and the calorie goal has no visible basis. REFINE-001 must add useful control without turning setup into a branded questionnaire or presenting population estimates as medical prescriptions.
 
-This assessment covers first coherent Refine slices: native Settings hierarchy, transparent nutrition references derived from the existing manual calorie goal, configurable meal times, and weight reminders. Welcome setup and calculated calorie recommendations remain blocked on final supported-population and safety specification.
+This assessment originally covered first coherent Refine slices: native Settings hierarchy, transparent nutrition references derived from the existing manual calorie goal, configurable meal times, and weight reminders. Welcome setup and calculated recommendations were then specified separately in `calculated-plan-specification.md` and accepted as REFINE attempt 02.
 
 ## Current-app critique
 
@@ -337,4 +337,6 @@ App preference and system delivery authorization are distinct. UI must say “Se
 
 REFINE-001 attempt 01 accepted Slices A/B on 2026-08-10. Existing goals remain Manual; Plan/Profile/Reminders use explicit transactions; references, exact meal times, Daily/Weekly weight reminders, independent water behavior, contextual authorization, denied recovery, and authorization-return rescheduling are implemented. AMDR guidance uses reported logged calories as denominator while the colored macro-only split remains separately normalized.
 
-User-requested WEIGHT-ENTRY-001 follow-up is also accepted: latest valid measurement defaults, `−1/−0.1/+0.1/+1` controls, and native keyboard Done across every numeric pad. Final gates: 155 hostless pass / 2 live skips, 184 app-hosted pass / 2 live skips, exact-tree simulator validation passed, and functional UI passed 14/14.
+User-requested WEIGHT-ENTRY-001 follow-up is also accepted: latest valid measurement defaults, `−1/−0.1/+0.1/+1` controls, and native keyboard Done across every numeric pad. Attempt-01 gates were 155 hostless pass / 2 live skips, 184 app-hosted pass / 2 live skips, exact-tree simulator validation passed, and functional UI 14/14.
+
+REFINE attempt 02 now adds optional calculated setup, Manual/Calculated source, transparent breakdown, override/restore, and direct reminder/Plan entry. Current integrated gates: 178 hostless pass / 2 skips, 210 app-hosted pass / 2 skips, exact-tree validation passed, and functional UI 22/22.

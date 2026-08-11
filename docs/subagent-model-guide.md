@@ -266,6 +266,14 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Weakness: initial isolated reminder review missed parent Config rescheduling context, so parent still had to evaluate finding scope.
 - Policy effect: after one bounded Luna code-review timeout, prefer Sol `medium` with attached files for critical cross-file read-only review; parent supplies all interacting owners and verifies every finding.
 
+### 2026-08-11 — Sol `medium` + Luna `max`: calculated-plan acceptance
+
+- Shape: safety-sensitive cross-file read-only review followed by bounded screenshot groups.
+- Outcome: Sol found acceptance-reconciliation, stale restore, arbitrary-rate, calendar-default, rationale-order, nonfinite-date, and boundary-test blockers; two correction rounds ended `APPROVE`. Luna approved focused one-to-two-image groups.
+- Strength: Sol medium remained high-signal for calculation/state semantics; Luna remained accurate when each visual prompt held at most two images.
+- Weakness: Luna timed out on broader three/four-image groups. One Sol visual pass falsely reported clipped Back/Close controls that direct pixels and focused Luna review showed fully visible.
+- Policy effect: use Sol medium for safety/state code review, but require direct pixel verification for visual findings; keep Luna visual groups to one or two images.
+
 Do not change standing model policy absent repeated evidence.
 
 ## Record template

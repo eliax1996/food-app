@@ -280,6 +280,44 @@ Attempt 01 accepted. Latest chronological default and adjustment math have deter
 
 ---
 
+## Priority 3B — [SETTINGS-DIRECT-EDIT-001] Direct reminder and calculated-setup entry
+
+**Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
+**Priority:** HIGH VALUE
+**Origin:** User found reminder values looked tappable but only the separate Edit action worked, and reported that Calculate a starting goal did not reliably enter setup from Settings.
+
+### User problem
+
+Settings summaries should lead directly to the focused editor they summarize. Requiring people to notice a distant top-bar Edit after tapping an `Off` value or meal time creates a dead interaction. Plan’s calculated-setup action must also open or resume the real setup flow and let Continue progress without changing the manual goal early.
+
+### Required product behavior
+
+1. Tapping any meal reminder row—including `Off` or its displayed time—opens the existing reminder draft editor. Keep the top Edit action as an alternate entry.
+2. Tapping Weight or Water reminder summary rows opens that same explicit Save/Cancel editor; no summary tap toggles a preference, requests permission, or persists anything.
+3. Use full-width native rows with at least 44-point hit regions, useful VoiceOver button traits/values, and visible affordance. Prefer opening near the relevant section when this remains reliable at all Dynamic Type sizes.
+4. `Plan → Calculate a starting goal` must open new setup when no draft exists and resume the persisted step when setup is in progress.
+5. Continue must work after entry from Settings through goal, body details, equation, routine, pace, and review. Existing manual goal remains unchanged until explicit final confirmation; Close preserves resumable draft.
+6. Add focused UI regression coverage for reminder summary entry and Settings-origin calculated setup/Continue, then retain both paths in the full functional suite.
+
+### UX decision
+
+Direct row entry is better UX. Native Settings rows conventionally act as navigation/edit affordances, and displayed times/`Off` states describe exactly the configuration people expect to change. Whole-row entry reduces discovery cost without weakening explicit Save/Cancel semantics.
+
+### Success criteria
+
+- Meal `Off`/time, Weight, and Water rows each open reminder editor in one tap.
+- Cancel after direct entry changes nothing and requests no notification permission.
+- Calculate a starting goal opens from Plan, Continue reaches the next setup step, Close persists progress, and tapping the Plan action again resumes that step.
+- Existing top Edit and accepted reminder scheduling behavior remain intact.
+
+### Result
+
+Attempt 01 accepted. Every meal row now shows `Off` or exact time with full-row button semantics and chevron; Weight and Water use equivalent summary rows. Taps open the explicit draft editor and scroll toward the selected section; Cancel leaves saved preferences and authorization untouched. AX3 uses vertical title/value layout instead of compressed wrapping.
+
+Plan setup entry now uses one item-driven sheet presentation, fixing the reported dead `Calculate a starting goal` action. Focused UI proof opens from Settings, advances with Continue, closes without changing 1,700-kcal Manual source, and resumes at Goal. Final functional suite passed 22/22; normal and AX3-dark reminder evidence passed critical/high visual review.
+
+---
+
 ## Priority 4 — [NUTRITION-GOALS-001] Reference nutrition composition in Plan
 
 **Status:** ACCEPTED WITH REFINE-001 SLICE A — ATTEMPT 01

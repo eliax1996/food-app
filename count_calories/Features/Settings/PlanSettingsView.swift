@@ -2,15 +2,45 @@ import SwiftData
 import SwiftUI
 import os
 
+private enum PlanSettingsPresentation: Identifiable {
+    case manualEditor
+    case calculatedSetup(CaloriePlanSetupRecord)
+
+    var id: String {
+        switch self {
+        case .manualEditor: "manual-editor"
+        case .calculatedSetup: "calculated-setup"
+        }
+    }
+}
+
 struct PlanSettingsView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \PlateEntry.date, order: .reverse) private var entries: [PlateEntry]
 
     let profile: UserProfile
 
-    @State private var showingEditor = false
+    @State private var presentation: PlanSettingsPresentation?
+    @State private var errorMessage: String?
 
     private var referencePlan: NutritionReferencePlan? {
         NutritionReferencePlan(calorieGoal: profile.dailyCalorieGoal)
+    }
+
+    private var displayedTargetWeight: Double {
+        if profile.planGoalSource == .calculated,
+           let stored = profile.storedCalculatedPlan {
+            return stored.plan.input.targetWeightKilograms
+        }
+        return profile.targetWeight
+    }
+
+    private var displayedTargetDate: Date? {
+        if profile.planGoalSource == .calculated,
+           let stored = profile.storedCalculatedPlan {
+            return stored.plan.forecastDate
+        }
+        return profile.targetDate
     }
 
     private var todaysEntries: [PlateEntry] {
@@ -29,6 +59,10 @@ struct PlanSettingsView: View {
     var body: some View {
         List {
             currentPlanSection
+            if let stored = profile.storedCalculatedPlan {
+                calculatedBasisSection(stored)
+            }
+            planActionsSection
             referenceSection
             measuredSection
                 .id("plan-measured-section")
@@ -40,14 +74,32 @@ struct PlanSettingsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Edit") {
-                    showingEditor = true
+                    presentation = .manualEditor
                 }
                 .accessibilityIdentifier("plan-edit")
             }
         }
-        .sheet(isPresented: $showingEditor) {
-            PlanEditor(profile: profile)
-                .interactiveDismissDisabled()
+        .sheet(item: $presentation) { presentation in
+            switch presentation {
+            case .manualEditor:
+                PlanEditor(profile: profile)
+                    .interactiveDismissDisabled()
+            case .calculatedSetup(let record):
+                CaloriePlanSetupView(
+                    profile: profile,
+                    record: record
+                ) {
+                    self.presentation = nil
+                }
+            }
+        }
+        .alert("Could not update plan", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("Dismiss", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "Unknown error")
         }
     }
 
@@ -61,22 +113,90 @@ struct PlanSettingsView: View {
             .accessibilityIdentifier("plan-current-calorie-goal")
 
             LabeledContent("Source") {
-                Text("Manual")
+                Text(profile.planGoalSource == .calculated ? "Calculated" : "Manual")
                     .foregroundStyle(.secondary)
             }
+            .accessibilityIdentifier("plan-goal-source")
 
             LabeledContent("Target weight") {
-                Text(weightText(profile.targetWeight))
+                Text(weightText(displayedTargetWeight))
                     .monospacedDigit()
             }
 
-            LabeledContent("Target date") {
-                Text(profile.targetDate.formatted(date: .abbreviated, time: .omitted))
+            if let displayedTargetDate {
+                LabeledContent(profile.planGoalSource == .calculated ? "Forecast date" : "Target date") {
+                    Text(displayedTargetDate.formatted(date: .abbreviated, time: .omitted))
+                }
             }
         } header: {
             Text("Current plan")
         } footer: {
-            Text("This calorie goal remains manual. Target date is saved for context and has not been checked for feasibility.")
+            if profile.planGoalSource == .calculated {
+                Text("Calculated estimate changes only after you confirm setup or restore it. Weight entries never adjust this goal automatically.")
+            } else {
+                Text("This calorie goal is manual. Target date is context only unless a calculated plan is explicitly accepted.")
+            }
+        }
+    }
+
+    private func calculatedBasisSection(_ stored: StoredCalculatedPlan) -> some View {
+        let plan = stored.plan
+        return Section {
+            LabeledContent("Goal mode", value: plan.input.goalMode.title)
+            LabeledContent("Equation", value: plan.input.equation.title)
+            LabeledContent("Accepted inputs") {
+                Text(planInputText(plan.input, system: stored.measurementSystem))
+                    .multilineTextAlignment(.trailing)
+                    .monospacedDigit()
+            }
+            LabeledContent("Resting estimate") {
+                Text("\(plan.restingCalories.formatted(.number.precision(.fractionLength(0)))) kcal")
+                    .monospacedDigit()
+            }
+            LabeledContent("Daily routine") {
+                Text("\(plan.input.activityLevel.title) · \(plan.activityFactor.formatted(.number.precision(.fractionLength(2))))×")
+            }
+            LabeledContent("Maintenance estimate") {
+                Text("\(plan.maintenanceCalories.formatted(.number.precision(.fractionLength(0)))) kcal")
+                    .monospacedDigit()
+            }
+            if plan.input.goalMode != .maintain {
+                LabeledContent("Weekly change") {
+                    Text(planRateText(plan, system: stored.measurementSystem))
+                        .monospacedDigit()
+                }
+                LabeledContent(plan.input.goalMode == .lose ? "Daily subtraction" : "Daily addition") {
+                    Text("\(plan.dailyAdjustmentCalories.formatted(.number.precision(.fractionLength(0)))) kcal")
+                        .monospacedDigit()
+                }
+            }
+        } header: {
+            Text(profile.planGoalSource == .calculated ? "Calculated basis" : "Saved calculated basis")
+        } footer: {
+            if profile.planGoalSource == .calculated {
+                Text("Mifflin–St Jeor estimate using accepted inputs. Static pace math is a planning approximation, not a promise or medical advice.")
+            } else {
+                Text("Saved for optional restore. Your current manual goal is not presented as this calculation.")
+            }
+        }
+    }
+
+    private var planActionsSection: some View {
+        Section("Plan options") {
+            Button(profile.storedCalculatedPlan == nil ? "Calculate a starting goal" : "Review or redo calculated setup") {
+                beginCalculatedSetup()
+            }
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("start-calculated-setup")
+
+            if profile.planGoalSource == .manual,
+               let stored = profile.storedCalculatedPlan {
+                Button("Restore calculated plan (\(stored.plan.calorieGoal.formatted()) kcal)") {
+                    restoreCalculatedGoal()
+                }
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("restore-calculated-goal")
+            }
         }
     }
 
@@ -180,6 +300,42 @@ struct PlanSettingsView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("plan-measured-fiber")
+    }
+
+    private func beginCalculatedSetup() {
+        let loadedRecord = CaloriePlanSetupStore.load(profileExists: true)
+        let storedRecord = CaloriePlanSetupStore.reconciledAfterAcceptedCalculation(
+            loadedRecord,
+            acceptedPlanDate: profile.storedCalculatedPlan?.acceptedAt
+        )
+        if storedRecord != loadedRecord {
+            CaloriePlanSetupStore.save(storedRecord)
+        }
+
+        let record: CaloriePlanSetupRecord
+        if storedRecord.status == .inProgress {
+            record = storedRecord
+        } else {
+            record = CaloriePlanSetupRecord(
+                status: .inProgress,
+                draft: .prefilled(from: profile),
+                acceptedPlanDateAtStart: profile.storedCalculatedPlan?.acceptedAt
+            )
+        }
+        presentation = .calculatedSetup(record)
+    }
+
+    private func restoreCalculatedGoal() {
+        guard profile.restoreStoredCalculatedGoal() else { return }
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            AppLogger.persistence.error(
+                "Failed to restore calculated plan: \(error.localizedDescription, privacy: .public)"
+            )
+            errorMessage = "Calculated goal could not be restored. Your manual goal is unchanged."
+        }
     }
 
     private var methodSection: some View {
@@ -360,9 +516,11 @@ private struct PlanEditor: View {
     private func save() {
         guard isValid else { return }
 
-        profile.dailyCalorieGoal = dailyGoal
-        profile.targetWeight = targetWeight
-        profile.targetDate = targetDate
+        profile.applyManualGoal(
+            calories: dailyGoal,
+            targetWeight: targetWeight,
+            targetDate: targetDate
+        )
 
         do {
             try modelContext.save()
@@ -375,6 +533,38 @@ private struct PlanEditor: View {
             errorMessage = "Plan changes could not be saved. Try again."
         }
     }
+}
+
+private func planInputText(
+    _ input: CaloriePlanInput,
+    system: PlanMeasurementSystem
+) -> String {
+    let weight: String
+    let height: String
+    if system == .metric {
+        weight = "\(input.currentWeightKilograms.formatted(.number.precision(.fractionLength(1)))) kg"
+        height = "\(input.heightCentimeters.formatted(.number.precision(.fractionLength(0...1)))) cm"
+    } else {
+        let pounds = PlanUnitConversion.pounds(fromKilograms: input.currentWeightKilograms)
+        let totalInches = PlanUnitConversion.inches(fromCentimeters: input.heightCentimeters)
+        let feet = Int(totalInches / 12)
+        let inches = totalInches - Double(feet * 12)
+        weight = "\(pounds.formatted(.number.precision(.fractionLength(1)))) lb"
+        height = "\(feet) ft \(inches.formatted(.number.precision(.fractionLength(0...1)))) in"
+    }
+    return "\(weight) · \(height) · age \(input.age)"
+}
+
+private func planRateText(
+    _ plan: CalculatedCaloriePlan,
+    system: PlanMeasurementSystem
+) -> String {
+    let kilograms = plan.effectiveWeeklyRateKilograms
+    if system == .metric {
+        return "\(kilograms.formatted(.number.precision(.fractionLength(0...2)))) kg/week"
+    }
+    let pounds = PlanUnitConversion.pounds(fromKilograms: kilograms)
+    return "\(pounds.formatted(.number.precision(.fractionLength(0...1)))) lb/week"
 }
 
 private func weightText(_ kilograms: Double) -> String {
@@ -403,6 +593,29 @@ private func rangeText(_ range: ClosedRange<Double>) -> String {
 #Preview("Plan complete") {
     NavigationStack {
         PlanSettingsView(profile: UserProfile())
+    }
+    .modelContainer(PreviewData.makeContainer())
+}
+
+#Preview("Plan calculated") {
+    let profile = UserProfile()
+    let input = CaloriePlanInput(
+        goalMode: .lose,
+        currentWeightKilograms: 70,
+        targetWeightKilograms: 68,
+        age: 30,
+        heightCentimeters: 170,
+        equation: .female,
+        activityLevel: .moderate,
+        paceBasis: .weeklyRate,
+        weeklyRateKilograms: 0.25,
+        targetDate: nil
+    )
+    if case .recommendation(let plan) = CalculatedCaloriePlanCalculator.evaluate(input) {
+        try? profile.applyCalculatedPlan(plan, measurementSystem: .metric)
+    }
+    return NavigationStack {
+        PlanSettingsView(profile: profile)
     }
     .modelContainer(PreviewData.makeContainer())
 }

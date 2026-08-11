@@ -10,6 +10,7 @@ enum DesignReviewState: String, CaseIterable {
     case longContent
     case nutritionPartial
     case nutritionImbalanced
+    case customNutrition
 
     static var current: DesignReviewState {
         let rawValue = ProcessInfo.processInfo.environment["DESIGN_REVIEW_STATE"] ?? "normal"
@@ -196,6 +197,25 @@ enum PreviewData {
                 mealType: mealType.rawValue,
                 date: mealDate(hour: hour)
             ))
+        }
+
+        if state == .customNutrition {
+            context.insert(PlateEntry(
+                foodName: "Fixture Bowl",
+                calories: 120,
+                weightGrams: 100,
+                quantity: 1,
+                nutrients: FoodNutrients(
+                    carbohydratesGrams: 15,
+                    proteinGrams: 10,
+                    fatGrams: 2,
+                    fiberGrams: 4
+                ),
+                mealType: MealType.snack.rawValue,
+                date: mealDate(hour: 12)
+            ))
+            try context.save()
+            return
         }
 
         addTodayMeal(

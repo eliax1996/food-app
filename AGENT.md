@@ -12,7 +12,7 @@ Prioritize a fast, dependable user experience. Preserve offline access for produ
 - `count_calories/Features/`: feature-owned SwiftUI screens and components for Counter, History, Config, and Scanner. Primary screens and independently useful portions each own previews.
 - `count_calories/Models/`: shared SwiftData persistence models.
 - `count_calories/Services/`: app-wide logging, notification, Live Activity, and widget-summary integrations.
-- `count_calories/Tracking/`: deterministic calorie math, daily-history aggregation, meal-time suggestions, weight-entry defaults/adjustments, and deep-link parsing shared with hostless tests.
+- `count_calories/Tracking/`: deterministic calorie math, daily-history aggregation, meal-time suggestions, weight-entry defaults/adjustments, calculated-plan/setup rules, and deep-link parsing shared with hostless tests.
 - `count_calories/Reminders/ReminderSchedule.swift`: deterministic meal/water reminder planning shared with hostless tests.
 - `count_calories/Nutrition/`: independent nutrition lookup domain, including nonoptional normalized food data, Open Food Facts v3.6 primary/v2 fallback clients, official flat Search-a-licious search, hedged timeout coordination, persistent JSON LRU caching, and exact food-amount adjustment rules.
 - `docs/open-food-facts-api-assessment.md`: sampled API-schema, optionality, rate-limit, fallback, timeout, and official Swift SDK assessment.
@@ -207,7 +207,7 @@ Follow a testing pyramid:
 
 A subagent that creates or modifies a UI test owns the complete green loop, not only test source generation:
 
-1. Run every created/changed test immediately. Use `just test-ui-one Class/method 300` while authoring one flow, then `just test-ui 600` near completion; the current 14-test functional suite takes about six minutes. Retain an overall bound and the 60-second per-test maximum.
+1. Run every created/changed test immediately. Use `just test-ui-one Class/method 300` while authoring one flow, then `just test-ui 900` near completion; the current 22-test functional suite takes about nine minutes. Retain an overall bound and the 60-second per-test maximum.
 2. Add enough deterministic diagnostics to locate the failing step: stable accessibility identifiers, descriptive assertion messages, `XCTContext.runActivity` phases, relevant result attachments/screenshots, and concise app `Logger` events at integration boundaries. Never log sensitive food/profile input or add render-loop noise.
 3. On failure, inspect `just test-results`, XCTest output, hierarchy/screenshots, and app logs. Classify product defect, test defect, or Xcode test-host infrastructure before editing.
 4. Fix the responsible code/test and rerun the created tests. Continue this diagnose–fix–run loop within the task until they pass; do not return immediately after the first red run or weaken assertions to manufacture green.
@@ -232,6 +232,8 @@ Progress analytics coverage should protect most-recent-seven recorded calorie da
 Amount-entry coverage should protect finite exact deltas, the `0.01` minimum and floating-boundary tolerance, decimal preservation, gram/ml labels, immediate calorie scaling, unchanged servings, and shared save validity.
 
 Weight-entry coverage should protect latest-valid-nonfuture measurement defaults, profile/70 kg fallback order, one-decimal `−1/−0.1/+0.1/+1` adjustments, invalid-result suppression, unchanged date/time, two-action open/Save flow, and keyboard Done that dismisses without saving. Every app-owned numeric or decimal pad must expose native keyboard Done.
+
+Calculated-plan coverage should protect published equation vectors, explicit required inputs, exact routine factors and weekly-rate choices, unit round trips, goal relationships, BMI/calorie/input boundaries before rounding, nonfinite values/dates, local and non-Gregorian calendar dates, infeasible recovery, Manual migration, resumable draft reconciliation, explicit acceptance, override, and restore. Settings-origin setup and every reminder summary entry remain functional UI regressions.
 
 Nutrition coverage should protect at least:
 

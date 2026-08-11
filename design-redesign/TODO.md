@@ -40,11 +40,18 @@ Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check item
 
 ### Slice C — Welcome + explainable calorie plan
 
-- [ ] Specify supported adult population and exclusions before calculator code.
-- [ ] Add skippable/resumable welcome setup with goal mode, current/target weight, age, height, equation-required physiological input, activity examples, units, and rate/date feedback.
-- [ ] Implement validated resting-energy estimate, activity factor, bounded rate adjustment, infeasible-date handling, transparent breakdown, manual override, and restore-calculated action.
-- [ ] Never generate under-1,000 kcal/day adult goals; never treat estimate as medical advice; never auto-change existing manual goal.
-- [ ] Add deterministic boundaries, units, finite math, calendar, migration, localization, and UI journey tests.
+- [x] Specify supported adult population and exclusions before calculator code.
+- [x] Add skippable/resumable welcome setup with goal mode, current/target weight, age, height, equation-required physiological input, activity examples, units, and rate/date feedback.
+- [x] Implement validated resting-energy estimate, activity factor, bounded rate adjustment, infeasible-date handling, transparent breakdown, manual override, and restore-calculated action.
+- [x] Never generate under-1,000 kcal/day adult goals; never treat estimate as medical advice; never auto-change existing manual goal.
+- [x] Add deterministic boundaries, units, finite math, calendar, migration, localization, and UI journey tests.
+
+### User-requested follow-up — Direct Settings entry
+
+- [x] Make every meal `Off`/time summary row open reminder editor without changing saved state.
+- [x] Make Weight and Water summary rows open same explicit reminder editor; retain top Edit.
+- [x] Prove `Plan → Calculate a starting goal` opens setup, Continue advances, Close preserves draft, and next tap resumes from Settings.
+- [x] Add focused UI coverage and inspect normal/large-text interaction affordances.
 
 ### Slice D — Weight adaptation
 

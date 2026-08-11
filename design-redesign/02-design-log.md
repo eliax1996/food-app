@@ -488,3 +488,31 @@ Weight → toolbar add → editor → Save remains two deliberate actions. New d
 Normal and AX3-dark screenshots passed bounded visual review. Deterministic rules, focused latest-default/adjustment/Done UI flow, meal keyboard Done, Plan keyboard Done, exact-tree validation, and final 14/14 UI suite passed.
 
 **ACCEPTED — ATTEMPT 01 / COMPLETE.**
+
+## [REFINE-001] Slice C — Optional explainable calculated plan
+
+### Accepted implementation
+
+Optional setup now asks explicit supported-scope, goal mode, body values/units, published equation constant, routine, and pace/date before review. Missing height, equation, or routine cannot pass. Mifflin–St Jeor, visible routine factors, static 7,700 kcal/kg pace math, nearest-10 rounding, BMI floor, exact rate choices, local-calendar forecasts, and 1,000–5,000 kcal bounds remain inspectable and typed.
+
+Existing profiles migrate Manual unchanged. Close retains draft; final acceptance is explicit. Plan distinguishes Manual/Calculated, shows accepted inputs/components, allows manual override, and restores retained calculated target/forecast context without adapting from weight entries.
+
+### Critical iteration
+
+Independent code review blocked initial work on interrupted acceptance state, stale restore context, arbitrary rates, fixed-second date defaults, rationale order, nonfinite dates, and missing boundaries. Accepted-date reconciliation, exact choices, calendar arithmetic, pre-control rationale, explicit missing inputs, and expanded finite/BMI/rounding/date/non-Gregorian tests resolved findings. Final isolation review also made review/test stores DEBUG-only and moved reminder/setup defaults into isolated suites. Follow-up code review and bounded visual groups approved.
+
+### Validation
+
+- `just validate 300`: 178 pass / 2 live skips; simulator build/install/launch passed.
+- `just test-app-unit 480`: 210 pass / 2 live skips.
+- `TEST_CASE_TIMEOUT=60 just test-ui 900`: 22/22 pass; every final XCTest completed under one minute.
+
+**ATTEMPT 02 ACCEPTED — SLICE C COMPLETE.** Next: evidence-gated adaptation.
+
+## [SETTINGS-DIRECT-EDIT-001] Direct reminder and setup entry
+
+User feedback correctly identified dead-looking Settings values. Every meal `Off`/time plus Weight and Water now acts as a full-width native edit row with chevron and VoiceOver value. Tap opens same Save/Cancel draft near relevant section; top Edit remains. AX3 stacks values.
+
+Reported `Calculate a starting goal` failure came from competing Boolean/optional sheet presentation state. Plan now uses one item-driven sheet. Focused UI proves open → Continue → Close with Manual 1,700 unchanged → resume at Goal. Reminder row tests prove all direct entries and Cancel semantics. Normal/AX3-dark visual judgment approved.
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE.**

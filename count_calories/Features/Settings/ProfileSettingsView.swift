@@ -12,12 +12,30 @@ struct ProfileSettingsView: View {
             Section("Profile") {
                 LabeledContent("Age", value: profile.age.formatted())
                     .accessibilityIdentifier("profile-age")
+                if let stored = profile.storedCalculatedPlan {
+                    LabeledContent("Height") {
+                        Text(heightText(
+                            stored.plan.input.heightCentimeters,
+                            system: stored.measurementSystem
+                        ))
+                        .monospacedDigit()
+                    }
+                    LabeledContent("Equation input", value: stored.plan.input.equation.title)
+                    LabeledContent("Daily routine") {
+                        Text("\(stored.plan.input.activityLevel.title) · \(stored.plan.activityFactor.formatted(.number.precision(.fractionLength(2))))×")
+                    }
+                }
             }
 
             Section("Plan use") {
-                Text("Age is saved with your profile. Count Calories does not yet use it to calculate or replace your manual calorie goal.")
-                    .foregroundStyle(.secondary)
-                Text("Calculated setup will ask for every required input and explain why it is needed before making a recommendation.")
+                if profile.storedCalculatedPlan == nil {
+                    Text("Age is saved with your manual profile. Calculated setup asks for every additional required input before making an estimate.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("These are the inputs last accepted in calculated setup. Changing age here never recalculates or silently replaces your current goal.")
+                        .foregroundStyle(.secondary)
+                }
+                Text("Review or redo calculated setup from Plan to change equation, height, routine, units, or pace with a new breakdown.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -70,7 +88,7 @@ private struct ProfileEditor: View {
                 } header: {
                     Text("Profile")
                 } footer: {
-                    Text("Automated calorie recommendations are not available for people under 18. Editing age does not change your current manual goal.")
+                    Text("Calculated setup supports ages 19–78. Editing age here never recalculates or changes your current calorie goal.")
                 }
             }
             .navigationTitle("Edit Profile")
@@ -112,6 +130,19 @@ private struct ProfileEditor: View {
             errorMessage = "Profile changes could not be saved. Try again."
         }
     }
+}
+
+private func heightText(
+    _ centimeters: Double,
+    system: PlanMeasurementSystem
+) -> String {
+    if system == .metric {
+        return "\(centimeters.formatted(.number.precision(.fractionLength(0...1)))) cm"
+    }
+    let totalInches = PlanUnitConversion.inches(fromCentimeters: centimeters)
+    let feet = Int(totalInches / 12)
+    let inches = totalInches - Double(feet * 12)
+    return "\(feet) ft \(inches.formatted(.number.precision(.fractionLength(0...1)))) in"
 }
 
 #if DEBUG

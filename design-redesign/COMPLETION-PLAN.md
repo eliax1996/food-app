@@ -99,7 +99,7 @@ For each component:
 | Completion audit | COMPLETE | Original program correctly classified incomplete; this plan created. |
 | STATES-001 | COMPLETE | Accepted attempt 04. Post-fix live remote screenshot proves one `69.7 × 44.0` Retry; scanner permission plus AX3-dark and barcode loading/offline evidence accepted; functional UI target passed 11/11. |
 | NUTRIENTS-001 | COMPLETE | Accepted attempt 01: optional API/cache facts, immutable snapshots, custom entry, coverage-gated balance, 3/3 critical/high visual approval, 140 hostless pass / 2 skips, 167 app-host pass / 2 skips, and 12/12 UI. |
-| REFINE-001 | IN PROGRESS | Attempt 01 Slices A/B accepted: research, Plan references, reminders, hierarchical Settings, and numeric-entry follow-up complete. Slice C welcome/calculator next; Slice D adaptation follows. |
+| REFINE-001 | IN PROGRESS | Attempts 01–02 Slices A–C accepted: Plan references, reminders, hierarchical Settings, direct entry, optional welcome/calculator, Manual migration, and restore complete. Slice D adaptation next. |
 | AUXILIARY-001 | PENDING | No widget/Live Activity visual audit yet. |
 | CONSISTENCY-001 | PENDING | Requires completed component set. |
 | ROBUSTNESS-001 | PENDING | Partial Meal/Amount/Weight evidence only. |
@@ -108,7 +108,7 @@ For each component:
 
 ## Refine
 
-**Execution status:** IN PROGRESS. Attempt 01 Slices A/B accepted. Continue autonomously with Slice C welcome/setup and explainable calculated calorie plan, then Slice D evidence-gated adaptation.
+**Execution status:** IN PROGRESS. Attempts 01–02 Slices A–C accepted. Continue autonomously with Slice D evidence-gated adaptation.
 
 ### 1. Competitor and safety research
 
@@ -124,7 +124,7 @@ Perform current, source-linked, screenshot-backed research before choosing UI or
 
 Separate category conventions, product-specific styles not to copy, and opportunities. Use independent product-design, nutrition-safety, and native-iOS critiques.
 
-### 2. Welcome/setup flow
+### 2. Welcome/setup flow — ATTEMPT 02 COMPLETE
 
 Design a calm native welcome flow that asks only information required to produce an explainable plan. Candidate inputs, subject to research:
 
@@ -140,7 +140,9 @@ Design a calm native welcome flow that asks only information required to produce
 
 Use progressive disclosure, large native selection rows, clear back/continue controls, inline summaries, full VoiceOver labels, and no decorative questionnaire chrome. Preserve partially entered setup. Explain why each sensitive value is requested.
 
-### 3. Explainable daily calorie-goal calculator
+Attempt 02 deliberately omitted a separate “safety margin”: research did not establish a user-understandable validated meaning beyond bounded pace and calorie rules, so another adjustment would add false precision. Reminder choices also remain in their accepted contextual Settings editor instead of lengthening prerequisite setup.
+
+### 3. Explainable daily calorie-goal calculator — ATTEMPT 02 COMPLETE
 
 Research and specify before implementation:
 
@@ -223,4 +225,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-REFINE-001 attempt 01 completed hierarchical Settings, NUTRITION-GOALS-001, configurable meal/weight reminders, permission recovery, and user-requested numeric-entry refinement. Begin Slice C by finalizing supported adult population, equation inputs, safety bounds, migration, and resumable welcome state machine before calculator/onboarding code.
+REFINE-001 attempts 01–02 completed Plan references, hierarchical Settings, configurable reminders, numeric/direct-entry refinements, and optional explainable calculated setup. Begin Slice D by finalizing observation window, complete-log and weigh-in coverage, trend/confidence method, proposal cadence, adjustment bounds, and revert semantics before adaptation code.

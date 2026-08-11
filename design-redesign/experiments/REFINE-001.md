@@ -1,6 +1,6 @@
 # REFINE-001 — Plan, setup, Settings, reminders, and adaptation
 
-**Status:** ATTEMPT 01 ACCEPTED — SLICES A/B COMPLETE; REFINE CONTINUES
+**Status:** ATTEMPTS 01–02 ACCEPTED — SLICES A–C COMPLETE; REFINE CONTINUES
 **Started:** 2026-08-10
 
 ## Purpose
@@ -120,3 +120,49 @@ Normal, denied, dark/AX3, partial, editor, small-layout, Today, and detail pixel
 #### Decision
 
 **ACCEPTED — ATTEMPT 01 / SLICES A AND B COMPLETE.** Plan references, focused Settings, configurable reminders, authorization recovery, and requested numeric-entry follow-up meet acceptance. REFINE-001 continues with Slice C welcome/setup and explainable calculated calorie plan; no calculated or adaptive recommendation has been silently added.
+
+### Attempt 02 — Slice C
+
+**State:** ACCEPTED
+
+Pre-code contract: `../../docs/calculated-plan-specification.md`.
+
+#### Implementation
+
+- Added skippable/resumable native welcome flow for scope, goal mode, metric/US body values, explicit Mifflin–St Jeor equation constant, routine examples, rate/date, and review.
+- Requires height, equation, and routine selection instead of silently assuming missing inputs. Existing profile age/weights remain prefilled and visible.
+- Added published female/male resting equations, transparent routine factors, exact 0.25/0.50 kg weekly choices, local-calendar date-derived rate, 7,700 kcal/kg static planning adjustment, nearest-10 rounding, BMI floor, 1,000–5,000 kcal product bounds, and typed infeasibility.
+- Existing profiles migrate Manual byte-for-value and are never auto-replaced. Accepted calculated metadata is reproducible; manual edits retain optional restore; restore returns saved calorie/target/forecast context without changing raw weight logs.
+- Setup drafts persist by step. Accepted-plan timestamp reconciliation repairs a crash gap between SwiftData acceptance and setup marker persistence without mistaking a deliberate in-progress redo for completion.
+- Plan and Profile show truthful source, accepted inputs, formula components, limitations, and on-device privacy.
+
+#### Review iterations
+
+Independent critical/high review blocked initial code on split acceptance persistence, stale target context after restore, arbitrary weekly rates, fixed-second date defaults, rationale order, and missing boundaries. Fixes added accepted-date reconciliation, full target/forecast restore/display, exact weekly choices, calendar-day defaults, pre-control explanations, and expanded finite/boundary/non-Gregorian tests. Follow-up found nonfinite `Date` handling and remaining boundary gaps; both were fixed. Final isolation review then found test launch flags and preferences could affect release/persistent defaults; in-memory flags are now DEBUG-only and UI/review reminders/setup use isolated suites. Follow-up code review: **APPROVE**.
+
+Visual review exposed no real critical/high defect after bounded recapture. Broad automated visual attempts timed out and one Sol reading falsely claimed visible Back/Close clipping; direct pixel inspection plus a focused independent judge confirmed both controls fully visible. Final bounded groups approved welcome, body, infeasible recovery, review, AX3 dark, Manual Plan entry, and Calculated Plan basis.
+
+#### Evidence
+
+Accepted files under `../screenshots/REFINE-001/`:
+
+- `attempt-02-setup-welcome.png`
+- `attempt-02-setup-body.png`
+- `attempt-02-setup-infeasible-date.png`
+- `attempt-02-setup-review.png`
+- `attempt-02-setup-review-ax3-dark.png`
+- `attempt-02-plan-manual-entry.png`
+- `attempt-02-plan-calculated.png`
+
+#### Validation
+
+- Calculator: **17/17** focused hostless tests.
+- Setup state/migration: **6/6** focused hostless tests.
+- `just validate 300`: passed; **178 passed / 2 live skips** hostless; simulator build/install/launch passed.
+- `just test-app-unit 480`: passed; **210 passed / 2 live skips**.
+- `TEST_CASE_TIMEOUT=60 just test-ui 900`: passed **22/22**; every final XCTest completed under one minute. Post-isolation default-cap runs reached 21/22 once on a legacy numeric-entry race and once when a custom-food test hit exactly 60 seconds. Weight lifecycle now uses deterministic adjustment controls, its focused rerun passed, and neither partial suite was called green.
+- Xcode 27 retained source-less `Invalid frame dimension (negative or non-finite).` diagnostics around numeric keyboards; no failed final flow or visible defect is associated.
+
+#### Decision
+
+**ACCEPTED — ATTEMPT 02 / SLICE C COMPLETE.** Optional setup is explainable, supported-population-bounded, resumable, reversible, and explicit. Manual goals remain untouched until confirmation. REFINE-001 continues with Slice D evidence-gated adaptation.

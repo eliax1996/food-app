@@ -6,7 +6,11 @@ struct CountCaloriesApp: App {
     private let arguments = ProcessInfo.processInfo.arguments
 
     private var usesInMemoryStore: Bool {
+#if DEBUG
         arguments.contains("-ui-testing") || arguments.contains("-design-review")
+#else
+        false
+#endif
     }
 
     var body: some Scene {
@@ -34,10 +38,40 @@ struct CountCaloriesApp: App {
 private struct UITestingRoot: View {
     @Environment(\.modelContext) private var modelContext
     @State private var isReady = false
+    @State private var showingCalculatedSetup = ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-calculated-setup"
+    ) || ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-calculated-pace"
+    ) || ProcessInfo.processInfo.arguments.contains(
+        "-ui-testing-calculated-review"
+    )
+
+    private var calculatedSetupRecord: CaloriePlanSetupRecord {
+        var draft = CaloriePlanSetupDraft()
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing-calculated-pace")
+            || ProcessInfo.processInfo.arguments.contains("-ui-testing-calculated-review") {
+            draft.step = ProcessInfo.processInfo.arguments.contains("-ui-testing-calculated-review")
+                ? .review
+                : .pace
+            draft.goalMode = .lose
+            draft.heightCentimeters = 170
+            draft.equation = .female
+            draft.activityLevel = .moderate
+            draft.eligibilityConfirmed = true
+        }
+        return CaloriePlanSetupRecord(status: .inProgress, draft: draft)
+    }
 
     var body: some View {
         Group {
-            if isReady {
+            if isReady, showingCalculatedSetup {
+                CaloriePlanSetupView(
+                    profile: nil,
+                    record: calculatedSetupRecord
+                ) {
+                    showingCalculatedSetup = false
+                }
+            } else if isReady {
                 ContentView()
             } else {
                 ProgressView("Preparing test data")
@@ -70,6 +104,10 @@ private struct UITestingRoot: View {
             modelContext.delete(profile)
         }
         ReminderPreferences().store()
+        CaloriePlanSetupStore.save(CaloriePlanSetupRecord(
+            status: .skipped,
+            draft: CaloriePlanSetupDraft()
+        ))
         try modelContext.save()
     }
 }

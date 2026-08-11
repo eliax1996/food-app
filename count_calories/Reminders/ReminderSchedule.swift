@@ -45,6 +45,20 @@ enum ReminderPreferenceKey {
     static let weightFrequency = "reminders.weight.frequency"
 }
 
+nonisolated enum ReminderPreferenceDefaults {
+    static var current: UserDefaults {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing") {
+            return UserDefaults(suiteName: "ch.elia.count-calories.ui-testing.reminders") ?? .standard
+        }
+        if ProcessInfo.processInfo.arguments.contains("-design-review") {
+            return UserDefaults(suiteName: "ch.elia.count-calories.design-review.reminders") ?? .standard
+        }
+#endif
+        return .standard
+    }
+}
+
 struct ReminderPreferences: Equatable, Sendable {
     var breakfastEnabled = false
     var lunchEnabled = false
@@ -60,7 +74,7 @@ struct ReminderPreferences: Equatable, Sendable {
     var weightTime = ReminderTime(hour: 9, minute: 0)
     var weightFrequency = WeightReminderFrequency.weekly
 
-    static func stored(in defaults: UserDefaults = .standard) -> ReminderPreferences {
+    static func stored(in defaults: UserDefaults = ReminderPreferenceDefaults.current) -> ReminderPreferences {
         ReminderPreferences(
             breakfastEnabled: defaults.bool(forKey: ReminderPreferenceKey.breakfast),
             lunchEnabled: defaults.bool(forKey: ReminderPreferenceKey.lunch),
@@ -99,7 +113,7 @@ struct ReminderPreferences: Equatable, Sendable {
         )
     }
 
-    func store(in defaults: UserDefaults = .standard) {
+    func store(in defaults: UserDefaults = ReminderPreferenceDefaults.current) {
         defaults.set(breakfastEnabled, forKey: ReminderPreferenceKey.breakfast)
         defaults.set(lunchEnabled, forKey: ReminderPreferenceKey.lunch)
         defaults.set(snackEnabled, forKey: ReminderPreferenceKey.snack)

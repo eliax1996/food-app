@@ -238,7 +238,26 @@ Accepted attempt 01 evidence:
 - ![Populated Today clearance](screenshots/REFINE-001/attempt-01-today.png) — macro-only bar plus grams remain secondary; all four meal rows clear floating tab bar.
 - ![Corrected nutrition denominator](screenshots/REFINE-001/attempt-01-nutrition-detail.png) — macro-only split is labeled separately from logged-energy adult-range shares.
 
-Status: **ATTEMPT 01 ACCEPTED — REFINE SLICES A/B COMPLETE**. Three bounded critical/high visual groups approved after denominator/value conflict correction. Validation: 155 hostless pass / 2 skips, 184 app-hosted pass / 2 skips, exact-tree simulator validation passed, functional UI 14/14.
+Accepted attempt 02 evidence:
+
+- ![Optional setup welcome](screenshots/REFINE-001/attempt-02-setup-welcome.png) — explicit supported scope, no early mutation, clear Continue/Keep Manual choices.
+- ![Required body details](screenshots/REFINE-001/attempt-02-setup-body.png) — rationale before sensitive inputs, units, visible current/target values, and numeric entry.
+- ![Infeasible-date recovery](screenshots/REFINE-001/attempt-02-setup-infeasible-date.png) — no extreme result; exact later-date recovery and disabled Continue.
+- ![Transparent calculated review](screenshots/REFINE-001/attempt-02-setup-review.png) — recommendation plus equation, accepted values, routine, maintenance, pace, and limitations.
+- ![Calculated review AX3 dark](screenshots/REFINE-001/attempt-02-setup-review-ax3-dark.png) — readable large text, reachable actions, dark appearance, and scroll continuation.
+- ![Manual Plan setup entry](screenshots/REFINE-001/attempt-02-plan-manual-entry.png) — truthful Manual source and visible Calculate a starting goal action.
+- ![Calculated Plan basis](screenshots/REFINE-001/attempt-02-plan-calculated.png) — Calculated source, target/forecast, accepted inputs, and exact breakdown.
+
+Status: **ATTEMPTS 01–02 ACCEPTED — REFINE SLICES A–C COMPLETE**. Final bounded visual/code judgments approved. Validation: 178 hostless pass / 2 skips, 210 app-hosted pass / 2 skips, exact-tree simulator validation passed, functional UI 22/22.
+
+## SETTINGS-DIRECT-EDIT-001
+
+Accepted attempt 01 evidence:
+
+- ![Actionable reminder summaries](screenshots/SETTINGS-DIRECT-EDIT-001/attempt-01-reminder-summaries.png) — every meal time/Off, Weight, and Water row has native full-row affordance and chevron; top Edit remains.
+- ![Actionable reminder summaries AX3 dark](screenshots/SETTINGS-DIRECT-EDIT-001/attempt-01-reminder-summaries-ax3-dark.png) — title/value stack cleanly without compressed wrapping.
+
+Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Focused UI proves Meal, Weight, and Water taps open editor and Cancel preserves `Off`; Plan setup opens, advances, closes, and resumes from Settings. Final suite passed 22/22.
 
 ## WEIGHT-ENTRY-001
 
