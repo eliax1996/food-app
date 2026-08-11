@@ -42,4 +42,4 @@ Latest accepted milestone: REFINE-001 attempt 02 Slice C plus SETTINGS-DIRECT-ED
 
 ## Immediate action
 
-Begin Slice D adaptation evidence/state specification before implementation.
+Implement Slice D identity, explicit complete-day evidence, goal-revision, and serialized mutation foundations from approved `docs/adaptive-calorie-plan-specification.md`; estimator/proposal UI follows only after those gates pass.

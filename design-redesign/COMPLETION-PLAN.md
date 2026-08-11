@@ -172,7 +172,7 @@ Add optional weight-entry reminders with configurable frequency/time and explain
 - a stalled trend may indicate noisy/inaccurate measurements, incomplete intake logs, or an overestimated daily goal—never state one cause as fact;
 - proposed calorie changes must be small, explainable, bounded, user-confirmed, reversible, and never applied silently.
 
-Research minimum observation window, trend method, confidence/data-coverage rules, adjustment cadence, and safe change bounds. Keep raw weight log intact; adaptive analysis consumes trend, never overwrites measurements.
+Specification accepted in `../docs/adaptive-calorie-plan-specification.md`: 42 explicit complete days, distributed weigh-ins, coincident 28/35/42-day trend/intake estimates, evidence agreement, weekly fresh-evidence cadence, ±100 kcal proposal, 200 kcal/28-day cumulative bound, serialized mutation gateway, and exact revert. Keep raw logs intact; adaptive analysis consumes snapshots/trend and never overwrites measurements.
 
 ### 5. Configurable meal reminder times — ATTEMPT 01 COMPLETE
 
@@ -225,4 +225,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-REFINE-001 attempts 01–02 completed Plan references, hierarchical Settings, configurable reminders, numeric/direct-entry refinements, and optional explainable calculated setup. Begin Slice D by finalizing observation window, complete-log and weigh-in coverage, trend/confidence method, proposal cadence, adjustment bounds, and revert semantics before adaptation code.
+REFINE-001 Slice D pre-code contract is independently approved. Implement staged stable identity, explicit food-day completion, evidence/revision persistence, and serialized mutation foundations before estimator or proposal UI.

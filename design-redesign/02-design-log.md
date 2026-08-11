@@ -516,3 +516,11 @@ User feedback correctly identified dead-looking Settings values. Every meal `Off
 Reported `Calculate a starting goal` failure came from competing Boolean/optional sheet presentation state. Plan now uses one item-driven sheet. Focused UI proves open → Continue → Close with Manual 1,700 unchanged → resume at Goal. Reminder row tests prove all direct entries and Cancel semantics. Normal/AX3-dark visual judgment approved.
 
 **ACCEPTED — ATTEMPT 01 / COMPLETE.**
+
+## [REFINE-001] Slice D — Adaptation pre-code contract
+
+Retained MacroFactor, Foodnoms, Sanghvi, and Slice C evidence now resolves adaptation semantics before code. Count Calories will require 42 explicitly complete civil food days rather than infer missing intake; distributed boundary/interior weigh-ins; coincident 28/35/42 intake/trend intervals; and agreement before any proposal. A check-in can move at most 100 kcal, no more than 200 kcal across 28 days, only after explicit confirmation and fresh weekly evidence.
+
+Independent method review blocked selected-day intake bias, mismatched weight/intake periods, and stale new evidence. Architecture review blocked unstable identity, incomplete snapshots, direct plan mutation, unknown-source mislabeling, ambiguous same-day revisions, generation races, and retry identity. Contract now requires all-day evidence, piecewise interior-knot trend, full signatures, fail-closed identity migration, Unknown/Adapted sources, one serialized evidence/plan gateway, compare-and-set generation, deterministic operation keys, and exact revert. Final method and architecture reviews: **APPROVE**.
+
+Pre-code specification: `../docs/adaptive-calorie-plan-specification.md`. Implementation remains pending.

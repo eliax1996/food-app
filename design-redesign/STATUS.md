@@ -22,7 +22,7 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 
 ## Current component
 
-REFINE-001 — **IN PROGRESS; ATTEMPTS 01–02 / SLICES A–C ACCEPTED. SLICE D NEXT**.
+REFINE-001 — **IN PROGRESS; ATTEMPTS 01–02 / SLICES A–C ACCEPTED. SLICE D CONTRACT APPROVED / IMPLEMENTATION NEXT**.
 
 Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCEPTED — ATTEMPT 01 / COMPLETE** with final root order:
 
@@ -81,7 +81,7 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 ## Open questions
 
 - Best balance between one global Log Food action and per-meal add actions.
-- Exact observation window, data-coverage confidence, proposal cadence, and reversible bounds for REFINE Slice D adaptation.
+- Slice D contract resolved: 42 explicit complete days, distributed weights, 28/35/42 agreement, weekly fresh evidence, ±100-kcal proposals, and exact revert. Implementation/visual hierarchy remains to validate.
 - Whether deferred personal macro targets should be editable in addition to transparent adult population reference defaults.
 - Future cross-device consistency.
 
