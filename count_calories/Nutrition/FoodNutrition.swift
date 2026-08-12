@@ -150,6 +150,16 @@ nonisolated struct FoodNutrients: Codable, Equatable, Sendable {
         )
     }
 
+    func scaledIfFinite(by multiplier: Double) -> FoodNutrients? {
+        guard multiplier.isFinite, multiplier >= 0 else { return nil }
+        let values = [carbohydratesGrams, proteinGrams, fatGrams, fiberGrams]
+        guard values.allSatisfy({ value in
+            guard let value else { return true }
+            return (value * multiplier).isFinite
+        }) else { return nil }
+        return scaled(by: multiplier)
+    }
+
     func mergingMissingValues(from fallback: FoodNutrients) -> FoodNutrients {
         FoodNutrients(
             carbohydratesGrams: carbohydratesGrams ?? fallback.carbohydratesGrams,

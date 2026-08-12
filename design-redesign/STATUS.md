@@ -19,11 +19,14 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - REFINE-001 Slice C: accepted attempt 02. Skippable/resumable supported-adult setup, explicit Mifflin–St Jeor inputs, transparent routine/rate/date calculation, infeasible recovery, Manual migration, override, and restore are verified.
 - REFINE-001 Slice D: accepted attempt 03. Explicit complete-day evidence, stable migration-safe identity, coincident 28/35/42 estimates, bounded proposal-only adaptation, serialized compare-and-set mutation, truthful collecting/check-data states, Adapted source, per-day goal history, explicit disable/zero-intake confirmation, and exact revert are verified.
 - WEIGHT-ENTRY-001: accepted attempt 01. Latest-measure defaults, direct `−1/−0.1/+0.1/+1` kg controls, and keyboard Done across all numeric entry surfaces are verified.
-- SETTINGS-DIRECT-EDIT-001: accepted attempt 01. Reminder `Off`/time, Weight, and Water rows open focused draft editing; Plan calculated setup opens, continues, closes, and resumes reliably.
+- SETTINGS-DIRECT-EDIT-001: accepted attempt 01. Reminder overview shows every saved meal time plus Enabled/Disabled state; one **Customize Meal Reminders** action separates meal enablement from notification timing; Weight and Water retain focused draft editing. Plan calculated setup opens, continues, closes, and resumes reliably.
+- BULK-AI-FOOD-001: accepted attempt 01. Typed/on-device dictated descriptions produce provisional editable rows; nutrition stays record-owned; explicit/default estimates require acceptance; local retained choices and seven-day drafts are bounded/clearable; confirmation is atomic and idempotent with custom/saved recovery.
 
 ## Current component
 
 REFINE-001 — **ACCEPTED; ATTEMPTS 01–03 / SLICES A–D COMPLETE**.
+
+BULK-AI-FOOD-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Typed and dictated local-first extraction, editable review, verified nutrition matching, manual/custom recovery, truthful privacy controls, bounded retained learning/drafts, and atomic idempotent confirmation are implemented. Final critical/high code-review consensus: **3/3 APPROVE**.
 
 Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCEPTED — ATTEMPT 01 / COMPLETE** with final root order:
 
@@ -31,15 +34,14 @@ Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCE
 Today | Weight | Progress | Settings
 ```
 
-STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders, calculated setup, evidence-gated adaptation, direct Settings entry, and numeric-entry refinements are complete. User-prioritized BULK-AI-FOOD-001 begins before auxiliary/global/final review.
+STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders, calculated setup, evidence-gated adaptation, direct Settings entry, numeric-entry refinements, and BULK-AI-FOOD-001 are complete. Auxiliary/global/final review follows.
 
 ## Next components
 
-1. BULK-AI-FOOD-001 — competitor/Apple research, detailed specification, then typed/dictated on-device extraction and editable food-match review.
-2. AUXILIARY-001 — Widget and Live Activity
-3. CONSISTENCY-001
-4. ROBUSTNESS-001
-5. FINAL-001 and `FINAL-REPORT.md`
+1. AUXILIARY-001 — Widget and Live Activity
+2. CONSISTENCY-001
+3. ROBUSTNESS-001
+4. FINAL-001 and `FINAL-REPORT.md`
 
 ## Accepted design principles
 

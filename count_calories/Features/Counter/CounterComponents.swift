@@ -208,14 +208,20 @@ struct MealDetailView: View {
     let onEdit: (PlateEntry) -> Void
     let onDelete: (PlateEntry) -> Void
 
+    @State private var pendingDeletion: PlateEntry?
+
     var body: some View {
         List {
             if entries.isEmpty {
-                ContentUnavailableView(
-                    "Nothing logged for \(mealType.rawValue.lowercased())",
-                    systemImage: mealType.systemImage,
-                    description: Text("Add food when you're ready.")
-                )
+                VStack(spacing: 16) {
+                    ContentUnavailableView(
+                        "Nothing logged for \(mealType.rawValue.lowercased())",
+                        systemImage: mealType.systemImage,
+                        description: Text("Add food when you're ready.")
+                    )
+                    Button("Add Food", action: onAdd)
+                        .accessibilityIdentifier("meal-detail-add-food")
+                }
             } else {
                 ForEach(entries) { entry in
                     Button {
@@ -226,7 +232,7 @@ struct MealDetailView: View {
                     .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            onDelete(entry)
+                            pendingDeletion = entry
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
@@ -248,6 +254,25 @@ struct MealDetailView: View {
                     Label("Add food", systemImage: "plus")
                 }
             }
+        }
+        .alert(
+            "Delete \(pendingDeletion?.foodName ?? "food")?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            )
+        ) {
+            Button("Delete", role: .destructive) {
+                guard let pendingDeletion else { return }
+                self.pendingDeletion = nil
+                onDelete(pendingDeletion)
+            }
+            .accessibilityIdentifier("confirm-delete-meal")
+            Button("Cancel", role: .cancel) {
+                pendingDeletion = nil
+            }
+        } message: {
+            Text("This removes the logged food from \(mealType.rawValue.lowercased()).")
         }
     }
 }
@@ -315,9 +340,9 @@ struct MealEntryRow: View {
             .number.precision(.fractionLength(0...2))
         )
         if entry.portionQuantity == 1 {
-            return "\(amount) \(entry.nutritionUnit.rawValue)"
+            return "1× · \(amount) \(entry.nutritionUnit.rawValue)"
         }
-        return "\(quantity) servings · \(amount) \(entry.nutritionUnit.rawValue) each"
+        return "\(quantity)× · \(amount) \(entry.nutritionUnit.rawValue) each"
     }
 }
 

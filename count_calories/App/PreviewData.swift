@@ -31,6 +31,7 @@ enum PreviewData {
             Food.self,
             PlateEntry.self,
             FoodLogCompletion.self,
+            BulkFoodBatchOperation.self,
             WaterDay.self,
             WeightEntry.self,
             UserProfile.self
@@ -415,6 +416,10 @@ enum PreviewData {
                 expectedEvidenceRevision: proposal.expectedEvidenceRevision,
                 expectedEvidenceSignature: proposal.evidenceSignature
             )
+            context.rollback()
+            guard try context.fetch(FetchDescriptor<UserProfile>()).first?.planGoalSource == .adapted else {
+                throw CocoaError(.coderInvalidValue)
+            }
         }
     }
 

@@ -103,6 +103,15 @@ struct BarcodeScannerView: View {
                     .accessibilityIdentifier("barcode-scanner-cancel")
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                if issue == nil {
+                    manualEntryButton
+                        .buttonStyle(.bordered)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background(.bar)
+                }
+            }
         }
         .onAppear(perform: startScanner)
         .onChange(of: scenePhase) { _, newPhase in

@@ -188,6 +188,10 @@ struct MealEditorView: View {
                 }
 
                 Section("Food") {
+                    if !recentFoods.isEmpty {
+                        recentFoodButtons
+                    }
+
                     NavigationLink {
                         FoodSearchView(
                             foods: foods,
@@ -210,10 +214,6 @@ struct MealEditorView: View {
                         }
                     }
                     .accessibilityIdentifier("choose-food")
-
-                    Button(action: onScanBarcode) {
-                        Label("Scan barcode", systemImage: "barcode.viewfinder")
-                    }
                 }
 
                 Section("Serving") {
@@ -318,6 +318,13 @@ struct MealEditorView: View {
                         .accessibilityIdentifier("cancel-meal")
                 }
 
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: onScanBarcode) {
+                        Label("Scan barcode", systemImage: "barcode.viewfinder")
+                    }
+                    .accessibilityIdentifier("meal-editor-scan-barcode")
+                }
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "Save" : "Add") {
                         guard canSave else { return }
@@ -338,6 +345,44 @@ struct MealEditorView: View {
         }
         .presentationDetents([.large])
         .accessibilityIdentifier("meal-editor")
+    }
+
+    @ViewBuilder
+    private var recentFoodButtons: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Recently logged")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ForEach(Array(recentFoods.prefix(3))) { food in
+                    recentFoodButton(food)
+                }
+            }
+        } else {
+            HStack(spacing: 8) {
+                Text("Recent")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ForEach(Array(recentFoods.prefix(3))) { food in
+                    recentFoodButton(food)
+                }
+            }
+        }
+    }
+
+    private func recentFoodButton(_ food: Food) -> some View {
+        Button {
+            selectedFood = food
+            amount = food.servingGrams
+        } label: {
+            Text(food.name)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel("Use recent food \(food.name)")
+        .accessibilityHint("Updates food and amount. Add still logs meal.")
+        .accessibilityIdentifier("recent-food-\(food.name)")
     }
 }
 

@@ -15,7 +15,7 @@ Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 - Dedicated Weight Log
 - Root `Today | Weight | Progress | Settings`
 
-Latest accepted milestone: REFINE-001 attempt 03 Slice D evidence-gated adaptation.
+Latest accepted milestone: BULK-AI-FOOD-001 attempt 01 typed/dictated editable bulk review, atomic persistence, and clarified reminder customization. Current: AUXILIARY-001 next.
 
 ## Current component
 
@@ -25,7 +25,7 @@ Latest accepted milestone: REFINE-001 attempt 03 Slice D evidence-gated adaptati
 
 ## Remaining sequence
 
-1. BULK-AI-FOOD-001 — competitor/Apple research and detailed Markdown specification, then implementation.
+1. AUXILIARY-001 — audit and improve/accept widget and Live Activity surfaces with evidence.
 2. AUXILIARY-001 — Widget and Live Activity
 3. CONSISTENCY-001
 4. ROBUSTNESS-001
@@ -42,4 +42,4 @@ Latest accepted milestone: REFINE-001 attempt 03 Slice D evidence-gated adaptati
 
 ## Immediate action
 
-Run final Slice D exact-tree validation, commit milestone, then begin BULK-AI-FOOD-001 research/specification before code.
+Begin AUXILIARY-001 from accepted BULK-AI-FOOD-001 tree; preserve bulk/reminder gates and evidence.

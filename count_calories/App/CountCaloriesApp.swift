@@ -20,6 +20,7 @@ struct CountCaloriesApp: App {
             Food.self,
             PlateEntry.self,
             FoodLogCompletion.self,
+            BulkFoodBatchOperation.self,
             WaterDay.self,
             WeightEntry.self,
             UserProfile.self
@@ -116,7 +117,7 @@ private struct UITestingRoot: View {
                                 throw PlanEvidenceMutationError.coordinatorUnavailable
                             }
                             let fixtureContext = mutationCoordinator.testingModelContext
-                            try resetStore(in: fixtureContext)
+                            try await resetStore(in: fixtureContext)
                             let seededFixture = try seedAdaptiveFixtureIfRequested(
                                 in: fixtureContext,
                                 coordinator: mutationCoordinator
@@ -124,7 +125,15 @@ private struct UITestingRoot: View {
                             if !seededFixture {
                                 try seedDefaultProfileIfNeeded(in: fixtureContext)
                             }
-                            contentModelContext = ModelContext(modelContext.container)
+                            let contentContext = ModelContext(modelContext.container)
+                            if ProcessInfo.processInfo.arguments.contains("-ui-testing-adaptive-applied") {
+                                try mutationCoordinator.ensureAppliedFixtureVisibleForTesting()
+                                contentContext.rollback()
+                                guard try contentContext.fetch(FetchDescriptor<UserProfile>()).first?.planGoalSource == .adapted else {
+                                    throw CocoaError(.coderInvalidValue)
+                                }
+                            }
+                            contentModelContext = contentContext
                             isReady = true
                         } catch {
                             preparationError = String(describing: error)
@@ -153,7 +162,8 @@ private struct UITestingRoot: View {
         } else if fixture == "applied" || process.arguments.contains("-ui-testing-adaptive-applied") {
             try PreviewData.seedAdaptiveProposal(
                 context,
-                coordinator: coordinator
+                coordinator: coordinator,
+                applyProposal: true
             )
             seeded = true
         } else if fixture == "collecting" || process.arguments.contains("-ui-testing-adaptive-collecting") {
@@ -199,11 +209,19 @@ private struct UITestingRoot: View {
         }
     }
 
-    private func resetStore(in context: ModelContext) throws {
+    private func resetStore(in context: ModelContext) async throws {
         context.rollback()
         for completion in try context.fetch(FetchDescriptor<FoodLogCompletion>()) {
             context.delete(completion)
         }
+        for operation in try context.fetch(FetchDescriptor<BulkFoodBatchOperation>()) {
+            context.delete(operation)
+        }
+        let learningStore = try await BulkFoodLearningStore.applicationStore()
+        try await learningStore.clear()
+        let draftStore = try await BulkFoodDraftStore.applicationStore()
+        let draftLease = await draftStore.acquireLease()
+        try await draftStore.clear(lease: draftLease)
         for entry in try context.fetch(FetchDescriptor<PlateEntry>()) {
             context.delete(entry)
         }
@@ -220,6 +238,27 @@ private struct UITestingRoot: View {
             context.delete(profile)
         }
         try context.save()
+
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing-bulk-draft") {
+            let replacementLease = await draftStore.acquireLease()
+            try await draftStore.save(
+                BulkFoodDraft(
+                    description: "100 g almond milk",
+                    mealType: MealType.suggestedForCurrentTime.rawValue,
+                    reviewItems: [BulkFoodReviewItemSnapshot(
+                        id: UUID(),
+                        sourceQuery: "almond milk",
+                        query: "Almond Milk",
+                        amount: 100,
+                        unit: .grams,
+                        amountOrigin: .explicitDescription,
+                        selectedMatch: nil
+                    )],
+                    updatedAt: .now
+                ),
+                lease: replacementLease
+            )
+        }
 
         ReminderPreferences().store()
         CaloriePlanSetupStore.save(CaloriePlanSetupRecord(

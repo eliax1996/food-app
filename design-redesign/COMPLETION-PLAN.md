@@ -2,7 +2,7 @@
 
 **Status:** IN PROGRESS
 **Started:** 2026-08-09
-**Last updated:** 2026-08-12 — REFINE-001 accepted; BULK-AI-FOOD-001 next
+**Last updated:** 2026-08-12 — BULK-AI-FOOD-001 accepted; AUXILIARY-001 next
 
 ## Goal
 
@@ -46,10 +46,11 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
    - Attempts 01–03 accepted: transparent Plan references, exact reminders, calculated setup, direct entry, explicit complete-day evidence, evidence-gated proposal-only adaptation, and exact revert.
    - Final Slice D visual consensus: 3/3 APPROVE; hostless 195/2 skips, app-hosted 250/2 skips, functional UI 31/31.
 
-4. **BULK-AI-FOOD-001 — NEXT: typed/dictated bulk logging with editable review**
-   - Deeply research competitor quick-log/voice/AI patterns and Apple Foundation Models/Speech APIs before implementation.
-   - Write detailed data model, data pipeline, privacy, availability/fallback, async failure, retained-correction, LRU matching, UI/accessibility, and acceptance specification.
-   - Keep language-model extraction provisional; nutrition comes only from selected food records or explicit user edits. Require review and atomic confirmation.
+4. **BULK-AI-FOOD-001 — COMPLETE: typed/dictated bulk logging with editable review**
+   - Typed descriptions and explicit Dictate intent feed availability-gated on-device extraction; iOS 17–25 retain direct/manual paths.
+   - Provisional query/amount/unit rows remain editable; calories, nutrients, barcode, and identity come only from verified saved/custom/Open Food Facts records.
+   - Bounded local learning/drafts, stale-result rejection, explicit estimate acceptance, custom recovery, and one atomic idempotent batch transaction are implemented.
+   - Attempt-01 light/dark/AX3 evidence, 297 app-hosted pass / 2 live skips, 219 hostless pass / 2 live skips, focused reminder/bulk UI proofs, and 3/3 final critical/high review approval are recorded.
 
 5. **AUXILIARY-001 — Widget and Live Activity**
    - Audit user-facing widget and Live Activity surfaces.
@@ -104,7 +105,7 @@ For each component:
 | STATES-001 | COMPLETE | Accepted attempt 04. Post-fix live remote screenshot proves one `69.7 × 44.0` Retry; scanner permission plus AX3-dark and barcode loading/offline evidence accepted; functional UI target passed 11/11. |
 | NUTRIENTS-001 | COMPLETE | Accepted attempt 01: optional API/cache facts, immutable snapshots, custom entry, coverage-gated balance, 3/3 critical/high visual approval, 140 hostless pass / 2 skips, 167 app-host pass / 2 skips, and 12/12 UI. |
 | REFINE-001 | COMPLETE | Attempts 01–03 accepted: Plan references, reminders, hierarchical Settings, direct entry, optional calculator, explicit complete-day evidence, bounded proposal-only adaptation, Adapted source, exact revert, 3/3 visual approval, and 31/31 UI. |
-| BULK-AI-FOOD-001 | NEXT | User-prioritized competitor/Apple research and detailed specification precede implementation. |
+| BULK-AI-FOOD-001 | COMPLETE | Attempt 01 accepted: typed/dictated local extraction, editable verified review, bounded local learning/drafts, custom recovery, atomic idempotent persistence, and 3/3 final critical/high approval. |
 | AUXILIARY-001 | PENDING | No widget/Live Activity visual audit yet. |
 | CONSISTENCY-001 | PENDING | Requires completed component set. |
 | ROBUSTNESS-001 | PENDING | Partial Meal/Amount/Weight evidence only. |
@@ -230,4 +231,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-Commit accepted REFINE-001 Slice D. Then execute BULK-AI-FOOD-001 competitor and Apple framework research, write detailed specification, and only then implement typed/dictated bulk logging with provisional editable review.
+Commit accepted BULK-AI-FOOD-001 and reminder customization work. Then execute AUXILIARY-001 widget/Live Activity audit before CONSISTENCY-001, ROBUSTNESS-001, and FINAL-001.

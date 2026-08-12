@@ -35,6 +35,7 @@ nonisolated enum PlanEvidenceMutationError: Error, Equatable {
     case epochBasisChanged
     case invalidCompletionDay
     case invalidCalories
+    case invalidBulkBatch
     case duplicateCompletion
     case revisionOverflow
     case evidenceOverflow
@@ -49,8 +50,10 @@ nonisolated enum PlanEvidenceMutationError: Error, Equatable {
 nonisolated struct PlanIdentityMigrationResult: Equatable, Sendable {
     let plateRows: Int
     let weightRows: Int
+    let foodRows: Int
     let backfilledPlateIDs: Int
     let backfilledWeightIDs: Int
+    let backfilledFoodIDs: Int
 }
 
 nonisolated enum PlanEvidenceEvaluationResult {
@@ -62,11 +65,13 @@ nonisolated enum PlanEvidenceEvaluationResult {
 @MainActor
 final class PlanEvidenceMutationCoordinator {
     static let evidenceSchemaVersion = 1
+    private static let maximumBulkOperationHistory = 256
 
     enum SavePhase: Equatable {
         case identityBackfill
         case identityMigrationFlag
         case mutation
+        case bulkFoodBatch
     }
 
     private let modelContainer: ModelContainer
@@ -98,6 +103,25 @@ final class PlanEvidenceMutationCoordinator {
 
 #if DEBUG
     var testingModelContext: ModelContext { modelContext }
+
+    func ensureAppliedFixtureVisibleForTesting() throws {
+        try beginOperation()
+        do {
+            let profile = try requiredProfile()
+            guard let state = profile.adaptivePlanState,
+                  let index = state.proposals.lastIndex(where: { $0.lifecycle == .applied }),
+                  let appliedRevisionID = state.proposals[index].appliedRevisionID,
+                  let appliedRevision = state.goalRevisions.first(where: { $0.id == appliedRevisionID }) else {
+                throw PlanEvidenceMutationError.proposalNotCurrent
+            }
+            profile.replaceAdaptiveGoal(calories: appliedRevision.calories, access: access)
+            try profile.persistAdaptivePlanState(state, access: access)
+            try save(.mutation)
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
 
     func configurePartialCapProposalForTesting(usedCalories: Int) throws {
         guard usedCalories > 100, usedCalories < 200 else {
@@ -160,6 +184,7 @@ final class PlanEvidenceMutationCoordinator {
         do {
             let plates = try modelContext.fetch(FetchDescriptor<PlateEntry>())
             let weights = try modelContext.fetch(FetchDescriptor<WeightEntry>())
+            let foods = try modelContext.fetch(FetchDescriptor<Food>())
             let profiles = try modelContext.fetch(FetchDescriptor<UserProfile>())
 
             // Schema and collision checks happen before any staged identity mutation.
@@ -173,11 +198,14 @@ final class PlanEvidenceMutationCoordinator {
             }
             try rejectCollisions(plates.map(\.stableID).filter { $0 != .zero }, entity: "PlateEntry")
             try rejectCollisions(weights.map(\.stableID).filter { $0 != .zero }, entity: "WeightEntry")
+            try rejectCollisions(foods.map(\.stableID).filter { $0 != .zero }, entity: "Food")
 
             var usedPlateIDs = Set(plates.map(\.stableID).filter { $0 != .zero })
             var usedWeightIDs = Set(weights.map(\.stableID).filter { $0 != .zero })
+            var usedFoodIDs = Set(foods.map(\.stableID).filter { $0 != .zero })
             var stagedPlateIDs: [ObjectIdentifier: UUID] = [:]
             var stagedWeightIDs: [ObjectIdentifier: UUID] = [:]
+            var stagedFoodIDs: [ObjectIdentifier: UUID] = [:]
             for plate in plates {
                 stagedPlateIDs[ObjectIdentifier(plate)] = plate.stableID == .zero
                     ? try freshID(excluding: &usedPlateIDs)
@@ -188,20 +216,30 @@ final class PlanEvidenceMutationCoordinator {
                     ? try freshID(excluding: &usedWeightIDs)
                     : weight.stableID
             }
+            for food in foods {
+                stagedFoodIDs[ObjectIdentifier(food)] = food.stableID == .zero
+                    ? try freshID(excluding: &usedFoodIDs)
+                    : food.stableID
+            }
 
             let projectedPlateIDs = plates.compactMap { stagedPlateIDs[ObjectIdentifier($0)] }
             let projectedWeightIDs = weights.compactMap { stagedWeightIDs[ObjectIdentifier($0)] }
+            let projectedFoodIDs = foods.compactMap { stagedFoodIDs[ObjectIdentifier($0)] }
             guard projectedPlateIDs.count == plates.count,
                   projectedWeightIDs.count == weights.count,
+                  projectedFoodIDs.count == foods.count,
                   projectedPlateIDs.allSatisfy({ $0 != .zero }),
                   projectedWeightIDs.allSatisfy({ $0 != .zero }),
+                  projectedFoodIDs.allSatisfy({ $0 != .zero }),
                   Set(projectedPlateIDs).count == plates.count,
-                  Set(projectedWeightIDs).count == weights.count else {
+                  Set(projectedWeightIDs).count == weights.count,
+                  Set(projectedFoodIDs).count == foods.count else {
                 throw PlanEvidenceMutationError.identityVerificationFailed
             }
 
             let backfilledPlates = zip(plates, projectedPlateIDs).filter { $0.0.stableID == .zero }.count
             let backfilledWeights = zip(weights, projectedWeightIDs).filter { $0.0.stableID == .zero }.count
+            let backfilledFoods = zip(foods, projectedFoodIDs).filter { $0.0.stableID == .zero }.count
             let expectedWeightSequences = Dictionary(uniqueKeysWithValues: zip(projectedWeightIDs, weights.map(\.sequence)))
             for plate in plates {
                 guard let id = stagedPlateIDs[ObjectIdentifier(plate)] else {
@@ -215,16 +253,25 @@ final class PlanEvidenceMutationCoordinator {
                 }
                 weight.validateOrBackfillIdentity(with: id, at: operationDate, access: access)
             }
+            for food in foods {
+                guard let id = stagedFoodIDs[ObjectIdentifier(food)] else {
+                    throw PlanEvidenceMutationError.identityVerificationFailed
+                }
+                food.validateOrBackfillIdentity(with: id, access: access)
+            }
 
             // Identity rows commit first. Migration remains disabled until fresh-context proof succeeds.
             try save(.identityBackfill)
             let verificationContext = ModelContext(modelContainer)
             let verifiedPlates = try verificationContext.fetch(FetchDescriptor<PlateEntry>())
             let verifiedWeights = try verificationContext.fetch(FetchDescriptor<WeightEntry>())
+            let verifiedFoods = try verificationContext.fetch(FetchDescriptor<Food>())
             guard verifiedPlates.count == projectedPlateIDs.count,
                   verifiedWeights.count == projectedWeightIDs.count,
+                  verifiedFoods.count == projectedFoodIDs.count,
                   Set(verifiedPlates.map(\.stableID)) == Set(projectedPlateIDs),
                   Set(verifiedWeights.map(\.stableID)) == Set(projectedWeightIDs),
+                  Set(verifiedFoods.map(\.stableID)) == Set(projectedFoodIDs),
                   verifiedPlates.allSatisfy({
                       $0.stableID != .zero
                           && $0.identityValidatedForAdaptation
@@ -237,7 +284,8 @@ final class PlanEvidenceMutationCoordinator {
                           && $0.createdAt.timeIntervalSinceReferenceDate.isFinite
                           && $0.modifiedAt.timeIntervalSinceReferenceDate.isFinite
                           && expectedWeightSequences[$0.stableID] == $0.sequence
-                  }) else {
+                  }),
+                  verifiedFoods.allSatisfy({ $0.stableID != .zero }) else {
                 throw PlanEvidenceMutationError.identityVerificationFailed
             }
 
@@ -253,8 +301,10 @@ final class PlanEvidenceMutationCoordinator {
             return PlanIdentityMigrationResult(
                 plateRows: plates.count,
                 weightRows: weights.count,
+                foodRows: foods.count,
                 backfilledPlateIDs: backfilledPlates,
-                backfilledWeightIDs: backfilledWeights
+                backfilledWeightIDs: backfilledWeights,
+                backfilledFoodIDs: backfilledFoods
             )
         } catch {
             modelContext.rollback()
@@ -546,6 +596,172 @@ final class PlanEvidenceMutationCoordinator {
             try staleCompletions(containing: [entry.date])
             try bumpAllProfiles(reason: "food-added", at: operationDate)
             try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    @discardableResult
+    func insertPlateBatch(
+        _ inserts: [BulkPlateInsert],
+        expectedDay: Date,
+        operationID: UUID
+    ) throws -> [UUID] {
+        let operationDate = now()
+        try beginOperation()
+        guard operationID != .zero,
+              let canonicalDay = finiteDay(expectedDay),
+              !inserts.isEmpty,
+              inserts.count <= BulkFoodLimits.maximumItems,
+              Set(inserts.map(\.id)).count == inserts.count,
+              inserts.allSatisfy({ $0.sourceItemID != .zero }),
+              Set(inserts.map(\.sourceItemID)).count == inserts.count,
+              Set(inserts.map(\.mealType)).count == 1 else {
+            throw PlanEvidenceMutationError.invalidBulkBatch
+        }
+        do {
+            let requestSignature = bulkFoodBatchSignature(inserts, expectedDay: canonicalDay)
+            let operations = try modelContext.fetch(FetchDescriptor<BulkFoodBatchOperation>())
+            guard operations.count(where: { $0.operationID == operationID }) <= 1 else {
+                throw PlanEvidenceMutationError.identityVerificationFailed
+            }
+            if let replay = operations.first(where: { $0.operationID == operationID }) {
+                guard replay.expectedDay == canonicalDay,
+                      replay.requestSignature == requestSignature,
+                      let plateIDs = replay.plateIDs,
+                      plateIDs.count == inserts.count else {
+                    throw PlanEvidenceMutationError.compareAndSetFailed
+                }
+                return plateIDs
+            }
+
+            let existingPlateIDs = Set(try modelContext.fetch(FetchDescriptor<PlateEntry>()).map(\.stableID))
+            guard inserts.allSatisfy({ insert in
+                insert.id != .zero
+                    && !existingPlateIDs.contains(insert.id)
+                    && finiteDay(insert.date) == canonicalDay
+                    && insert.date <= operationDate
+                    && !insert.mealType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    && insert.unit == insert.match.servingUnit
+                    && insert.match.isValid
+                    && insert.match.displayName.count <= 200
+                    && !insert.match.displayName.unicodeScalars.contains(where: {
+                        CharacterSet.controlCharacters.contains($0)
+                    })
+                    && MealType(rawValue: insert.mealType) != nil
+                    && insert.amount.isFinite
+                    && insert.amount >= BulkFoodLimits.minimumAmount
+                    && insert.amount <= BulkFoodLimits.maximumAmount
+                    && insert.match.calories(for: insert.amount) != nil
+                    && insert.match.nutrients(for: insert.amount) != nil
+            }) else {
+                throw PlanEvidenceMutationError.invalidBulkBatch
+            }
+
+            let savedFoods = try modelContext.fetch(FetchDescriptor<Food>())
+            let savedFoodIDs = savedFoods.map(\.stableID)
+            guard savedFoodIDs.allSatisfy({ $0 != .zero }),
+                  Set(savedFoodIDs).count == savedFoodIDs.count else {
+                throw PlanEvidenceMutationError.identityVerificationFailed
+            }
+            let savedByID = Dictionary(uniqueKeysWithValues: savedFoods.map { ($0.stableID, $0) })
+            let savedBarcodePairs: [(String, Food)] = savedFoods.compactMap { food in
+                guard let barcode = food.barcode, !barcode.isEmpty else { return nil }
+                return (barcode, food)
+            }
+            guard Set(savedBarcodePairs.map(\.0)).count == savedBarcodePairs.count else {
+                throw PlanEvidenceMutationError.identityVerificationFailed
+            }
+            let savedByBarcode = Dictionary(uniqueKeysWithValues: savedBarcodePairs)
+
+            var allocatedFoodIDs = Set(savedFoodIDs)
+            var newFoods: [(barcode: String, insert: BulkPlateInsert)] = []
+            var newFoodMatches: [String: BulkFoodMatch] = [:]
+            for insert in inserts {
+                switch insert.match.identity {
+                case .savedFood(let foodID):
+                    guard let savedFood = savedByID[foodID],
+                          bulkMatch(insert.match, represents: savedFood) else {
+                        throw PlanEvidenceMutationError.invalidBulkBatch
+                    }
+                case .barcode(let barcode):
+                    guard isValidFoodBarcode(barcode),
+                          insert.match.barcode == barcode else {
+                        throw PlanEvidenceMutationError.invalidBulkBatch
+                    }
+                    if let savedFood = savedByBarcode[barcode] {
+                        guard bulkBarcodeMatch(insert.match, barcode: barcode, represents: savedFood) else {
+                            throw PlanEvidenceMutationError.invalidBulkBatch
+                        }
+                    } else if let firstMatch = newFoodMatches[barcode] {
+                        guard bulkNutritionSnapshotMatches(insert.match, firstMatch) else {
+                            throw PlanEvidenceMutationError.invalidBulkBatch
+                        }
+                    } else {
+                        guard allocatedFoodIDs.insert(insert.sourceItemID).inserted else {
+                            throw PlanEvidenceMutationError.identityCollision(
+                                entity: "Food",
+                                id: insert.sourceItemID
+                            )
+                        }
+                        newFoodMatches[barcode] = insert.match
+                        newFoods.append((barcode: barcode, insert: insert))
+                    }
+                }
+            }
+
+            for newFood in newFoods {
+                let insert = newFood.insert
+                let food = Food(
+                    name: insert.match.displayName,
+                    calories: insert.match.caloriesPerServing,
+                    stableID: insert.sourceItemID,
+                    servingGrams: insert.match.servingAmount,
+                    servingUnit: insert.match.servingUnit,
+                    barcode: newFood.barcode,
+                    nutrientsPerServing: insert.match.nutrientsPerServing
+                )
+                modelContext.insert(food)
+            }
+            for insert in inserts {
+                guard let calories = insert.match.calories(for: insert.amount),
+                      let nutrients = insert.match.nutrients(for: insert.amount) else {
+                    throw PlanEvidenceMutationError.invalidBulkBatch
+                }
+                let entry = PlateEntry(
+                    foodName: insert.match.displayName,
+                    calories: calories,
+                    weightGrams: insert.amount,
+                    quantity: 1,
+                    servingUnit: insert.unit,
+                    nutrients: nutrients,
+                    mealType: insert.mealType,
+                    date: insert.date,
+                    stableID: insert.id,
+                    createdAt: operationDate,
+                    modifiedAt: operationDate
+                )
+                entry.validateOrBackfillIdentity(with: insert.id, at: operationDate, access: access)
+                modelContext.insert(entry)
+            }
+
+            try staleCompletions(containing: [canonicalDay])
+            try bumpAllProfiles(reason: "bulk-food-added", at: operationDate)
+            for expired in operations
+                .sorted(by: bulkOperationOrder)
+                .prefix(max(0, operations.count - Self.maximumBulkOperationHistory + 1)) {
+                modelContext.delete(expired)
+            }
+            modelContext.insert(try BulkFoodBatchOperation(
+                operationID: operationID,
+                committedAt: operationDate,
+                expectedDay: canonicalDay,
+                requestSignature: requestSignature,
+                plateIDs: inserts.map(\.id)
+            ))
+            try save(.bulkFoodBatch)
+            return inserts.map(\.id)
         } catch {
             modelContext.rollback()
             throw error
@@ -1401,6 +1617,100 @@ final class PlanEvidenceMutationCoordinator {
             total = result.partialValue
         }
         return total
+    }
+
+    private func bulkFoodBatchSignature(
+        _ inserts: [BulkPlateInsert],
+        expectedDay: Date
+    ) -> String {
+        let values = inserts.map { insert in
+            let identity: String
+            switch insert.match.identity {
+            case .barcode(let barcode): identity = "barcode:\(barcode)"
+            case .savedFood(let id): identity = "saved:\(id.uuidString)"
+            }
+            return [
+                insert.id.uuidString,
+                insert.sourceItemID.uuidString,
+                identity,
+                insert.match.displayName,
+                String(insert.match.servingAmount.bitPattern),
+                insert.match.barcode ?? "",
+                insert.match.source.rawValue,
+                insert.match.servingUnit.rawValue,
+                String(insert.match.caloriesPerServing),
+                nutrientSignature(insert.match.nutrientsPerServing),
+                String(insert.amount.bitPattern),
+                insert.unit.rawValue,
+                insert.mealType,
+                String(insert.date.timeIntervalSinceReferenceDate.bitPattern)
+            ].joined(separator: "|")
+        }
+        return SHA256.hash(data: Data(
+            ([String(expectedDay.timeIntervalSinceReferenceDate.bitPattern)] + values)
+                .joined(separator: "\n").utf8
+        )).hex
+    }
+
+    private func nutrientSignature(_ nutrients: FoodNutrients) -> String {
+        [
+            nutrients.carbohydratesGrams.map { String($0.bitPattern) } ?? "nil",
+            nutrients.proteinGrams.map { String($0.bitPattern) } ?? "nil",
+            nutrients.fatGrams.map { String($0.bitPattern) } ?? "nil",
+            nutrients.fiberGrams.map { String($0.bitPattern) } ?? "nil"
+        ].joined(separator: ",")
+    }
+
+    private func isValidFoodBarcode(_ barcode: String) -> Bool {
+        guard (8...14).contains(barcode.utf8.count) else { return false }
+        return barcode.utf8.allSatisfy { (48...57).contains($0) }
+    }
+
+    private func bulkMatch(_ match: BulkFoodMatch, represents food: Food) -> Bool {
+        match.identity == .savedFood(food.stableID)
+            && bulkNutritionSnapshotMatches(match, represents: food)
+    }
+
+    private func bulkBarcodeMatch(
+        _ match: BulkFoodMatch,
+        barcode: String,
+        represents food: Food
+    ) -> Bool {
+        match.identity == .barcode(barcode)
+            && match.barcode == barcode
+            && bulkNutritionSnapshotMatches(match, represents: food)
+    }
+
+    private func bulkNutritionSnapshotMatches(
+        _ match: BulkFoodMatch,
+        represents food: Food
+    ) -> Bool {
+        match.displayName == food.name
+            && match.barcode == food.barcode
+            && match.servingAmount.bitPattern == food.servingGrams.bitPattern
+            && match.servingUnit == food.nutritionUnit
+            && match.caloriesPerServing == food.calories
+            && match.nutrientsPerServing == food.nutrientsPerServing
+    }
+
+    private func bulkNutritionSnapshotMatches(
+        _ lhs: BulkFoodMatch,
+        _ rhs: BulkFoodMatch
+    ) -> Bool {
+        lhs.displayName == rhs.displayName
+            && lhs.barcode == rhs.barcode
+            && lhs.servingAmount.bitPattern == rhs.servingAmount.bitPattern
+            && lhs.servingUnit == rhs.servingUnit
+            && lhs.caloriesPerServing == rhs.caloriesPerServing
+            && lhs.nutrientsPerServing == rhs.nutrientsPerServing
+    }
+
+    private func bulkOperationOrder(
+        _ lhs: BulkFoodBatchOperation,
+        _ rhs: BulkFoodBatchOperation
+    ) -> Bool {
+        if lhs.committedAt != rhs.committedAt { return lhs.committedAt < rhs.committedAt }
+        return lhs.operationID.uuidString < rhs.operationID.uuidString
     }
 
     private func staleCompletions(containing dates: [Date]) throws {

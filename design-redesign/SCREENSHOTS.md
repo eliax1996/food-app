@@ -276,6 +276,21 @@ Accepted attempt 01 evidence:
 
 Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Focused UI proves Meal, Weight, and Water taps open editor and Cancel preserves `Off`; Plan setup opens, advances, closes, and resumes from Settings. Final suite passed 22/22.
 
+## BULK-AI-FOOD-001
+
+Accepted attempt 01 evidence:
+
+- ![Today bulk entry](screenshots/BULK-AI-FOOD-001/attempt-01-today-entry.png) — direct Log food remains primary beside Describe meal.
+- ![Typed meal description](screenshots/BULK-AI-FOOD-001/attempt-01-describe.png) — editable typed input, meal destination, explicit Find Foods, and local/query privacy disclosure.
+- ![Editable review top](screenshots/BULK-AI-FOOD-001/attempt-01-review-top.png) — source disclosure, exact progress, query/amount provenance, and selected nutrition record.
+- ![Editable review lower](screenshots/BULK-AI-FOOD-001/attempt-01-review-lower.png) — serving basis, full-width removal, Add Food, and explicit atomic total.
+- ![Review dark](screenshots/BULK-AI-FOOD-001/attempt-01-review-dark.png) and ![Review dark lower](screenshots/BULK-AI-FOOD-001/attempt-01-review-dark-lower.png) — dark appearance retains hierarchy and contrast.
+- ![Describe AX3 dark](screenshots/BULK-AI-FOOD-001/attempt-01-describe-ax3-dark.png), ![Review AX3 dark](screenshots/BULK-AI-FOOD-001/attempt-01-review-ax3-dark.png), ![Review AX3 middle](screenshots/BULK-AI-FOOD-001/attempt-01-review-ax3-dark-middle.png), and ![Review AX3 lower](screenshots/BULK-AI-FOOD-001/attempt-01-review-ax3-dark-lower.png) — accessibility text keeps every edit/recovery/confirmation control reachable.
+
+Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Device walkthrough logged default Almond Milk from 15 to 30 kcal, exact +15. Final critical/high source review consensus **3/3 APPROVE**. Hostless 219 pass / 2 live skips; app-hosted 297 pass / 2 skips; final focused bulk/reminder/recovery tests and `just validate 300` passed.
+
+Reminder customization follow-up was device-verified: passive meal rows expose saved times plus Enabled/Disabled; **Customize Meal Reminders** offers separate enablement and timing editors without unrelated Weight/Water controls. Verification captures remain in Xcode action artifacts; refreshed final capture belongs to ROBUSTNESS/FINAL evidence.
+
 ## WEIGHT-ENTRY-001
 
 Accepted attempt 01 evidence:

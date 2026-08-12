@@ -6,6 +6,7 @@ import os
 private enum BarcodeFlowOrigin: Equatable {
     case today
     case mealEditor
+    case bulkReview(UUID)
 }
 
 struct CalorieCounterView: View {
@@ -27,6 +28,8 @@ struct CalorieCounterView: View {
     @Binding var waterAdjustmentRequest: WaterAdjustmentRequest?
 
     @State private var showingAddMeal = false
+    @State private var bulkMealController: BulkMealDraftController?
+    @State private var suspendedBulkMealController: BulkMealDraftController?
     @State private var editingEntry: PlateEntry?
     @State private var selectedFood: Food?
     @State private var selectedMeal = MealType.suggestedForCurrentTime
@@ -54,6 +57,8 @@ struct CalorieCounterView: View {
     @State private var barcodeLookupSucceeded = false
     @State private var showingBarcodeScanner = false
     @State private var showingFoodTools = false
+    @State private var foodToolsIntent = FoodToolsIntent.barcode
+    @State private var foodToolsSucceeded = false
     @State private var confirmingEmptyFoodLogCompletion = false
     @State private var errorMessage: String?
     @State private var remoteFoodSearch: RemoteFoodSearchService?
@@ -97,6 +102,16 @@ struct CalorieCounterView: View {
         ProcessInfo.processInfo.arguments.contains("-design-review")
 #else
         false
+#endif
+    }
+
+    private var usesBulkFoodFixture: Bool {
+#if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-ui-testing-bulk-food")
+            || arguments.contains("-design-review-bulk-food")
+#else
+        return false
 #endif
     }
 
@@ -177,6 +192,13 @@ struct CalorieCounterView: View {
                     }
                     .accessibilityIdentifier("add-meal")
 
+                    Button {
+                        Task { await prepareBulkMealSheet() }
+                    } label: {
+                        Label("Describe meal", systemImage: "text.bubble.fill")
+                    }
+                    .accessibilityIdentifier("describe-meal")
+
                     ForEach(MealType.allCases) { mealType in
                         let mealEntries = todaysEntries(for: mealType)
 
@@ -202,22 +224,37 @@ struct CalorieCounterView: View {
                     }
                 }
 
+                Section {
+                    Color.clear
+                        .frame(height: 84)
+                        .accessibilityHidden(true)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
             }
             .listSectionSpacing(0)
             .navigationTitle("Today")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            beginBarcodeFlow(from: .today)
-                            showingBarcodeScanner = true
-                        } label: {
-                            Label("Scan barcode", systemImage: "barcode.viewfinder")
-                        }
-                        .disabled(isLookingUpBarcode)
+                    Button {
+                        beginBarcodeFlow(from: .today)
+                        showingBarcodeScanner = true
+                    } label: {
+                        Label("Scan barcode", systemImage: "barcode.viewfinder")
+                    }
+                    .disabled(isLookingUpBarcode)
+                    .accessibilityIdentifier("scan-barcode")
+                }
 
-                        Button(action: showFoodToolsFromToolbar) {
-                            Label("Enter barcode or create food", systemImage: "square.and.pencil")
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button(action: showManualBarcodeTools) {
+                            Label("Enter barcode manually", systemImage: "barcode")
+                        }
+
+                        Button(action: showCustomFoodTools) {
+                            Label("Create custom food", systemImage: "plus.circle")
                         }
                     } label: {
                         Label("More logging options", systemImage: "ellipsis.circle")
@@ -271,6 +308,19 @@ struct CalorieCounterView: View {
                 )
                 .environment(\.dynamicTypeSize, dynamicTypeSize)
             }
+            .sheet(item: $bulkMealController, onDismiss: bulkMealDidDismiss) { controller in
+                BulkMealLoggingView(
+                    foods: foods.isEmpty && usesBulkFoodFixture
+                        ? exampleFoodSeeds.map {
+                            Food(name: $0.name, calories: $0.calories, servingGrams: $0.servingGrams)
+                        }
+                        : foods,
+                    controller: controller,
+                    onCreateCustomFood: createCustomFoodForBulkReview,
+                    onConfirm: confirmBulkMeal
+                )
+                .environment(\.dynamicTypeSize, dynamicTypeSize)
+            }
             .sheet(isPresented: $showingFoodTools, onDismiss: foodToolsDidDismiss) {
                 FoodToolsView(
                     barcode: $barcode,
@@ -281,6 +331,7 @@ struct CalorieCounterView: View {
                     protein: $newFoodProtein,
                     fat: $newFoodFat,
                     fiber: $newFoodFiber,
+                    intent: foodToolsIntent,
                     isLookingUpBarcode: isLookingUpBarcode,
                     barcodeLookupFailure: barcodeLookupFailure,
                     onBarcodeChanged: barcodeDidChange,
@@ -461,6 +512,11 @@ struct CalorieCounterView: View {
     }
 
     private func prepareLocalData() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing-adaptive-applied") {
+            return
+        }
+        #endif
         let existingFoodNames = Set(foods.map(\.name))
         let missingExampleFoods = exampleFoodSeeds
             .filter { !existingFoodNames.contains($0.name) }
@@ -489,6 +545,77 @@ struct CalorieCounterView: View {
         let day = WaterDay(date: .now)
         modelContext.insert(day)
         return day
+    }
+
+    private func prepareBulkMealSheet() async {
+        guard mutationCoordinator != nil else {
+            errorMessage = "Meal description could not be prepared. Direct food logging still works."
+            return
+        }
+        let service = remoteFoodSearch ?? FoodSearchServiceFactory.make()
+        if remoteFoodSearch == nil {
+            remoteFoodSearch = service
+            remoteSearchCoordinator = service.map {
+                RemoteFoodSearchCoordinator(
+                    service: $0,
+                    languages: FoodSearchServiceFactory.preferredLanguages
+                )
+            }
+        }
+        let persistence = try? await BulkFoodPersistenceSession.applicationSession()
+        let extractor = BulkFoodExtractorFactory.make()
+        let matcher = BulkFoodMatcher(
+            remoteService: service,
+            learningStore: persistence?.learningStore,
+            languages: FoodSearchServiceFactory.preferredLanguages
+        )
+        bulkMealController = BulkMealDraftController(
+            selectedMeal: .suggestedForCurrentTime,
+            extractor: extractor,
+            matcher: matcher,
+            learningStore: persistence?.learningStore,
+            learningLease: persistence?.learningLease,
+            draftStore: persistence?.draftStore,
+            draftLease: persistence?.draftLease,
+            allowRemoteMatching: !usesBulkFoodFixture
+        )
+    }
+
+    private func bulkMealDidDismiss() {
+        bulkMealController?.cancelWork()
+        bulkMealController = nil
+    }
+
+    private func createCustomFoodForBulkReview(rowID: UUID, query: String) {
+        guard let controller = bulkMealController else { return }
+        beginBarcodeFlow(from: .bulkReview(rowID))
+        newFoodName = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        foodToolsIntent = .customFood
+        suspendedBulkMealController = controller
+        Task { try? await controller.saveDraft() }
+        bulkMealController = nil
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard case .bulkReview(let activeRowID) = barcodeFlowOrigin,
+                  activeRowID == rowID else { return }
+            showingFoodTools = true
+        }
+    }
+
+    private func confirmBulkMeal(_ inserts: [BulkPlateInsert], operationID: UUID) throws {
+        guard let coordinator = mutationCoordinator else {
+            throw PlanEvidenceMutationError.coordinatorUnavailable
+        }
+        coordinator.synchronizeCalendar(calendar)
+        let insertedIDs = try coordinator.insertPlateBatch(
+            inserts,
+            expectedDay: .now,
+            operationID: operationID
+        )
+        guard insertedIDs.count == inserts.count else {
+            throw PlanEvidenceMutationError.invalidBulkBatch
+        }
+        mirrorTodayToWidgetStore()
     }
 
     private func prepareMealSheetForAdd(mealType: MealType? = nil) {
@@ -646,6 +773,7 @@ struct CalorieCounterView: View {
             newFoodProtein = nil
             newFoodFat = nil
             newFoodFiber = nil
+            foodToolsSucceeded = true
             showingFoodTools = false
         }
     }
@@ -657,11 +785,19 @@ struct CalorieCounterView: View {
         pendingScannedBarcode = nil
         scannerManualEntryRequested = false
         barcodeLookupSucceeded = false
+        foodToolsSucceeded = false
         barcodeFlowOrigin = origin
     }
 
-    private func showFoodToolsFromToolbar() {
+    private func showManualBarcodeTools() {
         beginBarcodeFlow(from: .today)
+        foodToolsIntent = .barcode
+        showingFoodTools = true
+    }
+
+    private func showCustomFoodTools() {
+        beginBarcodeFlow(from: .today)
+        foodToolsIntent = .customFood
         showingFoodTools = true
     }
 
@@ -695,16 +831,33 @@ struct CalorieCounterView: View {
         barcodeLookupFailure = nil
         barcodeLookupFailureBarcode = nil
         let origin = barcodeFlowOrigin
-        let lookupSucceeded = barcodeLookupSucceeded
+        let foodWasSelected = barcodeLookupSucceeded || foodToolsSucceeded
         clearBarcodeFlow()
 
-        switch (origin, lookupSucceeded) {
+        switch (origin, foodWasSelected) {
         case (.today, true):
             prepareMealSheetForAdd()
         case (.mealEditor, _):
             showingAddMeal = true
+        case (.bulkReview(let rowID), true):
+            if let selectedFood {
+                suspendedBulkMealController?.selectSavedFood(selectedFood, for: rowID)
+            }
+            restoreSuspendedBulkReview()
+        case (.bulkReview, false):
+            restoreSuspendedBulkReview()
         case (.today, false):
             break
+        }
+    }
+
+    private func restoreSuspendedBulkReview() {
+        guard let controller = suspendedBulkMealController else { return }
+        suspendedBulkMealController = nil
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard bulkMealController == nil else { return }
+            bulkMealController = controller
         }
     }
 
@@ -723,6 +876,7 @@ struct CalorieCounterView: View {
     private func scannerDidDismiss() {
         if scannerManualEntryRequested {
             scannerManualEntryRequested = false
+            foodToolsIntent = .barcode
             showingFoodTools = true
             return
         }
@@ -743,6 +897,20 @@ struct CalorieCounterView: View {
 
     private func startBarcodeLookup() {
         let barcodeToLookup = barcode.filter(\.isNumber)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing"), barcodeToLookup == "99999999" {
+            cancelBarcodeLookup()
+            barcodeLookupFailure = .offline
+            barcodeLookupFailureBarcode = barcodeToLookup
+            Task { @MainActor in
+                await Task.yield()
+                guard barcode.filter(\.isNumber) == barcodeToLookup else { return }
+                barcodeLookupFailure = .offline
+                barcodeLookupFailureBarcode = barcodeToLookup
+            }
+            return
+        }
+        #endif
         guard (8...14).contains(barcodeToLookup.count) else {
             barcodeLookupFailure = .invalid
             barcodeLookupFailureBarcode = barcodeToLookup
@@ -854,6 +1022,7 @@ struct CalorieCounterView: View {
         pendingScannedBarcode = nil
         scannerManualEntryRequested = false
         barcodeLookupSucceeded = false
+        foodToolsSucceeded = false
         barcodeFlowOrigin = .today
     }
 

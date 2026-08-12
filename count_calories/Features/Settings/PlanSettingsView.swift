@@ -61,10 +61,10 @@ struct PlanSettingsView: View {
     var body: some View {
         List {
             currentPlanSection
+            goalCheckInsSection
             if let stored = profile.storedCalculatedPlan {
                 calculatedBasisSection(stored)
             }
-            goalCheckInsSection
             planActionsSection
             referenceSection
             measuredSection
@@ -417,8 +417,14 @@ private struct PlanEditor: View {
 
     let profile: UserProfile
 
-    @FocusState private var targetWeightFieldIsFocused: Bool
+    private enum Field: Hashable {
+        case dailyGoal
+        case targetWeight
+    }
+
+    @FocusState private var focusedField: Field?
     @State private var dailyGoal: Int
+    @State private var dailyGoalText: String
     @State private var targetWeight: Double
     @State private var targetDate: Date
     @State private var errorMessage: String?
@@ -426,6 +432,7 @@ private struct PlanEditor: View {
     init(profile: UserProfile) {
         self.profile = profile
         _dailyGoal = State(initialValue: profile.dailyCalorieGoal)
+        _dailyGoalText = State(initialValue: String(profile.dailyCalorieGoal))
         _targetWeight = State(initialValue: profile.targetWeight)
         _targetDate = State(initialValue: profile.targetDate)
     }
@@ -434,8 +441,13 @@ private struct PlanEditor: View {
         NutritionReferencePlan(calorieGoal: dailyGoal)
     }
 
+    private var parsedDailyGoal: Int? {
+        guard let value = Int(dailyGoalText), (1_000...5_000).contains(value) else { return nil }
+        return value
+    }
+
     private var isValid: Bool {
-        (1_000...5_000).contains(dailyGoal)
+        parsedDailyGoal != nil
             && targetWeight.isFinite
             && (20...500).contains(targetWeight)
     }
@@ -444,22 +456,32 @@ private struct PlanEditor: View {
         NavigationStack {
             Form {
                 Section {
+                    HStack {
+                        Text("Daily goal")
+                        Spacer()
+                        TextField("Daily goal", text: $dailyGoalText)
+                            .keyboardType(.numberPad)
+                            .onChange(of: dailyGoalText) { _, value in
+                                if let enteredGoal = Int(value), (1_000...5_000).contains(enteredGoal) {
+                                    dailyGoal = enteredGoal
+                                }
+                            }
+                            .focused($focusedField, equals: .dailyGoal)
+                            .multilineTextAlignment(.trailing)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 120)
+                            .accessibilityIdentifier("plan-daily-goal-field")
+                        Text("kcal")
+                            .foregroundStyle(.secondary)
+                    }
+
                     Stepper(
-                        "Daily goal: \(dailyGoal.formatted()) kcal",
-                        value: $dailyGoal,
-                        in: 800...5_000,
+                        "Adjust daily goal by 50 kcal: \(dailyGoal.formatted()) kcal",
+                        value: dailyGoalStepperBinding,
+                        in: 1_000...5_000,
                         step: 50
                     )
-                    .accessibilityIdentifier("plan-daily-goal")
-
-                    if dailyGoal < 1_000 {
-                        Label(
-                            "Choose at least 1,000 kcal before saving. Lower adult goals need professional guidance.",
-                            systemImage: "exclamationmark.triangle"
-                        )
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    }
+                    .accessibilityIdentifier("plan-daily-goal-stepper")
                 } header: {
                     Text("Manual calorie goal")
                 } footer: {
@@ -476,7 +498,7 @@ private struct PlanEditor: View {
                                 format: .number.precision(.fractionLength(1))
                             )
                             .keyboardType(.decimalPad)
-                            .focused($targetWeightFieldIsFocused)
+                            .focused($focusedField, equals: .targetWeight)
                             .multilineTextAlignment(.trailing)
                             .textFieldStyle(.roundedBorder)
                             .accessibilityIdentifier("plan-target-weight")
@@ -530,7 +552,7 @@ private struct PlanEditor: View {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") {
-                        targetWeightFieldIsFocused = false
+                        focusedField = nil
                     }
                     .accessibilityIdentifier("plan-keyboard-done")
                 }
@@ -546,8 +568,18 @@ private struct PlanEditor: View {
         }
     }
 
+    private var dailyGoalStepperBinding: Binding<Int> {
+        Binding(
+            get: { dailyGoal },
+            set: {
+                dailyGoal = min(max($0, 1_000), 5_000)
+                dailyGoalText = String(dailyGoal)
+            }
+        )
+    }
+
     private func save() {
-        guard isValid else { return }
+        guard isValid, let parsedDailyGoal else { return }
 
         do {
             guard let mutationCoordinator else {
@@ -555,7 +587,7 @@ private struct PlanEditor: View {
             }
             mutationCoordinator.synchronizeCalendar(calendar)
             try mutationCoordinator.editManualPlan(
-                calories: dailyGoal,
+                calories: parsedDailyGoal,
                 targetWeight: targetWeight,
                 targetDate: targetDate
             )

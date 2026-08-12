@@ -60,10 +60,13 @@ Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check item
 - [x] Distinguish measurement noise, logging gaps, and expenditure uncertainty without asserting one cause.
 - [x] Add deterministic and UI coverage plus visual evidence.
 
-## Next — BULK-AI-FOOD-001
+## Complete — BULK-AI-FOOD-001
 
-- [ ] Deep competitor and Apple Foundation Models/Speech research; write detailed data model, pipeline, privacy, fallback, review, learning, LRU, accessibility, and acceptance specification before code.
-- [ ] Implement typed/dictated provisional extraction, async food matching, editable review, explicit atomic confirm/cancel, retained correction controls, deterministic tests, and visual evidence.
+- [x] Deep competitor and Apple Foundation Models/Speech research; write detailed data model, pipeline, privacy, fallback, review, learning, LRU, accessibility, and acceptance specification before code.
+- [x] Implement deterministic extraction/review models, validation, matching/ranking, retained-learning/draft LRU, and atomic idempotent batch persistence.
+- [x] Implement typed SystemLanguageModel flow, async food matching, editable review, and manual/saved/custom/unavailable recovery.
+- [x] Implement SpeechAnalyzer dictation, permission/assets/lifecycle recovery, local-data controls, deterministic tests, and light/dark/AX3 evidence.
+- [x] Redesign meal-reminder overview to show every saved time and Enabled/Disabled state; separate enablement from timing behind one customization action.
 
 ## Remaining whole-product sequence
 

@@ -3,6 +3,9 @@ import SwiftData
 
 @Model
 final class Food {
+    // Compatibility default lets SwiftData open foods saved before bulk logging.
+    // Learning references are accepted only after collision checks.
+    private(set) var stableID: UUID = UUID()
     var name: String
     var calories: Int
     var servingGrams: Double
@@ -16,11 +19,13 @@ final class Food {
     init(
         name: String,
         calories: Int,
+        stableID: UUID = UUID(),
         servingGrams: Double,
         servingUnit: NutritionUnit = .grams,
         barcode: String? = nil,
         nutrientsPerServing: FoodNutrients = .empty
     ) {
+        self.stableID = stableID
         self.name = name
         self.calories = calories
         self.servingGrams = servingGrams
@@ -87,6 +92,15 @@ final class PlateEntry {
 }
 
 extension Food {
+    func validateOrBackfillIdentity(
+        with replacement: UUID,
+        access: PlanEvidenceMutationAccess
+    ) {
+        if stableID == .zero {
+            stableID = replacement
+        }
+    }
+
     var nutritionUnit: NutritionUnit {
         NutritionUnit(rawValue: servingUnitRawValue ?? "") ?? .grams
     }
@@ -128,7 +142,7 @@ extension Food {
     }
 }
 
-extension UUID {
+nonisolated extension UUID {
     static let zero = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 }
 

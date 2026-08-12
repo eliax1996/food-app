@@ -329,7 +329,7 @@ Explicit complete-day attestations, stable evidence identity, distributed weight
 
 ## Priority 3D — [BULK-AI-FOOD-001] Typed or dictated bulk food logging
 
-**Status:** NEXT — RESEARCH AND SPECIFICATION REQUIRED BEFORE CODE
+**Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
 **Priority:** USER-PRIORITIZED
 
 ### User problem
@@ -356,6 +356,12 @@ Logging several foods one by one is slow when user can describe meal naturally. 
 - Speech permission/denial and Foundation Model unavailable states stay truthful.
 - Sensitive meal text and retained corrections remain on device and user-deletable.
 - Batch confirm is atomic; partial lookup can be reviewed, retried, removed, or canceled without partial logging.
+
+### Result
+
+Attempt 01 accepted. Describe/Dictate feeds on-device provisional query/amount/unit extraction, then local-first verified matching and editable review. Default/model estimates require explicit acceptance; invalid visible amounts and every unresolved row block confirmation. Saved/custom recovery, seven-day draft, bounded clearable learning, iOS 17 fallback, frozen post-commit learning, durable operation/row/date identity, and atomic idempotent coordinator persistence are implemented. Final critical/high review consensus: **3/3 APPROVE**.
+
+Reminder usability follow-up also replaced misleading per-meal editor rows with visible saved times + Enabled/Disabled state and one customization action separating meal switches from notification timing.
 
 ---
 

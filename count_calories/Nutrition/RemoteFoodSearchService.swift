@@ -51,6 +51,7 @@ actor RemoteFoodSearchService {
     private struct Flight: Sendable {
         let id: UUID
         let task: Task<FoodSearchPage, Error>
+        var waiters: [UUID: CheckedContinuation<FoodSearchPage, Error>]
     }
 
     private let fetcher: any FoodSearchFetching
@@ -60,6 +61,9 @@ actor RemoteFoodSearchService {
     private let now: @Sendable () -> Date
     private var requestStarts: [Date] = []
     private var flights: [FlightKey: Flight] = [:]
+#if DEBUG
+    private var waiterCounts: [FlightKey: Int] = [:]
+#endif
 
     init(
         fetcher: any FoodSearchFetching,
@@ -117,6 +121,8 @@ actor RemoteFoodSearchService {
             key: key,
             plan: plan
         )
+        // Completion can win cancellation race. Never let cancelled waiter persist a page.
+        try Task.checkCancellation()
         let storedSnapshot = try await cache.store(
             page,
             for: key,
@@ -200,13 +206,77 @@ actor RemoteFoodSearchService {
             generation: plan.generation,
             replacingPageOne: plan.replacingPageOne
         )
-        if let flight = flights[flightKey] {
+        let waiterID = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                registerWaiter(
+                    id: waiterID,
+                    continuation: continuation,
+                    for: flightKey,
+                    query: query,
+                    languages: languages,
+                    key: key,
+                    plan: plan
+                )
+            }
+        } onCancel: {
+            Task { [weak self] in
+                await self?.cancelWaiter(id: waiterID, for: flightKey)
+            }
+        }
+    }
+
+    private func registerWaiter(
+        id: UUID,
+        continuation: CheckedContinuation<FoodSearchPage, Error>,
+        for flightKey: FlightKey,
+        query: String,
+        languages: [String],
+        key: FoodSearchCacheKey,
+        plan: FetchPlan
+    ) {
+        guard !Task.isCancelled else {
+            continuation.resume(throwing: CancellationError())
+            return
+        }
+
+        if var flight = flights[flightKey] {
             Self.logger.info(
                 "Coalesced food search request; query length \(key.normalizedQuery.count, privacy: .public), page \(plan.page, privacy: .public)"
             )
-            return try await flight.task.value
+            flight.waiters[id] = continuation
+            flights[flightKey] = flight
+#if DEBUG
+            waiterCounts[flightKey] = flight.waiters.count
+#endif
+            return
         }
 
+        do {
+            var flight = try makeFlight(
+                for: flightKey,
+                query: query,
+                languages: languages,
+                key: key,
+                plan: plan
+            )
+            flight.waiters[id] = continuation
+            flights[flightKey] = flight
+#if DEBUG
+            waiterCounts[flightKey] = flight.waiters.count
+#endif
+        } catch {
+            continuation.resume(throwing: error)
+        }
+    }
+
+    private func makeFlight(
+        for flightKey: FlightKey,
+        query: String,
+        languages: [String],
+        key: FoodSearchCacheKey,
+        plan: FetchPlan
+    ) throws -> Flight {
         let requestDate = now()
         requestStarts.removeAll { requestDate.timeIntervalSince($0) >= Self.rateLimitWindow }
         if requestStarts.count >= Self.maximumStarts, let oldest = requestStarts.min() {
@@ -224,6 +294,7 @@ actor RemoteFoodSearchService {
         let queryLength = key.normalizedQuery.count
         let page = plan.page
         let logger = Self.logger
+        let id = UUID()
         logger.info(
             "Food search remote start; query length \(queryLength, privacy: .public), page \(page, privacy: .public)"
         )
@@ -246,17 +317,56 @@ actor RemoteFoodSearchService {
                 throw error
             }
         }
-        let id = UUID()
-        flights[flightKey] = Flight(id: id, task: task)
         Task { [weak self, task] in
-            _ = try? await task.value
-            await self?.removeFlight(flightKey, id: id)
+            let result: Result<FoodSearchPage, Error>
+            do {
+                result = .success(try await task.value)
+            } catch {
+                result = .failure(error)
+            }
+            await self?.completeFlight(flightKey, id: id, result: result)
         }
-        return try await task.value
+        return Flight(id: id, task: task, waiters: [:])
     }
 
-    private func removeFlight(_ key: FlightKey, id: UUID) {
-        guard flights[key]?.id == id else { return }
+#if DEBUG
+    func testingWaiterCount(query: String, languages: [String]) -> Int {
+        let cacheKey = FoodSearchCacheKey(
+            query: query,
+            languages: languages,
+            projectionSchemaVersion: projectionSchemaVersion
+        )
+        return waiterCounts.first(where: { $0.key.cacheKey == cacheKey })?.value ?? 0
+    }
+#endif
+
+    private func cancelWaiter(id: UUID, for key: FlightKey) {
+        guard var flight = flights[key], let continuation = flight.waiters.removeValue(forKey: id) else { return }
+        continuation.resume(throwing: CancellationError())
+        guard flight.waiters.isEmpty else {
+            flights[key] = flight
+#if DEBUG
+            waiterCounts[key] = flight.waiters.count
+#endif
+            return
+        }
         flights.removeValue(forKey: key)
+#if DEBUG
+        waiterCounts.removeValue(forKey: key)
+#endif
+        flight.task.cancel()
+    }
+
+    private func completeFlight(
+        _ key: FlightKey,
+        id: UUID,
+        result: Result<FoodSearchPage, Error>
+    ) {
+        guard let flight = flights[key], flight.id == id else { return }
+        flights.removeValue(forKey: key)
+#if DEBUG
+        waiterCounts.removeValue(forKey: key)
+#endif
+        flight.waiters.values.forEach { $0.resume(with: result) }
     }
 }

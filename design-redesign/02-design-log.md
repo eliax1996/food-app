@@ -534,3 +534,19 @@ Goal check-ins show exact collection dates and earliest eligibility, then only p
 Critical review iterations fixed hidden Revert after disable, calendar/time-zone epoch rollover, proposal-value revalidation, stale apply retry, redundant/non-energy staleness, exact collecting guidance, empty-day ambiguity, destructive confirmations, focused tab-bar overlap, and 44-point Today controls. Attempt-03 evidence under `../screenshots/REFINE-001/` received final **3/3 APPROVE**. Hostless 195/2 skips, app-hosted 250/2 skips, and functional UI 31/31 passed.
 
 **ACCEPTED — ATTEMPT 03 / SLICE D COMPLETE. REFINE-001 COMPLETE.** Next: user-prioritized BULK-AI-FOOD-001 research/specification before implementation.
+
+## [BULK-AI-FOOD-001] Typed and dictated multi-food review
+
+### Accepted implementation
+
+Today keeps direct Log food primary and adds Describe meal. Typed text or explicit on-device Dictate intent becomes provisional query/amount/unit rows only. Saved foods, bounded retained choices, cache, and Open Food Facts own matching; verified food records own calories and nutrients. Review exposes query, amount provenance, selected record/source/serving basis, per-row recovery/removal, Add Food, and one explicit atomic total.
+
+Model/default amounts require explicit acceptance. Invalid visible values block confirmation. Remembered barcode snapshots require current saved verification; automatic reuse touches LRU only after successful application. Seven-day draft, learned choices, audio/description privacy, availability fallback, and clear controls stay truthful. Durable operation, row, plate, and commit-date identity makes retries/crash resume idempotent; learning uses frozen committed rows and draft cleanup runs independently after commit.
+
+No-match recovery can suspend bulk review, open existing custom-food flow, then restore same row/review. Reminder follow-up similarly removed ambiguous Dinner-to-all-meals navigation: passive meal summaries show saved time plus Enabled/Disabled, while one **Customize Meal Reminders** action separates per-meal switches from timing.
+
+### Validation
+
+Hostless 219 pass / 2 opt-in live skips; app-hosted 297 pass / 2 skips; broad functional UI passed 44/44 on the final tree. `just validate 300` and `git diff --check` passed. Final three independent critical/high source reviewers: **APPROVE / APPROVE / APPROVE**.
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: AUXILIARY-001.

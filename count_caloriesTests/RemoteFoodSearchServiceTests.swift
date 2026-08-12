@@ -232,19 +232,82 @@ final class RemoteFoodSearchServiceTests: XCTestCase {
         XCTAssertEqual(fixture.fetcher.callCount, 11)
     }
 
-    func testCancelledWaiterLeavesSharedRequestRunning() async throws {
+    func testCancelledSoleWaiterCancelsFlightWithoutCachingAndNextRequestStartsFresh() async throws {
         let fixture = try ServiceFixture(gate: SearchGate())
         defer { fixture.remove() }
         let gate = try XCTUnwrap(fixture.gate)
         let service = fixture.service
-        let oldWaiter = Task { try await service.load(query: "milk", languages: ["en"]) }
+        let cancelled = Task { try await service.load(query: "milk", languages: ["en"]) }
         await gate.waitForStart()
-        oldWaiter.cancel()
+
+        cancelled.cancel()
+        let cancelledResult = await cancelled.result
+        guard case let .failure(error) = cancelledResult else {
+            return XCTFail("Expected cancellation.")
+        }
+        XCTAssertTrue(error is CancellationError)
+        let uncached = await fixture.cache.snapshot(for: fixture.key("milk"))
+        XCTAssertNil(uncached)
+
+        let retry = Task { try await service.load(query: "milk", languages: ["en"]) }
+        await gate.waitForStart(count: 2)
         await gate.succeed(ServiceFixture.terminalPage)
-        _ = await oldWaiter.result
-        _ = try await service.load(query: "milk", languages: ["en"])
+        _ = try await retry.value
+
         let calls = await gate.callCount()
+        XCTAssertEqual(calls, 2)
+    }
+
+    func testCancelledOneOfTwoWaitersLeavesFlightForSiblingAndCachesOnce() async throws {
+        let fixture = try ServiceFixture(gate: SearchGate())
+        defer { fixture.remove() }
+        let gate = try XCTUnwrap(fixture.gate)
+        let service = fixture.service
+        let cancelled = Task { try await service.load(query: "milk", languages: ["en"]) }
+        await gate.waitForStart()
+        let sibling = Task { try await service.load(query: "milk", languages: ["en"]) }
+        while await service.testingWaiterCount(query: "milk", languages: ["en"]) < 2 {
+            await Task.yield()
+        }
+
+        cancelled.cancel()
+        let cancelledResult = await cancelled.result
+        guard case let .failure(error) = cancelledResult else {
+            return XCTFail("Expected cancellation.")
+        }
+        XCTAssertTrue(error is CancellationError)
+
+        await gate.succeed(ServiceFixture.terminalPage)
+        _ = try await sibling.value
+
+        let calls = await gate.callCount()
+        let cached = await fixture.cache.snapshot(for: fixture.key("milk"))
         XCTAssertEqual(calls, 1)
+        XCTAssertEqual(cached?.pages.keys.sorted(), [1])
+    }
+
+    func testFailedFlightIsRemovedBeforeRetry() async throws {
+        let fixture = try ServiceFixture(gate: SearchGate())
+        defer { fixture.remove() }
+        let gate = try XCTUnwrap(fixture.gate)
+        let service = fixture.service
+        let failed = Task { try await service.load(query: "milk", languages: ["en"]) }
+        await gate.waitForStart()
+        await gate.fail(URLError(.notConnectedToInternet))
+
+        let failedResult = await failed.result
+        guard case let .failure(error) = failedResult else {
+            return XCTFail("Expected transport error.")
+        }
+        XCTAssertEqual((error as? URLError)?.code, .notConnectedToInternet)
+
+        let retry = Task { try await service.load(query: "milk", languages: ["en"]) }
+        await gate.waitForStart(count: 2)
+        await gate.succeed(ServiceFixture.terminalPage)
+        _ = try await retry.value
+
+        let calls = await gate.callCount()
+        XCTAssertEqual(calls, 2)
     }
 
     func testRemoteErrorPreservesCachedPages() async throws {
@@ -353,8 +416,8 @@ private actor SearchGate {
         return try await withCheckedThrowingContinuation { pageWaiters.append($0) }
     }
 
-    func waitForStart() async {
-        guard calls == 0 else { return }
+    func waitForStart(count: Int = 1) async {
+        guard calls < count else { return }
         await withCheckedContinuation { startWaiters.append($0) }
     }
 
@@ -362,6 +425,12 @@ private actor SearchGate {
         let waiters = pageWaiters
         pageWaiters.removeAll()
         waiters.forEach { $0.resume(returning: page) }
+    }
+
+    func fail(_ error: Error) {
+        let waiters = pageWaiters
+        pageWaiters.removeAll()
+        waiters.forEach { $0.resume(throwing: error) }
     }
 
     func callCount() -> Int { calls }

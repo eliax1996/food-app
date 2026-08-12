@@ -145,6 +145,33 @@ nonisolated struct AdaptivePlanPersistenceState: Codable, Equatable, Sendable {
 }
 
 @Model
+final class BulkFoodBatchOperation {
+    @Attribute(.unique) private(set) var operationID: UUID = UUID()
+    private(set) var committedAt: Date = Date.now
+    private(set) var expectedDay: Date = Date(timeIntervalSinceReferenceDate: 0)
+    private(set) var requestSignature: String = ""
+    private(set) var plateIDsData: Data = Data()
+
+    init(
+        operationID: UUID,
+        committedAt: Date,
+        expectedDay: Date,
+        requestSignature: String,
+        plateIDs: [UUID]
+    ) throws {
+        self.operationID = operationID
+        self.committedAt = committedAt
+        self.expectedDay = expectedDay
+        self.requestSignature = requestSignature
+        plateIDsData = try JSONEncoder().encode(plateIDs)
+    }
+
+    var plateIDs: [UUID]? {
+        try? JSONDecoder().decode([UUID].self, from: plateIDsData)
+    }
+}
+
+@Model
 final class FoodLogCompletion {
     @Attribute(.unique) private(set) var stableID: UUID = UUID()
     @Attribute(.unique) private(set) var civilDayIdentifier: String = ""

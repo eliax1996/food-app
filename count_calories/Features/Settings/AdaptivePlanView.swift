@@ -18,6 +18,7 @@ struct AdaptivePlanView: View {
     @State private var retryAction: (() -> Void)?
     @State private var confirmingProposal: AdaptivePlanProposalRecord?
     @State private var confirmingDecline: AdaptivePlanProposalRecord?
+    @State private var confirmingRevert: AdaptivePlanProposalRecord?
     @State private var confirmingDisable = false
 
     private var persistenceState: AdaptivePlanPersistenceState? { profile.adaptivePlanState }
@@ -128,6 +129,16 @@ struct AdaptivePlanView: View {
         min(100, max(0, 200 - recentAcceptedStepMagnitude))
     }
 
+    private var displayedPlanSource: PlanGoalSource {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing-adaptive-applied"),
+           currentAppliedProposal != nil {
+            return .adapted
+        }
+#endif
+        return profile.planGoalSource
+    }
+
     var body: some View {
         List {
             Section("Current goal") {
@@ -136,7 +147,7 @@ struct AdaptivePlanView: View {
                         .monospacedDigit()
                 }
                 .accessibilityIdentifier("adaptive-current-calorie-goal")
-                LabeledContent("Source", value: planGoalSourceTitle(profile.planGoalSource))
+                LabeledContent("Source", value: planGoalSourceTitle(displayedPlanSource))
                     .accessibilityIdentifier("adaptive-plan-source")
             }
 
@@ -200,6 +211,30 @@ struct AdaptivePlanView: View {
                 Text("Changes today’s and future goal from \(proposal.currentGoal.formatted()) to \(proposal.proposedGoal.formatted()) kcal. Today’s accepted revision becomes the goal context for this whole civil day. Food and weight logs stay unchanged.")
             }
         }
+        .confirmationDialog(
+            revertConfirmationTitle,
+            isPresented: Binding(
+                get: { confirmingRevert != nil },
+                set: { if !$0 { confirmingRevert = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let proposal = confirmingRevert,
+               let previous = proposal.preApplySnapshot {
+                Button("Revert to \(previous.calories.formatted()) kcal", role: .destructive) {
+                    confirmingRevert = nil
+                    revert(proposal)
+                }
+                .accessibilityIdentifier("confirm-revert-adaptive-proposal")
+                Button("Keep \(profile.dailyCalorieGoal.formatted()) kcal", role: .cancel) {
+                    confirmingRevert = nil
+                }
+            }
+        } message: {
+            if let previous = confirmingRevert?.preApplySnapshot {
+                Text("Reverts current \(profile.dailyCalorieGoal.formatted()) kcal goal to prior \(previous.calories.formatted()) kcal goal. Food and weight logs stay unchanged. If goal check-ins stay enabled, this starts a fresh evidence period and current collection progress cannot be reused.")
+            }
+        }
         .alert(
             "Disable goal check-ins?",
             isPresented: $confirmingDisable
@@ -241,6 +276,11 @@ struct AdaptivePlanView: View {
     private var confirmationTitle: String {
         guard let proposal = confirmingProposal else { return "Use proposal?" }
         return "Use \(proposal.proposedGoal.formatted()) kcal?"
+    }
+
+    private var revertConfirmationTitle: String {
+        guard let previous = confirmingRevert?.preApplySnapshot else { return "Revert adapted goal?" }
+        return "Revert \(profile.dailyCalorieGoal.formatted()) kcal to \(previous.calories.formatted()) kcal?"
     }
 
     private var reviewedSetupSection: some View {
@@ -524,7 +564,7 @@ struct AdaptivePlanView: View {
                 .accessibilityIdentifier("adaptive-current-calorie-goal")
             if let previous = proposal.preApplySnapshot {
                 Button("Revert to \(previous.calories.formatted()) kcal") {
-                    revert(proposal)
+                    confirmingRevert = proposal
                 }
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("revert-adaptive-proposal")

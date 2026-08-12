@@ -1,6 +1,11 @@
 import Foundation
 import SwiftUI
 
+enum FoodToolsIntent {
+    case barcode
+    case customFood
+}
+
 enum BarcodeLookupFailure: Equatable {
     case invalid
     case notFound
@@ -92,6 +97,7 @@ struct FoodToolsView: View {
     @Binding var fat: Double?
     @Binding var fiber: Double?
 
+    let intent: FoodToolsIntent
     let isLookingUpBarcode: Bool
     let barcodeLookupFailure: BarcodeLookupFailure?
     let onBarcodeChanged: () -> Void
@@ -254,6 +260,9 @@ struct FoodToolsView: View {
             }
         }
         .presentationDetents([.large])
+        .onAppear {
+            focusedField = intent == .barcode ? .barcode : .name
+        }
     }
 
     private var nutrientSummary: String {
@@ -416,6 +425,7 @@ private struct PushedFoodToolsPreview<Destination: View>: View {
         protein: .constant(nil),
         fat: .constant(nil),
         fiber: .constant(nil),
+        intent: .barcode,
         isLookingUpBarcode: false,
         barcodeLookupFailure: nil,
         onBarcodeChanged: {},
@@ -435,6 +445,7 @@ private struct PushedFoodToolsPreview<Destination: View>: View {
         protein: .constant(nil),
         fat: .constant(nil),
         fiber: .constant(nil),
+        intent: .barcode,
         isLookingUpBarcode: false,
         barcodeLookupFailure: .offline,
         onBarcodeChanged: {},
@@ -454,6 +465,7 @@ private struct PushedFoodToolsPreview<Destination: View>: View {
         protein: .constant(nil),
         fat: .constant(nil),
         fiber: .constant(nil),
+        intent: .barcode,
         isLookingUpBarcode: true,
         barcodeLookupFailure: nil,
         onBarcodeChanged: {},

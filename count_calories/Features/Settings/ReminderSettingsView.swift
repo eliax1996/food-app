@@ -13,8 +13,8 @@ struct ReminderSettingsView: View {
 
     @State private var preferences: ReminderPreferences
     @State private var authorizationState: ReminderAuthorizationState
-    @State private var showingEditor = false
-    @State private var editorSection = ReminderEditorSection.meals
+    @State private var editorFocus: ReminderEditorFocus?
+    @State private var showingMealCustomization = false
 
     init(
         preferences: ReminderPreferences,
@@ -58,19 +58,30 @@ struct ReminderSettingsView: View {
         .navigationTitle("Reminders")
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("reminder-settings")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Edit") {
-                    openEditor(at: .meals)
-                }
-                .accessibilityIdentifier("reminders-edit")
+        .confirmationDialog(
+            "Customize Meal Reminders",
+            isPresented: $showingMealCustomization,
+            titleVisibility: .visible
+        ) {
+            Button("Enable or Disable Meals") {
+                openEditor(focus: .mealAvailability)
             }
+            .accessibilityIdentifier("meal-reminders-enable-disable")
+
+            Button("Change Notification Times") {
+                openEditor(focus: .mealTimes)
+            }
+            .accessibilityIdentifier("meal-reminders-change-times")
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Choose whether to change meal availability or notification timing.")
         }
-        .sheet(isPresented: $showingEditor) {
+        .sheet(item: $editorFocus) { focus in
             ReminderEditor(
                 initialPreferences: preferences,
                 authorizationState: authorizationState,
-                initialSection: editorSection,
+                focus: focus,
                 onSave: save
             )
             .interactiveDismissDisabled()
@@ -88,37 +99,35 @@ struct ReminderSettingsView: View {
     private var mealSection: some View {
         Section {
             ForEach(ReminderMeal.allCases, id: \.self) { meal in
-                Button {
-                    openEditor(at: .meals)
-                } label: {
-                    EditableReminderSummaryRow(
-                        title: meal.rawValue,
-                        value: preferences.isEnabled(meal)
-                            ? timeText(preferences.time(for: meal))
-                            : "Off"
-                    )
-                }
-                .buttonStyle(.plain)
-                .frame(minHeight: 44)
+                ReminderStatusSummaryRow(
+                    title: meal.rawValue,
+                    time: timeText(preferences.time(for: meal)),
+                    isEnabled: preferences.isEnabled(meal)
+                )
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(meal.rawValue) reminder")
-                .accessibilityValue(preferences.isEnabled(meal)
-                    ? timeText(preferences.time(for: meal))
-                    : "Off")
-                .accessibilityHint("Opens reminder editor")
+                .accessibilityValue("\(timeText(preferences.time(for: meal))), \(preferences.isEnabled(meal) ? "Enabled" : "Disabled")")
                 .accessibilityIdentifier("\(meal.identifierComponent)-reminder-summary")
             }
+
+            Button {
+                showingMealCustomization = true
+            } label: {
+                Label("Customize Meal Reminders", systemImage: "slider.horizontal.3")
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            }
+            .accessibilityIdentifier("meal-reminders-customize")
         } header: {
             Text("Meal reminders")
         } footer: {
-            Text("Tap a meal to edit its time. A reminder is omitted when that meal is already logged for the local day.")
+            Text("Schedules stay visible when disabled. Use Customize Meal Reminders to change which meals are enabled or edit notification times separately. A reminder is omitted when that meal is already logged for the local day.")
         }
     }
 
     private var weightSection: some View {
         Section {
             Button {
-                openEditor(at: .weight)
+                openEditor(focus: .weight)
             } label: {
                 EditableReminderSummaryRow(
                     title: "Schedule",
@@ -150,7 +159,7 @@ struct ReminderSettingsView: View {
     private var waterSection: some View {
         Section {
             Button {
-                openEditor(at: .water)
+                openEditor(focus: .water)
             } label: {
                 EditableReminderSummaryRow(
                     title: "Schedule",
@@ -172,7 +181,7 @@ struct ReminderSettingsView: View {
             if preferences.waterEnabled {
                 Text("After two hours without a glass during this daily window; stops at 8 glasses.")
             } else {
-                Text("Tap Schedule to configure the two-hour reminder window.")
+                Text("Water reminders use fixed \(waterReminderStartText)–\(waterReminderEndText) hours, every two hours after no glass was logged recently; stop at 8 glasses.")
             }
         }
     }
@@ -242,9 +251,8 @@ struct ReminderSettingsView: View {
         }
     }
 
-    private func openEditor(at section: ReminderEditorSection) {
-        editorSection = section
-        showingEditor = true
+    private func openEditor(focus: ReminderEditorFocus) {
+        editorFocus = focus
     }
 
     @MainActor
@@ -294,10 +302,74 @@ struct ReminderSettingsView: View {
     }
 }
 
-private enum ReminderEditorSection: String {
-    case meals
+private enum ReminderEditorFocus: Identifiable, Equatable {
+    case mealAvailability
+    case mealTimes
     case weight
     case water
+
+    var id: String {
+        switch self {
+        case .mealAvailability: "meal-availability"
+        case .mealTimes: "meal-times"
+        case .weight: "weight"
+        case .water: "water"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .mealAvailability: "Meal Reminders"
+        case .mealTimes: "Notification Times"
+        case .weight: "Edit Weight Reminder"
+        case .water: "Edit Water Reminder"
+        }
+    }
+
+    var editorIdentifier: String {
+        switch self {
+        case .mealAvailability: "reminder-editor-meals"
+        case .mealTimes: "reminder-editor-meal-times"
+        case .weight: "reminder-editor-weight"
+        case .water: "reminder-editor-water"
+        }
+    }
+}
+
+private struct ReminderStatusSummaryRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let title: String
+    let time: String
+    let isEnabled: Bool
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                    Text(time)
+                        .monospacedDigit()
+                    Text(isEnabled ? "Enabled" : "Disabled")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    Text(title)
+                    Spacer(minLength: 8)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(time)
+                            .monospacedDigit()
+                        Text(isEnabled ? "Enabled" : "Disabled")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    }
 }
 
 private struct EditableReminderSummaryRow: View {
@@ -343,7 +415,7 @@ private struct ReminderEditor: View {
     @Environment(\.dismiss) private var dismiss
 
     let authorizationState: ReminderAuthorizationState
-    let initialSection: ReminderEditorSection
+    let focus: ReminderEditorFocus
     let onSave: (ReminderPreferences) async -> String?
 
     @State private var draft: ReminderPreferences
@@ -353,11 +425,11 @@ private struct ReminderEditor: View {
     init(
         initialPreferences: ReminderPreferences,
         authorizationState: ReminderAuthorizationState,
-        initialSection: ReminderEditorSection = .meals,
+        focus: ReminderEditorFocus = .mealAvailability,
         onSave: @escaping (ReminderPreferences) async -> String?
     ) {
         self.authorizationState = authorizationState
-        self.initialSection = initialSection
+        self.focus = focus
         self.onSave = onSave
         _draft = State(initialValue: initialPreferences)
     }
@@ -366,62 +438,69 @@ private struct ReminderEditor: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 Form {
-                Section {
-                    ForEach(ReminderMeal.allCases, id: \.self) { meal in
-                        Toggle(meal.rawValue, isOn: enabledBinding(for: meal))
-                            .accessibilityIdentifier("\(meal.identifierComponent)-reminder-toggle")
-                        if draft.isEnabled(meal) {
+                if showsMeals {
+                    Section {
+                        ForEach(mealsToEdit, id: \.self) { meal in
+                            if focus == .mealAvailability {
+                                Toggle(meal.rawValue, isOn: enabledBinding(for: meal))
+                                    .accessibilityIdentifier("\(meal.identifierComponent)-reminder-toggle")
+                            } else {
+                                DatePicker(
+                                    meal.rawValue,
+                                    selection: timeBinding(for: meal),
+                                    displayedComponents: .hourAndMinute
+                                )
+                                .accessibilityIdentifier("\(meal.identifierComponent)-reminder-time")
+                            }
+                        }
+                    } header: {
+                        Text(focus == .mealAvailability ? "Enabled meals" : "Meal notification times")
+                    } footer: {
+                        Text(focus == .mealAvailability
+                             ? "Each meal can be enabled independently. Its saved notification time stays unchanged when disabled."
+                             : "Changing a time does not enable or disable that meal. Reminders are omitted when the matching meal is already logged.")
+                    }
+                    .id("reminder-editor-meals")
+                }
+
+                if showsWeight {
+                    Section {
+                        Toggle("Weight check-in", isOn: $draft.weightEnabled)
+                            .accessibilityIdentifier("weight-reminder-toggle")
+                        if draft.weightEnabled {
+                            Picker("Frequency", selection: $draft.weightFrequency) {
+                                Text("Daily").tag(WeightReminderFrequency.daily)
+                                Text("Weekly").tag(WeightReminderFrequency.weekly)
+                            }
+                            .pickerStyle(.menu)
+                            .accessibilityIdentifier("weight-reminder-frequency")
+
                             DatePicker(
                                 "Time",
-                                selection: timeBinding(for: meal),
+                                selection: timeBinding(\.weightTime),
                                 displayedComponents: .hourAndMinute
                             )
-                            .accessibilityIdentifier("\(meal.identifierComponent)-reminder-time")
+                            .accessibilityIdentifier("weight-reminder-time")
                         }
+                    } header: {
+                        Text("Weight")
+                    } footer: {
+                        Text(draft.weightFrequency == .weekly
+                             ? "Weekly waits seven days after your latest weight."
+                             : "Daily skips a day as soon as you record a weight.")
                     }
-                } header: {
-                    Text("Meals")
-                } footer: {
-                    Text("Each meal has an independent exact time and only reminds you when that meal is not logged.")
                 }
-                .id(ReminderEditorSection.meals)
 
-                Section {
-                    Toggle("Weight check-in", isOn: $draft.weightEnabled)
-                        .accessibilityIdentifier("weight-reminder-toggle")
-                    if draft.weightEnabled {
-                        Picker("Frequency", selection: $draft.weightFrequency) {
-                            Text("Daily").tag(WeightReminderFrequency.daily)
-                            Text("Weekly").tag(WeightReminderFrequency.weekly)
-                        }
-                        .pickerStyle(.menu)
-                        .accessibilityIdentifier("weight-reminder-frequency")
-
-                        DatePicker(
-                            "Time",
-                            selection: timeBinding(\.weightTime),
-                            displayedComponents: .hourAndMinute
-                        )
-                        .accessibilityIdentifier("weight-reminder-time")
+                if showsWater {
+                    Section {
+                        Toggle("Water", isOn: $draft.waterEnabled)
+                            .accessibilityIdentifier("water-reminder-toggle")
+                    } header: {
+                        Text("Water")
+                    } footer: {
+                        Text("Every two hours during fixed \(waterReminderStartText)–\(waterReminderEndText) hours when no glass was logged recently; stops at 8 glasses.")
                     }
-                } header: {
-                    Text("Weight")
-                } footer: {
-                    Text(draft.weightFrequency == .weekly
-                         ? "Weekly waits seven days after your latest weight."
-                         : "Daily skips a day as soon as you record a weight.")
                 }
-                .id(ReminderEditorSection.weight)
-
-                Section {
-                    Toggle("Water", isOn: $draft.waterEnabled)
-                        .accessibilityIdentifier("water-reminder-toggle")
-                } header: {
-                    Text("Water")
-                } footer: {
-                    Text("Every two hours from \(waterReminderStartText) to \(waterReminderEndText) when no glass was logged recently; stops at 8 glasses.")
-                }
-                .id(ReminderEditorSection.water)
 
                 if authorizationState == .denied, draft.hasEnabledReminder {
                     Section {
@@ -431,9 +510,9 @@ private struct ReminderEditor: View {
                     }
                 }
             }
-            .navigationTitle("Edit Reminders")
+            .navigationTitle(focus.title)
             .navigationBarTitleDisplayMode(.inline)
-            .accessibilityIdentifier("reminder-editor")
+            .accessibilityIdentifier(focus.editorIdentifier)
             .disabled(isSaving)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -460,11 +539,28 @@ private struct ReminderEditor: View {
                 Text(errorMessage ?? "Unknown error")
             }
             .task {
+                guard showsMeals else { return }
                 await Task.yield()
-                proxy.scrollTo(initialSection, anchor: .top)
+                proxy.scrollTo("reminder-editor-meals", anchor: .top)
             }
             }
         }
+    }
+
+    private var mealsToEdit: [ReminderMeal] {
+        ReminderMeal.allCases
+    }
+
+    private var showsMeals: Bool {
+        focus == .mealAvailability || focus == .mealTimes
+    }
+
+    private var showsWeight: Bool {
+        focus == .weight
+    }
+
+    private var showsWater: Bool {
+        focus == .water
     }
 
     private func enabledBinding(for meal: ReminderMeal) -> Binding<Bool> {

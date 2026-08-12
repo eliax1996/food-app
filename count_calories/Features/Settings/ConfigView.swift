@@ -2,6 +2,12 @@ import SwiftData
 import SwiftUI
 import os
 
+private enum ConfigPresentation: Identifiable {
+    case calculatedSetup(CaloriePlanSetupRecord)
+
+    var id: String { "calculated-setup" }
+}
+
 struct ConfigView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Query private var profiles: [UserProfile]
@@ -11,6 +17,7 @@ struct ConfigView: View {
 
     @State private var reminderPreferences = ReminderPreferences.stored()
     @State private var notificationAuthorizationState = ReminderAuthorizationState.notDetermined
+    @State private var presentation: ConfigPresentation?
     @State private var errorMessage: String?
 
     private var profile: UserProfile? {
@@ -33,6 +40,21 @@ struct ConfigView: View {
                             )
                         }
                         .accessibilityIdentifier("settings-plan-link")
+
+                        NavigationLink {
+                            AdaptivePlanView(
+                                profile: profile,
+                                onReviewCalculatedSetup: beginCalculatedSetup
+                            )
+                        } label: {
+                            SettingsSummaryRow(
+                                title: "Goal check-ins",
+                                systemImage: "checkmark.circle",
+                                value: adaptivePlanSummary(profile),
+                                detail: "Review food logs and weights before any goal change"
+                            )
+                        }
+                        .accessibilityIdentifier("settings-goal-check-ins-link")
 
                         NavigationLink {
                             ProfileSettingsView(profile: profile)
@@ -82,13 +104,34 @@ struct ConfigView: View {
                 Section("Privacy") {
                     Label("Profile and logs stay on this device", systemImage: "lock")
                         .foregroundStyle(.primary)
-                    Text("Count Calories sends only food search and barcode queries to Open Food Facts. Plan calculations and reminder schedules run on device.")
+
+                    NavigationLink {
+                        MealDescriptionDataView()
+                    } label: {
+                        SettingsSummaryRow(
+                            title: "Meal Description & Draft Data",
+                            systemImage: "text.bubble",
+                            value: "On device",
+                            detail: "Learned choices and saved draft controls"
+                        )
+                    }
+                    .accessibilityIdentifier("settings-meal-description-data-link")
+
+                    Text("Meal descriptions, dictation, plan calculations, and reminder schedules run on device. Count Calories sends only individual food search and barcode queries to Open Food Facts.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Settings")
             .accessibilityIdentifier("settings-root")
+            .sheet(item: $presentation) { presentation in
+                switch presentation {
+                case .calculatedSetup(let record):
+                    CaloriePlanSetupView(profile: profile, record: record) {
+                        self.presentation = nil
+                    }
+                }
+            }
             .onAppear {
                 reminderPreferences = .stored()
                 synchronizeReminders()
@@ -107,6 +150,26 @@ struct ConfigView: View {
                 Text(errorMessage ?? "Unknown error")
             }
         }
+    }
+
+    private func beginCalculatedSetup() {
+        guard let profile else { return }
+        let loadedRecord = CaloriePlanSetupStore.load(profileExists: true)
+        let storedRecord = CaloriePlanSetupStore.reconciledAfterAcceptedCalculation(
+            loadedRecord,
+            acceptedPlanDate: profile.storedCalculatedPlan?.acceptedAt
+        )
+        if storedRecord != loadedRecord {
+            CaloriePlanSetupStore.save(storedRecord)
+        }
+        let record = storedRecord.status == .inProgress
+            ? storedRecord
+            : CaloriePlanSetupRecord(
+                status: .inProgress,
+                draft: .prefilled(from: profile),
+                acceptedPlanDateAtStart: profile.storedCalculatedPlan?.acceptedAt
+            )
+        presentation = .calculatedSetup(record)
     }
 
     private var reminderValue: String {

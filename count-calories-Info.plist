@@ -6,6 +6,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Count Calories uses the camera to scan product barcodes.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Count Calories uses the microphone to turn your meal description into editable text. Audio is not saved.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

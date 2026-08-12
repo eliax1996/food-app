@@ -513,7 +513,7 @@ struct CaloriePlanSetupView: View {
         Section {
             ProgressView(value: progress)
                 .accessibilityLabel("Setup progress")
-                .accessibilityValue("Step \(stepNumber) of 6")
+                .accessibilityValue("Step \(stepNumber) of \(stepCount)")
         }
         .listRowBackground(Color.clear)
     }
@@ -757,12 +757,16 @@ struct CaloriePlanSetupView: View {
         case .equation: 3
         case .activity: 4
         case .pace: 5
-        case .review: 6
+        case .review: draft.goalMode == .maintain ? 5 : 6
         }
     }
 
+    private var stepCount: Int {
+        draft.goalMode == .maintain ? 5 : 6
+    }
+
     private var progress: Double {
-        Double(stepNumber) / 6
+        Double(stepNumber) / Double(stepCount)
     }
 
     private func goalDetail(_ mode: PlanGoalMode) -> String {
