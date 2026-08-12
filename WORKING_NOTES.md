@@ -15,17 +15,17 @@ Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 - Dedicated Weight Log
 - Root `Today | Weight | Progress | Settings`
 
-Latest accepted milestone: REFINE-001 attempt 02 Slice C plus SETTINGS-DIRECT-EDIT-001 direct entry.
+Latest accepted milestone: REFINE-001 attempt 03 Slice D evidence-gated adaptation.
 
 ## Current component
 
-`REFINE-001`: competitor/safety research, welcome/setup, explainable Plan and calorie goal, NUTRITION-GOALS-001 theoretical macro/fiber references versus measured actuals, weight adaptation, configurable reminders, and hierarchical Settings.
+`BULK-AI-FOOD-001`: deeply researched typed/dictated bulk meal description, Apple on-device structured extraction, asynchronous food matching, editable provisional review, explicit atomic confirmation, retained corrections, and LRU-aware generic matching.
 
-`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–C, WEIGHT-ENTRY-001, and SETTINGS-DIRECT-EDIT-001 are accepted and complete.
+`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–D, WEIGHT-ENTRY-001, and SETTINGS-DIRECT-EDIT-001 are accepted and complete.
 
 ## Remaining sequence
 
-1. REFINE-001 — Slice D evidence-gated weight adaptation. Hierarchical Settings, Plan references, reminders, calculated setup, and direct/numeric-entry follow-ups are complete.
+1. BULK-AI-FOOD-001 — competitor/Apple research and detailed Markdown specification, then implementation.
 2. AUXILIARY-001 — Widget and Live Activity
 3. CONSISTENCY-001
 4. ROBUSTNESS-001
@@ -34,12 +34,12 @@ Latest accepted milestone: REFINE-001 attempt 02 Slice C plus SETTINGS-DIRECT-ED
 ## Current validation baseline
 
 - exact-tree `just validate 300`: passed
-- hostless: 178 passed / 2 opt-in live skips
-- functional UI target: 22/22 passed through `TEST_CASE_TIMEOUT=60 just test-ui 900`
-- simulator build/install/launch: passed
-- app-hosted: 210 passed / 2 opt-in live skips
-- REFINE Slice C, direct Settings entry, and DEBUG-only test-store isolation critical/high review: APPROVE
+- hostless: 195 passed / 2 opt-in live skips
+- functional UI target: 31/31 passed through `TEST_CASE_TIMEOUT=60 just test-ui 1200`
+- exact-tree `just validate 300`: passed (hostless + simulator build/install/launch)
+- app-hosted: 250 passed / 2 opt-in live skips
+- REFINE Slice D architecture/safety/native UI/historical goal reviews: APPROVE; visual 3/3 APPROVE
 
 ## Immediate action
 
-Implement Slice D identity, explicit complete-day evidence, goal-revision, and serialized mutation foundations from approved `docs/adaptive-calorie-plan-specification.md`; estimator/proposal UI follows only after those gates pass.
+Run final Slice D exact-tree validation, commit milestone, then begin BULK-AI-FOOD-001 research/specification before code.

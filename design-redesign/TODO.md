@@ -56,9 +56,14 @@ Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check item
 ### Slice D — Weight adaptation
 
 - [x] Define minimum observation window, explicit all-day food-log coverage, weigh-in coverage, trend method, evidence agreement, cadence, adjustment bounds, mutation gateway, and exact revert contract in `../docs/adaptive-calorie-plan-specification.md`.
-- [ ] Add explainable proposal only; user confirmation required; reversible; no response to one reading or short plateau.
-- [ ] Distinguish measurement noise, logging gaps, and expenditure uncertainty without asserting one cause.
-- [ ] Add deterministic and UI coverage plus visual evidence.
+- [x] Add explainable proposal only; user confirmation required; reversible; no response to one reading or short plateau.
+- [x] Distinguish measurement noise, logging gaps, and expenditure uncertainty without asserting one cause.
+- [x] Add deterministic and UI coverage plus visual evidence.
+
+## Next — BULK-AI-FOOD-001
+
+- [ ] Deep competitor and Apple Foundation Models/Speech research; write detailed data model, pipeline, privacy, fallback, review, learning, LRU, accessibility, and acceptance specification before code.
+- [ ] Implement typed/dictated provisional extraction, async food matching, editable review, explicit atomic confirm/cancel, retained correction controls, deterministic tests, and visual evidence.
 
 ## Remaining whole-product sequence
 

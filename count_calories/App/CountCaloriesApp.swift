@@ -3,40 +3,67 @@ import SwiftUI
 
 @main
 struct CountCaloriesApp: App {
-    private let arguments = ProcessInfo.processInfo.arguments
+    private let arguments: [String]
+    private let modelContainer: ModelContainer
+    private let mutationCoordinator: PlanEvidenceMutationCoordinator
 
-    private var usesInMemoryStore: Bool {
+    @MainActor
+    init() {
+        let arguments = ProcessInfo.processInfo.arguments
+        self.arguments = arguments
 #if DEBUG
-        arguments.contains("-ui-testing") || arguments.contains("-design-review")
+        let usesInMemoryStore = arguments.contains("-ui-testing") || arguments.contains("-design-review")
 #else
-        false
+        let usesInMemoryStore = false
 #endif
+        let schema = Schema([
+            Food.self,
+            PlateEntry.self,
+            FoodLogCompletion.self,
+            WaterDay.self,
+            WeightEntry.self,
+            UserProfile.self
+        ])
+        do {
+            let configuration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: usesInMemoryStore
+            )
+            let container = try ModelContainer(for: schema, configurations: [configuration])
+            modelContainer = container
+            mutationCoordinator = PlanEvidenceMutationCoordinator(modelContainer: container)
+        } catch {
+            fatalError("Could not create model container: \(error)")
+        }
     }
 
     var body: some Scene {
         WindowGroup {
+            Group {
 #if DEBUG
-            if arguments.contains("-ui-testing") {
-                UITestingRoot()
-            } else if arguments.contains("-design-review") {
-                DesignReviewRoot()
-            } else {
-                ContentView()
-            }
+                if arguments.contains("-ui-testing") {
+                    UITestingRoot()
+                } else if arguments.contains("-design-review") {
+                    DesignReviewRoot()
+                } else {
+                    ContentView()
+                }
 #else
-            ContentView()
+                ContentView()
 #endif
+            }
+            .modelContainer(modelContainer)
+            .environment(\.planEvidenceMutationCoordinator, mutationCoordinator)
         }
-        .modelContainer(
-            for: [Food.self, PlateEntry.self, WaterDay.self, WeightEntry.self, UserProfile.self],
-            inMemory: usesInMemoryStore
-        )
     }
 }
 
 #if DEBUG
 private struct UITestingRoot: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
+    @State private var contentModelContext: ModelContext?
+    @State private var preparationError: String?
     @State private var isReady = false
     @State private var showingCalculatedSetup = ProcessInfo.processInfo.arguments.contains(
         "-ui-testing-calculated-setup"
@@ -73,47 +100,138 @@ private struct UITestingRoot: View {
                 }
             } else if isReady {
                 ContentView()
+            } else if let preparationError {
+                ContentUnavailableView(
+                    "Test data failed",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(preparationError)
+                )
+                .accessibilityIdentifier("ui-test-preparation-error")
             } else {
                 ProgressView("Preparing test data")
+                    .accessibilityIdentifier("ui-test-preparing")
                     .task {
                         do {
-                            try resetStore()
+                            guard let mutationCoordinator else {
+                                throw PlanEvidenceMutationError.coordinatorUnavailable
+                            }
+                            let fixtureContext = mutationCoordinator.testingModelContext
+                            try resetStore(in: fixtureContext)
+                            let seededFixture = try seedAdaptiveFixtureIfRequested(
+                                in: fixtureContext,
+                                coordinator: mutationCoordinator
+                            )
+                            if !seededFixture {
+                                try seedDefaultProfileIfNeeded(in: fixtureContext)
+                            }
+                            contentModelContext = ModelContext(modelContext.container)
                             isReady = true
                         } catch {
+                            preparationError = String(describing: error)
                             assertionFailure("Could not reset UI-test data: \(error)")
                         }
                     }
             }
         }
+        .environment(\.modelContext, contentModelContext ?? modelContext)
     }
 
-    private func resetStore() throws {
-        for entry in try modelContext.fetch(FetchDescriptor<PlateEntry>()) {
-            modelContext.delete(entry)
+    private func seedAdaptiveFixtureIfRequested(
+        in context: ModelContext,
+        coordinator: PlanEvidenceMutationCoordinator
+    ) throws -> Bool {
+        let process = ProcessInfo.processInfo
+        let fixture = process.environment["UI_TEST_ADAPTIVE_FIXTURE"]
+        let seeded: Bool
+        if fixture == "proposal" || process.arguments.contains("-ui-testing-adaptive-proposal") {
+            try seedAdaptiveProposalFixture(in: context, coordinator: coordinator)
+            seeded = true
+        } else if fixture == "partial-cap" || process.arguments.contains("-ui-testing-adaptive-partial-cap") {
+            try seedAdaptiveProposalFixture(in: context, coordinator: coordinator)
+            try coordinator.configurePartialCapProposalForTesting(usedCalories: 120)
+            seeded = true
+        } else if fixture == "applied" || process.arguments.contains("-ui-testing-adaptive-applied") {
+            try PreviewData.seedAdaptiveProposal(
+                context,
+                coordinator: coordinator
+            )
+            seeded = true
+        } else if fixture == "collecting" || process.arguments.contains("-ui-testing-adaptive-collecting") {
+            try PreviewData.seed(
+                context,
+                state: .adaptiveCollecting,
+                coordinator: coordinator
+            )
+            seeded = true
+        } else if fixture == "manual" || process.arguments.contains("-ui-testing-adaptive-manual") {
+            context.insert(UserProfile(dailyCalorieGoal: 1_700, planGoalSource: .manual))
+            try context.save()
+            seeded = true
+        } else if fixture == "unknown" || process.arguments.contains("-ui-testing-adaptive-unknown") {
+            context.insert(UserProfile(
+                dailyCalorieGoal: 1_700,
+                rawPlanGoalSource: "future-source"
+            ))
+            try context.save()
+            seeded = true
+        } else {
+            seeded = false
         }
-        for food in try modelContext.fetch(FetchDescriptor<Food>()) {
-            modelContext.delete(food)
+        context.rollback()
+        return seeded
+    }
+
+    private func seedAdaptiveProposalFixture(
+        in context: ModelContext,
+        coordinator: PlanEvidenceMutationCoordinator
+    ) throws {
+        try PreviewData.seedAdaptiveProposal(context, coordinator: coordinator)
+    }
+
+    private func seedDefaultProfileIfNeeded(in context: ModelContext) throws {
+        let arguments = ProcessInfo.processInfo.arguments
+        let calculatedSetupIsVisible = arguments.contains("-ui-testing-calculated-setup")
+            || arguments.contains("-ui-testing-calculated-pace")
+            || arguments.contains("-ui-testing-calculated-review")
+        if !calculatedSetupIsVisible {
+            context.insert(UserProfile())
+            try context.save()
         }
-        for day in try modelContext.fetch(FetchDescriptor<WaterDay>()) {
-            modelContext.delete(day)
+    }
+
+    private func resetStore(in context: ModelContext) throws {
+        context.rollback()
+        for completion in try context.fetch(FetchDescriptor<FoodLogCompletion>()) {
+            context.delete(completion)
         }
-        for entry in try modelContext.fetch(FetchDescriptor<WeightEntry>()) {
-            modelContext.delete(entry)
+        for entry in try context.fetch(FetchDescriptor<PlateEntry>()) {
+            context.delete(entry)
         }
-        for profile in try modelContext.fetch(FetchDescriptor<UserProfile>()) {
-            modelContext.delete(profile)
+        for food in try context.fetch(FetchDescriptor<Food>()) {
+            context.delete(food)
         }
+        for day in try context.fetch(FetchDescriptor<WaterDay>()) {
+            context.delete(day)
+        }
+        for entry in try context.fetch(FetchDescriptor<WeightEntry>()) {
+            context.delete(entry)
+        }
+        for profile in try context.fetch(FetchDescriptor<UserProfile>()) {
+            context.delete(profile)
+        }
+        try context.save()
+
         ReminderPreferences().store()
         CaloriePlanSetupStore.save(CaloriePlanSetupRecord(
             status: .skipped,
             draft: CaloriePlanSetupDraft()
         ))
-        try modelContext.save()
     }
 }
 
 private struct DesignReviewRoot: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
     @State private var isReady = false
 
     private var dynamicTypeSize: DynamicTypeSize {
@@ -145,9 +263,13 @@ private struct DesignReviewRoot: View {
                 ProgressView("Preparing review data")
                     .task {
                         do {
+                            guard let mutationCoordinator else {
+                                throw PlanEvidenceMutationError.coordinatorUnavailable
+                            }
                             try PreviewData.seed(
                                 modelContext,
-                                state: DesignReviewState.current
+                                state: DesignReviewState.current,
+                                coordinator: mutationCoordinator
                             )
                             isReady = true
                         } catch {

@@ -318,6 +318,47 @@ Plan setup entry now uses one item-driven sheet presentation, fixing the reporte
 
 ---
 
+## Priority 3C — [REFINE-001-SLICE-D] Evidence-gated adaptive calorie check-ins
+
+**Status:** ACCEPTED — ATTEMPT 03 / COMPLETE
+**Priority:** HIGH VALUE
+
+Explicit complete-day attestations, stable evidence identity, distributed weight requirements, coincident agreeing 28/35/42 estimates, bounded weekly proposals, Adapted source, per-day goal revisions, explicit apply/decline/disable, and exact revert are implemented. Missing days never become zero; empty completion needs genuine-zero confirmation; unknown/corrupt context fails closed. Final validation: 195 hostless pass / 2 skips, 250 app-hosted pass / 2 skips, functional UI 31/31, and visual 3/3 APPROVE. Full contract: `docs/adaptive-calorie-plan-specification.md`.
+
+---
+
+## Priority 3D — [BULK-AI-FOOD-001] Typed or dictated bulk food logging
+
+**Status:** NEXT — RESEARCH AND SPECIFICATION REQUIRED BEFORE CODE
+**Priority:** USER-PRIORITIZED
+
+### User problem
+
+Logging several foods one by one is slow when user can describe meal naturally. Proposed solution must preserve nutrition accuracy, privacy, recoverability, and explicit review rather than turning language-model guesses into logged facts.
+
+### Required direction
+
+1. Add compact AI-assisted bulk-entry action integrated with existing Today/Meal flow, minimizing clicks without displacing direct Log food.
+2. Accept editable typed paragraph and optional microphone transcription. Speech populates same text field; typed fallback always works.
+3. Use Apple SystemLanguageModel/Foundation Models only when supported and available; specify OS/device/language availability and truthful fallback before implementation.
+4. Extract provisional `(food query, amount/weight)` items asynchronously. Missing amount may get a clearly marked LLM estimate, but calories/macros must never come from LLM.
+5. Match each item through existing saved/cache/Open Food Facts pipeline. Generic terms prefer retained matching user selections by recency/frequency/LRU before remote search.
+6. Show loading/progress and partial failures, then one editable review surface with transcript/query/amount plus selected product result beneath every item.
+7. Tapping item edits query, amount, selected product, serving, and explicit nutrition override through existing food editor semantics. Every row remains marked for review until resolved.
+8. Confirm performs one atomic batch insert into chosen meal/day and invalidates complete-day evidence once. Cancel inserts nothing and preserves editable draft until explicit discard policy.
+9. Retain corrected extraction examples on device with bounded storage, provenance, schema/version, recency, generic-term key, and deletion controls. Never upload meal text or imply model training.
+10. Research competitors deeply and write detailed data model, pipeline, privacy, permission, availability, async/cancellation, matching/ranking, retained-learning, accessibility, localization, and acceptance Markdown before code.
+
+### Guardrails
+
+- LLM output is provisional text structure only; selected food data or explicit user edits own nutrition.
+- Explicit review and confirmation required; no silent insertion.
+- Speech permission/denial and Foundation Model unavailable states stay truthful.
+- Sensitive meal text and retained corrections remain on device and user-deletable.
+- Batch confirm is atomic; partial lookup can be reviewed, retried, removed, or canceled without partial logging.
+
+---
+
 ## Priority 4 — [NUTRITION-GOALS-001] Reference nutrition composition in Plan
 
 **Status:** ACCEPTED WITH REFINE-001 SLICE A — ATTEMPT 01

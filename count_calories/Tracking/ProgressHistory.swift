@@ -1,9 +1,40 @@
 import Foundation
 
+nonisolated struct CalorieGoalRevisionPoint: Equatable, Sendable {
+    let effectiveDate: Date
+    let sequence: Int64
+    let calories: Int
+}
+
+nonisolated struct DailyCalorieGoalContext: Equatable, Sendable {
+    let date: Date
+    let calories: Int?
+}
+
 nonisolated struct CalorieProgress: Equatable, Sendable {
     let summaries: [DailyCalorieSummary]
     let averageCalories: Double?
+    /// Mean daily intake-minus-goal difference across days with retained goal context only.
     let goalDifference: Double?
+    let goalContexts: [DailyCalorieGoalContext]
+    let comparableGoalDays: Int
+    let missingGoalDays: Int
+
+    init(
+        summaries: [DailyCalorieSummary],
+        averageCalories: Double?,
+        goalDifference: Double?,
+        goalContexts: [DailyCalorieGoalContext] = [],
+        comparableGoalDays: Int = 0,
+        missingGoalDays: Int = 0
+    ) {
+        self.summaries = summaries
+        self.averageCalories = averageCalories
+        self.goalDifference = goalDifference
+        self.goalContexts = goalContexts
+        self.comparableGoalDays = comparableGoalDays
+        self.missingGoalDays = missingGoalDays
+    }
 }
 
 nonisolated struct WeightProgressPoint: Equatable, Sendable {
@@ -37,7 +68,8 @@ nonisolated struct WeightProgress: Equatable, Sendable {
 nonisolated enum ProgressHistory {
     static func calorieProgress(
         summaries: [DailyCalorieSummary],
-        dailyGoal: Int?,
+        goalRevisions: [CalorieGoalRevisionPoint],
+        calendar: Calendar = .current,
         limit: Int = 7
     ) -> CalorieProgress {
         guard limit > 0 else {
@@ -46,7 +78,7 @@ nonisolated enum ProgressHistory {
 
         let recordedSummaries = Array(
             summaries
-                .filter { $0.calories >= 0 }
+                .filter { $0.calories >= 0 && $0.date.timeIntervalSinceReferenceDate.isFinite }
                 .sorted { $0.date < $1.date }
                 .suffix(limit)
         )
@@ -54,16 +86,33 @@ nonisolated enum ProgressHistory {
             return CalorieProgress(summaries: [], averageCalories: nil, goalDifference: nil)
         }
 
+        let validRevisions = goalRevisions.filter {
+            $0.effectiveDate.timeIntervalSinceReferenceDate.isFinite && $0.calories > 0
+        }
+        let goalContexts = recordedSummaries.map { summary in
+            let day = calendar.startOfDay(for: summary.date)
+            let goal = validRevisions
+                .filter { calendar.startOfDay(for: $0.effectiveDate) <= day }
+                .max { $0.sequence < $1.sequence }?
+                .calories
+            return DailyCalorieGoalContext(date: summary.date, calories: goal)
+        }
+        let differences = zip(recordedSummaries, goalContexts).compactMap { summary, context in
+            context.calories.map { Double(summary.calories - $0) }
+        }
         let average = recordedSummaries.reduce(0.0) { total, summary in
             total + Double(summary.calories)
         } / Double(recordedSummaries.count)
-        let difference = dailyGoal.flatMap { goal in
-            goal > 0 ? average - Double(goal) : nil
-        }
+        let goalDifference = differences.isEmpty
+            ? nil
+            : differences.reduce(0, +) / Double(differences.count)
         return CalorieProgress(
             summaries: recordedSummaries,
             averageCalories: average,
-            goalDifference: difference
+            goalDifference: goalDifference,
+            goalContexts: goalContexts,
+            comparableGoalDays: differences.count,
+            missingGoalDays: recordedSummaries.count - differences.count
         )
     }
 

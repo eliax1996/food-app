@@ -35,13 +35,19 @@ final class Food {
 
 @Model
 final class PlateEntry {
+    // Compatibility defaults let SwiftData open pre-Slice-D rows. Coordinator validates
+    // every identity before adaptation and never rewrites a nonzero ID.
+    private(set) var stableID: UUID = UUID()
+    private(set) var identityValidatedForAdaptation: Bool = false
+    private(set) var createdAt: Date = Date.now
+    private(set) var modifiedAt: Date = Date.now
     var foodName: String
-    var calories: Int
+    private(set) var calories: Int
     var weightGrams: Double
     var quantity: Int
     var portionCount: Double?
     var servingUnitRawValue: String?
-    var date: Date
+    private(set) var date: Date
     var mealType: String?
     var carbohydratesGrams: Double?
     var proteinGrams: Double?
@@ -56,8 +62,15 @@ final class PlateEntry {
         servingUnit: NutritionUnit = .grams,
         nutrients: FoodNutrients = .empty,
         mealType: String? = nil,
-        date: Date = .now
+        date: Date = .now,
+        stableID: UUID = UUID(),
+        createdAt: Date = .now,
+        modifiedAt: Date? = nil
     ) {
+        self.stableID = stableID
+        identityValidatedForAdaptation = stableID != .zero
+        self.createdAt = createdAt
+        self.modifiedAt = modifiedAt ?? createdAt
         self.foodName = foodName
         self.calories = calories
         self.weightGrams = weightGrams
@@ -115,7 +128,66 @@ extension Food {
     }
 }
 
+extension UUID {
+    static let zero = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+}
+
 extension PlateEntry {
+    func validateOrBackfillIdentity(
+        with replacement: UUID,
+        at date: Date,
+        access: PlanEvidenceMutationAccess
+    ) {
+        if stableID == .zero {
+            stableID = replacement
+        }
+        if !createdAt.timeIntervalSinceReferenceDate.isFinite {
+            createdAt = date
+        }
+        if !modifiedAt.timeIntervalSinceReferenceDate.isFinite {
+            modifiedAt = createdAt
+        }
+        identityValidatedForAdaptation = true
+    }
+
+    func applyEvidenceMutation(
+        calories: Int,
+        date: Date,
+        modifiedAt: Date,
+        access: PlanEvidenceMutationAccess
+    ) {
+        self.calories = calories
+        self.date = date
+        self.modifiedAt = modifiedAt
+    }
+
+    func applyLoggedMeal(
+        foodName: String,
+        calories: Int,
+        weightGrams: Double,
+        quantity: Double,
+        servingUnitRawValue: String?,
+        nutrients: FoodNutrients,
+        mealType: String?,
+        date: Date,
+        modifiedAt: Date,
+        access: PlanEvidenceMutationAccess
+    ) {
+        self.foodName = foodName
+        self.calories = calories
+        self.weightGrams = weightGrams
+        self.quantity = max(1, Int(quantity.rounded()))
+        portionCount = quantity
+        self.servingUnitRawValue = servingUnitRawValue
+        carbohydratesGrams = nutrients.carbohydratesGrams
+        proteinGrams = nutrients.proteinGrams
+        fatGrams = nutrients.fatGrams
+        fiberGrams = nutrients.fiberGrams
+        self.mealType = mealType
+        self.date = date
+        self.modifiedAt = modifiedAt
+    }
+
     var portionQuantity: Double {
         portionCount ?? Double(quantity)
     }

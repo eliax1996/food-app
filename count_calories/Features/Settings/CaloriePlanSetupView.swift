@@ -6,6 +6,7 @@ struct CaloriePlanSetupView: View {
     @Environment(\.calendar) private var calendar
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
 
     let profile: UserProfile?
     let onFinish: () -> Void
@@ -732,7 +733,9 @@ struct CaloriePlanSetupView: View {
     }
 
     private var keepCurrentGoalTitle: String {
-        profile?.planGoalSource == .calculated ? "Keep current goal" : "Keep manual goal"
+        profile?.planGoalSource == .calculated || profile?.planGoalSource == .adapted
+            ? "Keep current goal"
+            : "Keep manual goal"
     }
 
     private var navigationTitle: String {
@@ -829,6 +832,19 @@ struct CaloriePlanSetupView: View {
     }
 
     private func closeAndResumeLater() {
+        if profile == nil {
+            modelContext.insert(UserProfile())
+            do {
+                try modelContext.save()
+            } catch {
+                modelContext.rollback()
+                AppLogger.persistence.error(
+                    "Failed to preserve manual profile for resumable setup: \(error.localizedDescription, privacy: .public)"
+                )
+                errorMessage = "Setup progress could not be saved. Try again."
+                return
+            }
+        }
         persist(status: .inProgress)
         dismiss()
         onFinish()
@@ -860,16 +876,15 @@ struct CaloriePlanSetupView: View {
 
     private func applyRecommendation() {
         guard let recommendation else { return }
-        let savedProfile = profile ?? UserProfile()
-        if profile == nil {
-            modelContext.insert(savedProfile)
-        }
         do {
-            try savedProfile.applyCalculatedPlan(
+            guard let mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            mutationCoordinator.synchronizeCalendar(calendar)
+            _ = try mutationCoordinator.acceptCalculatedPlan(
                 recommendation,
                 measurementSystem: draft.measurementSystem
             )
-            try modelContext.save()
             persist(status: .completed)
             dismiss()
             onFinish()
@@ -993,7 +1008,7 @@ extension CaloriePlanSetupDraft {
         ),
         onFinish: {}
     )
-    .modelContainer(PreviewData.makeContainer())
+    .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 
 #Preview("Calculated setup — Body") {
@@ -1007,7 +1022,7 @@ extension CaloriePlanSetupDraft {
         record: CaloriePlanSetupRecord(status: .inProgress, draft: draft),
         onFinish: {}
     )
-    .modelContainer(PreviewData.makeContainer())
+    .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 
 #Preview("Calculated setup — Infeasible date") {
@@ -1024,7 +1039,7 @@ extension CaloriePlanSetupDraft {
         record: CaloriePlanSetupRecord(status: .inProgress, draft: draft),
         onFinish: {}
     )
-    .modelContainer(PreviewData.makeContainer())
+    .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 
 #Preview("Calculated setup review") {
@@ -1039,6 +1054,6 @@ extension CaloriePlanSetupDraft {
         record: CaloriePlanSetupRecord(status: .inProgress, draft: draft),
         onFinish: {}
     )
-    .modelContainer(PreviewData.makeContainer())
+    .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 #endif

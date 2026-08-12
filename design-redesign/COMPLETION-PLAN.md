@@ -2,7 +2,7 @@
 
 **Status:** IN PROGRESS
 **Started:** 2026-08-09
-**Last updated:** 2026-08-10 — NUTRIENTS-001 accepted; REFINE-001 next
+**Last updated:** 2026-08-12 — REFINE-001 accepted; BULK-AI-FOOD-001 next
 
 ## Goal
 
@@ -42,33 +42,37 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
    - Focused custom-food nutrient editor, complete/partial/dark/AX3 evidence, hostless/app-hosted tests, 12/12 UI target, and 3/3 critical/high visual approval are accepted.
    - Calorie-goal-derived theoretical gram ranges requested for Plan remain tracked as NUTRITION-GOALS-001 inside REFINE-001.
 
-3. **REFINE-001 — NEXT: onboarding, goals, hierarchical Settings, and adaptive reminders**
-   - Execute full `## Refine` research/specification below; this replaces the narrower SETTINGS-001 / REMINDERS-001 pass.
-   - Resolve mixed immediate-versus-explicit-save semantics and notification authorization/denial/failure behavior.
-   - Capture accepted onboarding, Settings, reminder, denied/error, large-text, dark, and small-device evidence.
+3. **REFINE-001 — COMPLETE: onboarding, goals, hierarchical Settings, reminders, and adaptation**
+   - Attempts 01–03 accepted: transparent Plan references, exact reminders, calculated setup, direct entry, explicit complete-day evidence, evidence-gated proposal-only adaptation, and exact revert.
+   - Final Slice D visual consensus: 3/3 APPROVE; hostless 195/2 skips, app-hosted 250/2 skips, functional UI 31/31.
 
-4. **AUXILIARY-001 — Widget and Live Activity**
+4. **BULK-AI-FOOD-001 — NEXT: typed/dictated bulk logging with editable review**
+   - Deeply research competitor quick-log/voice/AI patterns and Apple Foundation Models/Speech APIs before implementation.
+   - Write detailed data model, data pipeline, privacy, availability/fallback, async failure, retained-correction, LRU matching, UI/accessibility, and acceptance specification.
+   - Keep language-model extraction provisional; nutrition comes only from selected food records or explicit user edits. Require review and atomic confirmation.
+
+5. **AUXILIARY-001 — Widget and Live Activity**
    - Audit user-facing widget and Live Activity surfaces.
    - Improve or explicitly accept them with visual evidence and documented scope.
 
-5. **CONSISTENCY-001**
+6. **CONSISTENCY-001**
    - Compare all accepted screens together.
    - Reconcile terminology, typography, spacing, iconography, chart language, actions, empty states, navigation, and destructive behavior.
 
-6. **ROBUSTNESS-001**
+7. **ROBUSTNESS-001**
    - Exercise primary surfaces in light and dark appearance.
    - Test normal and Accessibility Dynamic Type.
    - Test small and large iPhone layouts.
    - Test long names, extreme values, empty data, and dense data.
 
-7. **FINAL-001**
+8. **FINAL-001**
    - Perform clean build/install/launch and full primary-journey walkthrough.
    - Capture final screenshots under `screenshots/final/`.
    - Compare baseline versus final.
    - Obtain independent whole-product product-design, native-iOS, and nutrition-competitiveness judgments.
    - Fix every critical/high-impact finding or document explicit external blocker.
 
-8. **Closure documentation and gates**
+9. **Closure documentation and gates**
    - Reconcile stale historical/current test statements.
    - Update `STATUS.md`, `SCREENSHOTS.md`, design log, backlog, and experiment records.
    - Create `FINAL-REPORT.md` with actual evidence links.
@@ -99,7 +103,8 @@ For each component:
 | Completion audit | COMPLETE | Original program correctly classified incomplete; this plan created. |
 | STATES-001 | COMPLETE | Accepted attempt 04. Post-fix live remote screenshot proves one `69.7 × 44.0` Retry; scanner permission plus AX3-dark and barcode loading/offline evidence accepted; functional UI target passed 11/11. |
 | NUTRIENTS-001 | COMPLETE | Accepted attempt 01: optional API/cache facts, immutable snapshots, custom entry, coverage-gated balance, 3/3 critical/high visual approval, 140 hostless pass / 2 skips, 167 app-host pass / 2 skips, and 12/12 UI. |
-| REFINE-001 | IN PROGRESS | Attempts 01–02 Slices A–C accepted: Plan references, reminders, hierarchical Settings, direct entry, optional welcome/calculator, Manual migration, and restore complete. Slice D adaptation next. |
+| REFINE-001 | COMPLETE | Attempts 01–03 accepted: Plan references, reminders, hierarchical Settings, direct entry, optional calculator, explicit complete-day evidence, bounded proposal-only adaptation, Adapted source, exact revert, 3/3 visual approval, and 31/31 UI. |
+| BULK-AI-FOOD-001 | NEXT | User-prioritized competitor/Apple research and detailed specification precede implementation. |
 | AUXILIARY-001 | PENDING | No widget/Live Activity visual audit yet. |
 | CONSISTENCY-001 | PENDING | Requires completed component set. |
 | ROBUSTNESS-001 | PENDING | Partial Meal/Amount/Weight evidence only. |
@@ -108,7 +113,7 @@ For each component:
 
 ## Refine
 
-**Execution status:** IN PROGRESS. Attempts 01–02 Slices A–C accepted. Continue autonomously with Slice D evidence-gated adaptation.
+**Execution status:** COMPLETE. Attempts 01–03 Slices A–D accepted.
 
 ### 1. Competitor and safety research
 
@@ -225,4 +230,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-REFINE-001 Slice D pre-code contract is independently approved. Implement staged stable identity, explicit food-day completion, evidence/revision persistence, and serialized mutation foundations before estimator or proposal UI.
+Commit accepted REFINE-001 Slice D. Then execute BULK-AI-FOOD-001 competitor and Apple framework research, write detailed specification, and only then implement typed/dictated bulk logging with provisional editable review.

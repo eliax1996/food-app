@@ -248,7 +248,24 @@ Accepted attempt 02 evidence:
 - ![Manual Plan setup entry](screenshots/REFINE-001/attempt-02-plan-manual-entry.png) — truthful Manual source and visible Calculate a starting goal action.
 - ![Calculated Plan basis](screenshots/REFINE-001/attempt-02-plan-calculated.png) — Calculated source, target/forecast, accepted inputs, and exact breakdown.
 
-Status: **ATTEMPTS 01–02 ACCEPTED — REFINE SLICES A–C COMPLETE**. Final bounded visual/code judgments approved. Validation: 178 hostless pass / 2 skips, 210 app-hosted pass / 2 skips, exact-tree simulator validation passed, functional UI 22/22.
+Accepted attempt 03 evidence:
+
+- ![Today food log in progress](screenshots/REFINE-001/attempt-03-today-food-log-in-progress.png) — explicit status and 44-point Mark Complete action.
+- ![Genuine zero-intake confirmation](screenshots/REFINE-001/attempt-03-today-empty-confirmation.png) — blank log cannot become evidence without explicit zero-intake confirmation.
+- ![Today food log complete](screenshots/REFINE-001/attempt-03-today-food-log-complete.png) — complete status has no redundant action.
+- ![Today food log needs review](screenshots/REFINE-001/attempt-03-today-food-log-needs-review.png) — later food mutation reopens evidence and exposes Reconfirm.
+- ![Needs-review meal context](screenshots/REFINE-001/attempt-03-today-food-log-needs-review-meal.png) — Almond Milk adds exactly 15 kcal and remains visible while log needs review.
+- ![Adaptive collecting](screenshots/REFINE-001/attempt-03-adaptive-collecting.png) — exact window, earliest possible date, counts, and missing-date disclosure.
+- ![Adaptive collecting bottom](screenshots/REFINE-001/attempt-03-adaptive-collecting-bottom.png) — reachable disable/method controls with focused tab bar hidden.
+- ![Adaptive proposal](screenshots/REFINE-001/attempt-03-adaptive-proposal.png) — current goal/source, full candidate, difference, bounded step, and evidence counts.
+- ![Adaptive proposal evidence](screenshots/REFINE-001/attempt-03-adaptive-proposal-evidence.png) — 28/35/42 observed estimates, trends, dates, expiry, and retained pace.
+- ![Adaptive proposal actions](screenshots/REFINE-001/attempt-03-adaptive-proposal-actions.png) — Use, Decline, and Close outcomes are distinguished.
+- ![Applied adaptive goal](screenshots/REFINE-001/attempt-03-adaptive-applied.png) — Adapted source, exact current goal, cadence, and exact revert.
+- ![Applied adaptive goal AX3 dark](screenshots/REFINE-001/attempt-03-adaptive-applied-ax3-dark.png) — large-text dark layout.
+- ![Applied cadence AX3 dark](screenshots/REFINE-001/attempt-03-adaptive-applied-ax3-dark-status.png) — readable Revert and weekly fresh-evidence status.
+- ![Disable confirmation AX3 dark](screenshots/REFINE-001/attempt-03-adaptive-disable-confirmation-ax3-dark.png) — explicit destructive and safe-cancel actions plus evidence-reset consequence.
+
+Status: **ATTEMPTS 01–03 ACCEPTED — REFINE SLICES A–D COMPLETE**. Final architecture/safety/native-UI/history judgments approved; final critical/high visual consensus **3/3 APPROVE**. Validation: 195 hostless pass / 2 skips, 250 app-hosted pass / 2 skips, functional UI 31/31, and exact-tree `just validate 300` passed.
 
 ## SETTINGS-DIRECT-EDIT-001
 

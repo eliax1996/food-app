@@ -8,8 +8,7 @@ nonisolated struct StoredCalculatedPlan: Codable, Equatable, Sendable {
 
 extension UserProfile {
     var planGoalSource: PlanGoalSource {
-        get { PlanGoalSource(rawValue: planGoalSourceRawValue) ?? .manual }
-        set { planGoalSourceRawValue = newValue.rawValue }
+        PlanGoalSource(rawValue: planGoalSourceRawValue) ?? .unknown
     }
 
     var storedCalculatedPlan: StoredCalculatedPlan? {
@@ -17,45 +16,43 @@ extension UserProfile {
         return try? JSONDecoder().decode(StoredCalculatedPlan.self, from: calculatedPlanData)
     }
 
-    func applyCalculatedPlan(
-        _ plan: CalculatedCaloriePlan,
-        measurementSystem: PlanMeasurementSystem,
-        acceptedAt: Date = .now
+    var adaptivePlanState: AdaptivePlanPersistenceState? {
+        AdaptivePlanPersistenceCoding.decode(adaptivePlanData)
+    }
+
+    var adaptivePlanSchemaVersion: Int? {
+        AdaptivePlanPersistenceCoding.decodeUnvalidated(adaptivePlanData)?.schemaVersion
+    }
+
+    var hasCorruptAdaptivePlanPayload: Bool {
+        adaptivePlanData != nil && adaptivePlanState == nil
+    }
+
+    func persistAdaptivePlanState(
+        _ state: AdaptivePlanPersistenceState,
+        access: PlanEvidenceMutationAccess
     ) throws {
-        let stored = StoredCalculatedPlan(
-            plan: plan,
-            measurementSystem: measurementSystem,
-            acceptedAt: acceptedAt
+        replaceAdaptivePlanData(
+            try AdaptivePlanPersistenceCoding.encode(state),
+            access: access
         )
-        calculatedPlanData = try JSONEncoder().encode(stored)
-        currentWeight = plan.input.currentWeightKilograms
-        targetWeight = plan.input.targetWeightKilograms
-        age = plan.input.age
-        dailyCalorieGoal = plan.calorieGoal
-        targetDate = plan.forecastDate ?? acceptedAt
-        planGoalSource = .calculated
+    }
+}
+
+extension AdaptivePlanPersistenceState {
+    mutating func resetCadence() {
+        lastGenerationDay = nil
+        lastGenerationAt = nil
+        lastGenerationEvidenceSignature = nil
+        lastDecisionDay = nil
+        lastDecisionAt = nil
+        lastDecisionEvidenceSignature = nil
     }
 
-    func applyManualGoal(
-        calories: Int,
-        targetWeight: Double,
-        targetDate: Date
-    ) {
-        dailyCalorieGoal = calories
-        self.targetWeight = targetWeight
-        self.targetDate = targetDate
-        planGoalSource = .manual
-    }
-
-    func restoreStoredCalculatedGoal() -> Bool {
-        guard let storedCalculatedPlan else { return false }
-        let plan = storedCalculatedPlan.plan
-        dailyCalorieGoal = plan.calorieGoal
-        targetWeight = plan.input.targetWeightKilograms
-        if let forecastDate = plan.forecastDate {
-            targetDate = forecastDate
-        }
-        planGoalSource = .calculated
-        return true
+    mutating func invalidateEpoch() {
+        checkInsEnabled = false
+        supportedScopeConfirmedAt = nil
+        epoch = nil
+        resetCadence()
     }
 }

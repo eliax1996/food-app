@@ -1,6 +1,6 @@
 # REFINE-001 — Plan, setup, Settings, reminders, and adaptation
 
-**Status:** ATTEMPTS 01–02 ACCEPTED — SLICES A–C COMPLETE; REFINE CONTINUES
+**Status:** ATTEMPTS 01–03 ACCEPTED — SLICES A–D COMPLETE
 **Started:** 2026-08-10
 
 ## Purpose
@@ -166,3 +166,36 @@ Accepted files under `../screenshots/REFINE-001/`:
 #### Decision
 
 **ACCEPTED — ATTEMPT 02 / SLICE C COMPLETE.** Optional setup is explainable, supported-population-bounded, resumable, reversible, and explicit. Manual goals remain untouched until confirmation. REFINE-001 continues with Slice D evidence-gated adaptation.
+
+### Attempt 03 — Slice D
+
+**State:** ACCEPTED
+
+Pre-code contract: `../../docs/adaptive-calorie-plan-specification.md`.
+
+#### Implementation
+
+- Added explicit Today food-log attestation with In progress, Complete, and Needs review states. Empty completion requires separate genuine-zero confirmation; food calorie/date edits reopen evidence while metadata-only edits do not.
+- Added migration-safe stable Plate/Weight identity, immutable evidence snapshots, completion records, goal revisions, Unknown/Adapted sources, epochs, proposal history, and per-day historical goal resolution without fabricating pre-migration context.
+- Centralized evidence and plan writes in one app-owned dedicated-context coordinator. Identity migration uses staged fresh-context verification; proposal generation/application use stable operation keys, signatures, revisions, and compare-and-set checks.
+- Implemented 42 complete days, distributed weights, coincident 28/35/42 estimates, agreement/noise/discrepancy checks, ±100-kcal proposals, 200-kcal trailing cap, fresh weekly cadence, expiry, explicit apply/decline/close, disable confirmation, and exact revert.
+- Goal check-ins expose exact missing date ranges, earliest possible date, progressive method disclosure, neutral limitations, focused hidden tab bar, and normal/AX3-dark layouts.
+
+#### Critical iterations
+
+Reviews found and resolved hidden Revert after disabling, calendar/time-zone epoch lock, stale proposal values, redundant attestations, stale apply retry, missing collection dates, fabricated current-goal history, empty-day ambiguity, destructive disable without confirmation, proposal Close/Decline ambiguity, and sub-44 Today controls. DEBUG fixture setup and UI assertions were tightened after full-suite launch/state races.
+
+#### Evidence
+
+Accepted attempt-03 files under `../screenshots/REFINE-001/` cover Today In progress/genuine-zero confirmation/Complete/Needs review, exact collecting status and bottom actions, proposal details/evidence/actions, applied/revert, AX3 dark, and disable confirmation. Final independent critical/high visual consensus: **3/3 APPROVE**.
+
+#### Validation
+
+- Hostless: **195 passed / 2 opt-in live skips**.
+- App-hosted: **250 passed / 2 opt-in live skips**.
+- Functional UI: **31/31 passed**.
+- Exact-tree `just validate 300`: **passed** (hostless plus simulator build/install/launch).
+
+#### Decision
+
+**ACCEPTED — ATTEMPT 03 / SLICE D COMPLETE.** Adaptation remains evidence-gated, on-device, proposal-only, explicit, reversible, and fail-closed. REFINE-001 is complete; user-prioritized BULK-AI-FOOD-001 begins next.

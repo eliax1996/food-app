@@ -10,7 +10,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
     func testAddingTwoSameDayMeasurementsPreservesBoth() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         let morning = now.addingTimeInterval(-7_200)
         let afternoon = now.addingTimeInterval(-3_600)
 
@@ -23,9 +23,33 @@ final class WeightMeasurementStoreTests: XCTestCase {
         XCTAssertEqual(try currentWeight(in: context), 69.5, "Latest same-day measurement must set current weight.")
     }
 
+    func testOverlappingAddsOnEmptyStoreCreateOneProfile() async throws {
+        let container = try makeContainer()
+        let coordinator = PlanEvidenceMutationCoordinator(
+            modelContainer: container,
+            now: { self.now }
+        )
+        let store = WeightMeasurementStore(coordinator: coordinator)
+
+        let first = Task { @MainActor in
+            try store.add(kilograms: 70, date: now.addingTimeInterval(-120)).stableID
+        }
+        let second = Task { @MainActor in
+            try store.add(kilograms: 71, date: now.addingTimeInterval(-60)).stableID
+        }
+        _ = try await first.value
+        _ = try await second.value
+
+        let verification = ModelContext(container)
+        XCTAssertEqual(try verification.fetch(FetchDescriptor<UserProfile>()).count, 1)
+        let saved = try verification.fetch(FetchDescriptor<WeightEntry>())
+        XCTAssertEqual(saved.count, 2)
+        XCTAssertEqual(Set(saved.map(\.sequence)), Set([1, 2]))
+    }
+
     func testBackdatedAddDoesNotReplaceCurrentWeight() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         try store.add(kilograms: 69, date: now.addingTimeInterval(-3_600))
 
         try store.add(kilograms: 72, date: now.addingTimeInterval(-86_400))
@@ -36,7 +60,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
     func testUpdatingOneMeasurementChangesOnlyThatMeasurementAndCanReorderCurrentWeight() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         let older = try store.add(kilograms: 70, date: now.addingTimeInterval(-7_200))
         let newer = try store.add(kilograms: 69, date: now.addingTimeInterval(-3_600))
 
@@ -51,7 +75,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
     func testDeletingLatestMeasurementReconcilesPreviousMeasurement() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         _ = try store.add(kilograms: 71, date: now.addingTimeInterval(-7_200))
         let latest = try store.add(kilograms: 69, date: now.addingTimeInterval(-3_600))
 
@@ -63,7 +87,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
     func testDeletingLastMeasurementSetsCurrentWeightToZero() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         let onlyEntry = try store.add(kilograms: 70, date: now.addingTimeInterval(-3_600))
 
         _ = try store.delete(onlyEntry)
@@ -74,7 +98,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
     func testRestoreRecoversExactDateValueAndCurrentWeight() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         _ = try store.add(kilograms: 71, date: now.addingTimeInterval(-7_200))
         let timestamp = now.addingTimeInterval(-3_600)
         let latest = try store.add(kilograms: 69.4, date: timestamp)
@@ -95,7 +119,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
     func testSameTimestampOrderingAgreesAcrossProfileAndReload() throws {
         let container = try makeContainer()
         let context = ModelContext(container)
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         let timestamp = now.addingTimeInterval(-3_600)
         let first = try store.add(kilograms: 70, date: timestamp)
         let second = try store.add(kilograms: 72, date: timestamp)
@@ -129,7 +153,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
     func testUpdateAndUndoPreserveOrderingMetadataAndCurrentWeight() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         let timestamp = now.addingTimeInterval(-3_600)
         let first = try store.add(kilograms: 70, date: timestamp)
         _ = try store.add(kilograms: 72, date: timestamp)
@@ -146,7 +170,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
     func testSequenceDoesNotReuseDeletedValue() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         let first = try store.add(kilograms: 70, date: now.addingTimeInterval(-2))
         let second = try store.add(kilograms: 71, date: now.addingTimeInterval(-1))
 
@@ -162,7 +186,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
         let context = try makeContext()
         context.insert(WeightEntry(date: now.addingTimeInterval(-1), kilograms: 70, sequence: .max))
         try context.save()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
 
         XCTAssertThrowsError(try store.add(kilograms: 71, date: now.addingTimeInterval(-2))) { error in
             XCTAssertEqual(error as? WeightHistoryError, .sequenceOverflow)
@@ -172,7 +196,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
     func testFutureAndInvalidAddOrUpdateRejectWithoutPartialPersistence() throws {
         let context = try makeContext()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
         let timestamp = now.addingTimeInterval(-3_600)
         let entry = try store.add(kilograms: 70, date: timestamp)
 
@@ -223,7 +247,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
         ))
         try context.save()
 
-        let entry = try WeightMeasurementStore(modelContext: context, now: { self.now })
+        let entry = try makeStore(for: context)
             .add(kilograms: 70, date: now.addingTimeInterval(-3_600))
 
         XCTAssertEqual(entry.sequence, 76)
@@ -259,7 +283,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
         context.insert(future)
         context.insert(UserProfile(currentWeight: 72.4, nextWeightSequence: 9))
         try context.save()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
 
         let snapshot = try store.delete(future)
         XCTAssertEqual(try currentWeight(in: context), 70)
@@ -270,6 +294,22 @@ final class WeightMeasurementStoreTests: XCTestCase {
         XCTAssertEqual(restored.stableID, future.stableID)
         XCTAssertEqual(restored.sequence, future.sequence)
         XCTAssertEqual(try currentWeight(in: context), 70)
+    }
+
+    func testDedicatedMutationContextDoesNotSaveOrRollBackCallerChanges() throws {
+        let context = try makeContext()
+        context.insert(UserProfile(age: 30))
+        try context.save()
+        let dirtyFood = Food(name: "Unsaved", calories: 1, servingGrams: 1)
+        context.insert(dirtyFood)
+        let store = makeStore(for: context)
+
+        _ = try store.add(kilograms: 70, date: now.addingTimeInterval(-60))
+
+        XCTAssertEqual(try entries(in: context).count, 1)
+        XCTAssertTrue(context.hasChanges)
+        let verification = ModelContext(context.container)
+        XCTAssertTrue(try verification.fetch(FetchDescriptor<Food>()).isEmpty)
     }
 
     func testExistingProfileGoalFieldsRemainUnchanged() throws {
@@ -283,7 +323,7 @@ final class WeightMeasurementStoreTests: XCTestCase {
         )
         context.insert(profile)
         try context.save()
-        let store = WeightMeasurementStore(modelContext: context, now: { self.now })
+        let store = makeStore(for: context)
 
         try store.add(kilograms: 70, date: now.addingTimeInterval(-3_600))
 
@@ -301,10 +341,18 @@ final class WeightMeasurementStoreTests: XCTestCase {
         ModelContext(try makeContainer())
     }
 
+    private func makeStore(for context: ModelContext) -> WeightMeasurementStore {
+        WeightMeasurementStore(coordinator: PlanEvidenceMutationCoordinator(
+            modelContainer: context.container,
+            now: { self.now }
+        ))
+    }
+
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(
             for: WeightEntry.self,
             UserProfile.self,
+            Food.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
     }

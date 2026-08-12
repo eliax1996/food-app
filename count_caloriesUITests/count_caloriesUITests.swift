@@ -2027,6 +2027,7 @@ final class CountCaloriesUITests: XCTestCase {
             planLink.tap()
             assertExists(planView, identifier: "plan-settings", phase: "Plan")
             assertPlanGoal(planGoal, calories: 1_700, phase: "Plan")
+            for _ in 0..<6 where !planFat.exists { app.swipeUp() }
             for (control, identifier) in [
                 (planCarbs, "plan-reference-carbs"),
                 (planProtein, "plan-reference-protein"),
@@ -2131,11 +2132,400 @@ final class CountCaloriesUITests: XCTestCase {
                 )
                 XCTAssertLessThanOrEqual(
                     element.frame.maxY,
-                    tabBar.frame.minY,
-                    "Today layout: \(meal) intersects tab bar; meal=\(element.frame), tab=\(tabBar.frame)."
+                    tabBar.frame.minY + 1,
+                    "Today layout: \(meal) intersects tab bar beyond pixel-rounding tolerance; meal=\(element.frame), tab=\(tabBar.frame)."
                 )
             }
         }
+    }
+
+    @MainActor
+    func testEmptyTodayCompletionBecomesNeedsReviewAfterDefaultMeal() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Today completion launch failed.")
+        let status = app.staticTexts["food-log-status"]
+        let complete = app.buttons["mark-food-log-complete"]
+        let confirmEmpty = app.buttons["I ate nothing today"]
+        let addMeal = app.buttons["add-meal"]
+        let saveMeal = app.buttons["save-meal"]
+
+        XCTContext.runActivity(named: "Attest genuine empty Today") { _ in
+            assertLabel(status, expected: "In progress", phase: "Empty Today")
+            assertHittable(complete, identifier: "mark-food-log-complete", phase: "Empty Today")
+            assertButtonTarget(complete, identifier: "mark-food-log-complete", phase: "Empty Today")
+            complete.tap()
+            assertHittable(confirmEmpty, identifier: "I ate nothing today", phase: "Empty Today confirmation")
+            confirmEmpty.tap()
+            assertLabel(status, expected: "Complete", phase: "Empty attested")
+        }
+
+        XCTContext.runActivity(named: "Save default meal through normal flow") { _ in
+            addMeal.tap()
+            assertHittable(saveMeal, identifier: "save-meal", phase: "Default meal")
+            saveMeal.tap()
+            assertLabel(status, expected: "Needs review", phase: "Saved meal reopens evidence")
+            assertButtonTarget(complete, identifier: "mark-food-log-complete", phase: "Saved meal reopens evidence")
+            XCTAssertEqual(
+                dailyEatenCalories(app.staticTexts["daily-calorie-total"], phase: "Saved meal reopens evidence"),
+                15,
+                "Saved meal changed normal 15 kcal flow."
+            )
+        }
+    }
+
+    @MainActor
+    func testAdaptiveCollectingShowsExactDatesAndEarliestEligibility() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-adaptive-collecting",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = ["UI_TEST_ADAPTIVE_FIXTURE": "collecting"]
+        let settings = app.tabBars.buttons["Settings"]
+        let plan = app.descendants(matching: .any).matching(identifier: "settings-plan-link").firstMatch
+        let checkIns = app.descendants(matching: .any).matching(identifier: "adaptive-plan-link").firstMatch
+        let nextDate = app.descendants(matching: .any)
+            .matching(identifier: "adaptive-next-eligible-date").firstMatch
+        let missingDates = app.descendants(matching: .any)
+            .matching(identifier: "adaptive-missing-food-dates").firstMatch
+        let disable = app.buttons["disable-adaptive-check-ins"]
+        let method = app.descendants(matching: .any)
+            .matching(identifier: "adaptive-method-disclosure").firstMatch
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Adaptive collecting launch failed.")
+        settings.tap()
+        plan.tap()
+        for _ in 0..<4 where !checkIns.isHittable { app.swipeUp() }
+        assertHittable(checkIns, identifier: "adaptive-plan-link", phase: "Collecting plan")
+        checkIns.tap()
+        for _ in 0..<5 where !nextDate.exists { app.swipeUp() }
+        assertExists(nextDate, identifier: "adaptive-next-eligible-date", phase: "Collecting status")
+        assertExists(missingDates, identifier: "adaptive-missing-food-dates", phase: "Collecting status")
+        XCTAssertTrue(
+            missingDates.label.contains("42"),
+            "Collecting status must disclose exact missing-date count; \(diagnostic(for: missingDates))"
+        )
+        XCTAssertFalse(app.tabBars.firstMatch.exists, "Focused check-in transaction must hide tab bar.")
+        for _ in 0..<12 where !disable.isHittable { app.swipeUp() }
+        assertHittable(disable, identifier: "disable-adaptive-check-ins", phase: "Collecting bottom")
+        for _ in 0..<4 where !method.isHittable { app.swipeUp() }
+        assertHittable(method, identifier: "adaptive-method-disclosure", phase: "Collecting bottom")
+    }
+
+    @MainActor
+    func testAdaptiveProposalAppliesExplicitGoal() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-adaptive-proposal",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = ["UI_TEST_ADAPTIVE_FIXTURE": "proposal"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Adaptive fixture launch failed.")
+        let settings = app.tabBars.buttons["Settings"]
+        let plan = app.descendants(matching: .any).matching(identifier: "settings-plan-link").firstMatch
+        let checkIns = app.descendants(matching: .any).matching(identifier: "adaptive-plan-link").firstMatch
+        let goal = app.descendants(matching: .any).matching(identifier: "adaptive-current-calorie-goal").firstMatch
+        let source = app.descendants(matching: .any).matching(identifier: "adaptive-plan-source").firstMatch
+        let use = app.buttons["use-adaptive-proposal"]
+        let revert = app.buttons["revert-adaptive-proposal"]
+        var oldGoal = 0
+
+        XCTContext.runActivity(named: "Open deterministic proposal") { _ in
+            settings.tap()
+            assertHittable(plan, identifier: "settings-plan-link", phase: "Settings")
+            plan.tap()
+            for _ in 0..<4 where !checkIns.isHittable { app.swipeUp() }
+            assertHittable(checkIns, identifier: "adaptive-plan-link", phase: "Plan")
+            checkIns.tap()
+            oldGoal = calorieNumber(goal, phase: "Proposal old goal")
+            XCTAssertTrue(source.label.hasSuffix("Calculated"), "Proposal source wrong; \(diagnostic(for: source))")
+            for _ in 0..<6 where !use.isHittable { app.swipeUp() }
+            assertHittable(use, identifier: "use-adaptive-proposal", phase: "Proposal")
+        }
+
+        XCTContext.runActivity(named: "Explicitly apply proposal") { _ in
+            use.tap()
+            let confirmations = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Use "))
+            let confirmation = confirmations.allElementsBoundByIndex.first(where: \.isHittable)
+            XCTAssertNotNil(confirmation, "Apply confirmation missing; \(diagnostic(for: confirmations))")
+            confirmation?.tap()
+            let transactionError = app.descendants(matching: .any)
+                .matching(identifier: "adaptive-transaction-error")
+                .firstMatch
+            if transactionError.waitForExistence(timeout: 2) {
+                XCTFail("Adaptive apply failed: \(transactionError.label)")
+            }
+            for _ in 0..<6 where !revert.isHittable { app.swipeDown() }
+            assertHittable(revert, identifier: "revert-adaptive-proposal", phase: "Applied")
+            XCTAssertTrue(source.label.hasSuffix("Adapted"), "Applied source wrong; \(diagnostic(for: source))")
+            XCTAssertNotEqual(calorieNumber(goal, phase: "Applied goal"), oldGoal, "Applied goal did not change.")
+            XCTAssertEqual(
+                Int(revert.label.filter(\.isNumber)),
+                oldGoal,
+                "Revert must name exact prior goal; \(diagnostic(for: revert))"
+            )
+        }
+    }
+
+    @MainActor
+    func testAdaptiveProposalDisclosesRemainingPartialStepLimit() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-adaptive-partial-cap",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = ["UI_TEST_ADAPTIVE_FIXTURE": "partial-cap"]
+        let settings = app.tabBars.buttons["Settings"]
+        let plan = app.descendants(matching: .any).matching(identifier: "settings-plan-link").firstMatch
+        let checkIns = app.descendants(matching: .any).matching(identifier: "adaptive-plan-link").firstMatch
+        let source = app.descendants(matching: .any).matching(identifier: "adaptive-plan-source").firstMatch
+        let goal = app.descendants(matching: .any).matching(identifier: "adaptive-current-calorie-goal").firstMatch
+        let proposedGoal = app.descendants(matching: .any).matching(identifier: "adaptive-proposed-goal").firstMatch
+        let limits = app.descendants(matching: .any).matching(identifier: "adaptive-change-limits").firstMatch
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Partial-cap fixture launch failed.")
+        settings.tap()
+        plan.tap()
+        for _ in 0..<4 where !checkIns.isHittable { app.swipeUp() }
+        checkIns.tap()
+        assertLabel(source, expected: "Source, Calculated", phase: "Partial-cap source")
+        let currentGoal = calorieNumber(goal, phase: "Partial-cap current goal")
+        for _ in 0..<7 where !limits.exists { app.swipeUp() }
+        assertExists(limits, identifier: "adaptive-change-limits", phase: "Partial-cap proposal")
+        XCTAssertTrue(
+            limits.label.contains("120 of 200 kcal used in 28 days")
+                && limits.label.contains("80 kcal maximum now"),
+            "Partial cap disclosure wrong; \(diagnostic(for: limits))"
+        )
+        XCTAssertEqual(
+            abs(calorieNumber(proposedGoal, phase: "Partial-cap proposed goal") - currentGoal),
+            80,
+            "Proposed step exceeded remaining 28-day allowance."
+        )
+    }
+
+    @MainActor
+    func testAdaptiveAppliedFixtureRevertsExactGoal() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-adaptive-applied",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = ["UI_TEST_ADAPTIVE_FIXTURE": "applied"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Adaptive applied fixture launch failed.")
+        let settings = app.tabBars.buttons["Settings"]
+        let plan = app.descendants(matching: .any).matching(identifier: "settings-plan-link").firstMatch
+        let checkIns = app.descendants(matching: .any).matching(identifier: "adaptive-plan-link").firstMatch
+        let goal = app.descendants(matching: .any).matching(identifier: "adaptive-current-calorie-goal").firstMatch
+        let source = app.descendants(matching: .any).matching(identifier: "adaptive-plan-source").firstMatch
+        let revert = app.buttons["revert-adaptive-proposal"]
+        let disable = app.buttons["disable-adaptive-check-ins"]
+        let use = app.buttons["use-adaptive-proposal"]
+
+        settings.tap()
+        plan.tap()
+        for _ in 0..<4 where !checkIns.isHittable { app.swipeUp() }
+        checkIns.tap()
+        for _ in 0..<7 where !use.isHittable { app.swipeUp() }
+        assertHittable(use, identifier: "use-adaptive-proposal", phase: "Applied fixture setup")
+        use.tap()
+        let useConfirmations = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Use "))
+        let useConfirmation = useConfirmations.allElementsBoundByIndex.first(where: \.isHittable)
+        XCTAssertNotNil(useConfirmation, "Applied fixture confirmation missing; \(diagnostic(for: useConfirmations))")
+        useConfirmation?.tap()
+        for _ in 0..<7 where !source.exists { app.swipeDown() }
+        assertLabel(source, expected: "Source, Adapted", phase: "Applied fixture")
+        for _ in 0..<5 where !revert.isHittable { app.swipeUp() }
+        assertHittable(revert, identifier: "revert-adaptive-proposal", phase: "Applied fixture")
+        let priorGoal = Int(revert.label.filter(\.isNumber)) ?? 0
+        XCTAssertGreaterThan(priorGoal, 0, "Revert does not name prior goal; \(diagnostic(for: revert))")
+        XCTAssertNotEqual(calorieNumber(goal, phase: "Applied fixture goal"), priorGoal)
+        for _ in 0..<6 where !disable.isHittable { app.swipeUp() }
+        assertHittable(disable, identifier: "disable-adaptive-check-ins", phase: "Applied fixture")
+        disable.tap()
+        let disableConfirmations = app.buttons.matching(
+            NSPredicate(format: "label == %@", "Disable goal check-ins")
+        )
+        let disableConfirmation = disableConfirmations.allElementsBoundByIndex.first(where: \.isHittable)
+        XCTAssertNotNil(disableConfirmation, "Disable confirmation missing; \(diagnostic(for: disableConfirmations))")
+        disableConfirmation?.tap()
+        for _ in 0..<6 where !revert.isHittable { app.swipeDown() }
+        assertHittable(revert, identifier: "revert-adaptive-proposal", phase: "Disabled applied fixture")
+        revert.tap()
+        XCTAssertEqual(calorieNumber(goal, phase: "Reverted goal"), priorGoal, "Revert did not restore exact old goal.")
+        assertLabel(source, expected: "Source, Calculated", phase: "Reverted source")
+    }
+
+    @MainActor
+    func testAdaptiveProposalCloseKeepsGoalUnchanged() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-adaptive-proposal",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = ["UI_TEST_ADAPTIVE_FIXTURE": "proposal"]
+        let settings = app.tabBars.buttons["Settings"]
+        let plan = app.descendants(matching: .any).matching(identifier: "settings-plan-link").firstMatch
+        let checkIns = app.descendants(matching: .any).matching(identifier: "adaptive-plan-link").firstMatch
+        let adaptiveGoal = app.descendants(matching: .any)
+            .matching(identifier: "adaptive-current-calorie-goal").firstMatch
+        let planGoal = app.descendants(matching: .any)
+            .matching(identifier: "plan-current-calorie-goal").firstMatch
+        let planSource = app.descendants(matching: .any)
+            .matching(identifier: "plan-goal-source").firstMatch
+        let source = app.descendants(matching: .any).matching(identifier: "adaptive-plan-source").firstMatch
+        let close = app.buttons["close-adaptive-proposal"]
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Adaptive close launch failed.")
+        settings.tap()
+        plan.tap()
+        for _ in 0..<4 where !checkIns.isHittable { app.swipeUp() }
+        checkIns.tap()
+        assertExists(source, identifier: "adaptive-plan-source", phase: "Close proposal source")
+        XCTAssertTrue(source.label.hasSuffix("Calculated"), "Close proposal source wrong; \(diagnostic(for: source))")
+        let originalGoal = calorieNumber(adaptiveGoal, phase: "Close proposal initial")
+        for _ in 0..<7 where !close.isHittable { app.swipeUp() }
+        assertHittable(close, identifier: "close-adaptive-proposal", phase: "Close proposal")
+        close.tap()
+        for _ in 0..<6 where !planGoal.exists { app.swipeDown() }
+        assertPlanGoal(planGoal, calories: originalGoal, phase: "Close preserved goal")
+        XCTAssertTrue(
+            planSource.label.hasSuffix("Calculated"),
+            "Close changed goal source; \(diagnostic(for: planSource))"
+        )
+    }
+
+    @MainActor
+    func testAdaptiveProposalDeclineKeepsGoalAndStartsCadence() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-adaptive-proposal",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = ["UI_TEST_ADAPTIVE_FIXTURE": "proposal"]
+        let settings = app.tabBars.buttons["Settings"]
+        let plan = app.descendants(matching: .any).matching(identifier: "settings-plan-link").firstMatch
+        let checkIns = app.descendants(matching: .any).matching(identifier: "adaptive-plan-link").firstMatch
+        let adaptiveGoal = app.descendants(matching: .any)
+            .matching(identifier: "adaptive-current-calorie-goal").firstMatch
+        let source = app.descendants(matching: .any).matching(identifier: "adaptive-plan-source").firstMatch
+        let decline = app.buttons["decline-adaptive-proposal"]
+        let cadence = app.descendants(matching: .any)
+            .matching(identifier: "adaptive-cadence-status").firstMatch
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Adaptive decline launch failed.")
+        settings.tap()
+        plan.tap()
+        for _ in 0..<4 where !checkIns.isHittable { app.swipeUp() }
+        checkIns.tap()
+        assertExists(source, identifier: "adaptive-plan-source", phase: "Decline proposal source")
+        XCTAssertTrue(
+            source.label.hasSuffix("Calculated"),
+            "Decline proposal source wrong; \(diagnostic(for: source))"
+        )
+        let originalGoal = calorieNumber(adaptiveGoal, phase: "Decline proposal initial")
+        for _ in 0..<7 where !decline.isHittable { app.swipeUp() }
+        assertHittable(decline, identifier: "decline-adaptive-proposal", phase: "Decline proposal")
+        decline.tap()
+        let confirm = app.buttons["Decline proposal"]
+        assertHittable(confirm, identifier: "Decline proposal confirmation", phase: "Decline proposal")
+        confirm.tap()
+        for _ in 0..<7 where !cadence.exists { app.swipeDown() }
+        assertExists(cadence, identifier: "adaptive-cadence-status", phase: "Declined proposal")
+        XCTAssertEqual(
+            calorieNumber(adaptiveGoal, phase: "Declined proposal goal"),
+            originalGoal,
+            "Decline changed current goal."
+        )
+        assertAbsent(
+            app.buttons["use-adaptive-proposal"],
+            identifier: "use-adaptive-proposal",
+            phase: "Declined proposal"
+        )
+    }
+
+    @MainActor
+    func testUnknownSourceIsPreservedAndNeverOffersProposal() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-adaptive-unknown",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = ["UI_TEST_ADAPTIVE_FIXTURE": "unknown"]
+        let settings = app.tabBars.buttons["Settings"]
+        let plan = app.descendants(matching: .any).matching(identifier: "settings-plan-link").firstMatch
+        let checkIns = app.descendants(matching: .any).matching(identifier: "adaptive-plan-link").firstMatch
+        let source = app.descendants(matching: .any).matching(identifier: "adaptive-plan-source").firstMatch
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Unknown-source launch failed.")
+        settings.tap()
+        plan.tap()
+        for _ in 0..<4 where !checkIns.isHittable { app.swipeUp() }
+        checkIns.tap()
+        assertLabel(source, expected: "Source, Unknown source", phase: "Unknown source")
+        assertHittable(
+            app.buttons["adaptive-review-calculated-setup"],
+            identifier: "adaptive-review-calculated-setup",
+            phase: "Unknown source"
+        )
+        assertAbsent(
+            app.buttons["use-adaptive-proposal"],
+            identifier: "use-adaptive-proposal",
+            phase: "Unknown source"
+        )
+    }
+
+    @MainActor
+    func testManualFixtureNeverShowsAdaptiveProposal() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-ui-testing-adaptive-manual",
+            "-AppleLanguages", "(en)", "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = ["UI_TEST_ADAPTIVE_FIXTURE": "manual"]
+        let settings = app.tabBars.buttons["Settings"]
+        let plan = app.descendants(matching: .any).matching(identifier: "settings-plan-link").firstMatch
+        let checkIns = app.descendants(matching: .any).matching(identifier: "adaptive-plan-link").firstMatch
+        let source = app.descendants(matching: .any).matching(identifier: "adaptive-plan-source").firstMatch
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout), "Manual fixture launch failed.")
+        settings.tap()
+        plan.tap()
+        for _ in 0..<4 where !checkIns.isHittable { app.swipeUp() }
+        checkIns.tap()
+        assertExists(source, identifier: "adaptive-plan-source", phase: "Manual check-ins")
+        XCTAssertTrue(source.label.hasSuffix("Manual"), "Manual fixture source wrong; \(diagnostic(for: source))")
+        assertHittable(
+            app.buttons["adaptive-review-calculated-setup"],
+            identifier: "adaptive-review-calculated-setup",
+            phase: "Manual check-ins"
+        )
+        assertAbsent(
+            app.buttons["use-adaptive-proposal"],
+            identifier: "use-adaptive-proposal",
+            phase: "Manual check-ins"
+        )
+    }
+
+    @MainActor
+    private func calorieNumber(_ element: XCUIElement, phase: String) -> Int {
+        assertExists(element, identifier: "calorie goal", phase: phase)
+        let digits = element.label.filter(\.isNumber)
+        guard let value = Int(digits), value > 0 else {
+            XCTFail("\(phase): could not parse calorie goal; \(diagnostic(for: element))")
+            return 0
+        }
+        return value
     }
 
     @MainActor

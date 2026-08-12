@@ -8,7 +8,7 @@ import XCTest
 
 final class ProgressHistoryTests: XCTestCase {
     func testEmptyProgressHasNoSummariesOrWeightValues() {
-        let calories = ProgressHistory.calorieProgress(summaries: [], dailyGoal: 1_700)
+        let calories = ProgressHistory.calorieProgress(summaries: [], goalRevisions: [])
         let weights = ProgressHistory.weightProgress(entries: [], targetWeight: 68)
 
         XCTAssertEqual(calories, CalorieProgress(summaries: [], averageCalories: nil, goalDifference: nil))
@@ -22,7 +22,8 @@ final class ProgressHistoryTests: XCTestCase {
     func testCalorieAverageIsAboveGoal() {
         let progress = ProgressHistory.calorieProgress(
             summaries: [summary(day: 1, calories: 200), summary(day: 2, calories: 300)],
-            dailyGoal: 200
+            goalRevisions: [revision(day: 1, sequence: 1, calories: 200)],
+            calendar: calendar
         )
 
         XCTAssertEqual(progress.averageCalories, 250)
@@ -32,7 +33,8 @@ final class ProgressHistoryTests: XCTestCase {
     func testCalorieAverageIsBelowGoal() {
         let progress = ProgressHistory.calorieProgress(
             summaries: [summary(day: 1, calories: 100), summary(day: 2, calories: 200)],
-            dailyGoal: 200
+            goalRevisions: [revision(day: 1, sequence: 1, calories: 200)],
+            calendar: calendar
         )
 
         XCTAssertEqual(progress.averageCalories, 150)
@@ -42,17 +44,42 @@ final class ProgressHistoryTests: XCTestCase {
     func testCalorieAverageCanEqualGoal() {
         let progress = ProgressHistory.calorieProgress(
             summaries: [summary(day: 1, calories: 150), summary(day: 2, calories: 250)],
-            dailyGoal: 200
+            goalRevisions: [revision(day: 1, sequence: 1, calories: 200)],
+            calendar: calendar
         )
 
         XCTAssertEqual(progress.averageCalories, 200)
         XCTAssertEqual(progress.goalDifference, 0)
     }
 
+    func testHistoricalGoalContextUsesHighestEffectiveSequenceWithoutFabricatingEarlierDays() {
+        let progress = ProgressHistory.calorieProgress(
+            summaries: [
+                summary(day: 1, calories: 1_700),
+                summary(day: 2, calories: 1_800),
+                summary(day: 3, calories: 1_900),
+                summary(day: 4, calories: 2_100)
+            ],
+            goalRevisions: [
+                revision(day: 2, sequence: 1, calories: 1_800),
+                revision(day: 3, sequence: 2, calories: 2_000),
+                revision(day: 3, sequence: 3, calories: 1_900),
+                revision(day: 5, sequence: 4, calories: 5_000)
+            ],
+            calendar: calendar
+        )
+
+        XCTAssertEqual(progress.goalContexts.map(\.calories), [nil, 1_800, 1_900, 1_900])
+        XCTAssertEqual(progress.comparableGoalDays, 3)
+        XCTAssertEqual(progress.missingGoalDays, 1)
+        XCTAssertEqual(progress.goalDifference ?? .nan, 200.0 / 3.0, accuracy: 0.000_001)
+    }
+
     func testCaloriesAreSortedAndLimitedToMostRecentSevenDays() {
         let progress = ProgressHistory.calorieProgress(
             summaries: (1...9).reversed().map { summary(day: $0, calories: $0 * 100) },
-            dailyGoal: nil
+            goalRevisions: [],
+            calendar: calendar
         )
 
         XCTAssertEqual(progress.summaries.map(\.date), (3...9).map { date(day: $0) })
@@ -66,7 +93,8 @@ final class ProgressHistoryTests: XCTestCase {
                 summary(day: 2, calories: 200),
                 summary(day: 3, calories: 300)
             ],
-            dailyGoal: 200
+            goalRevisions: [revision(day: 1, sequence: 1, calories: 200)],
+            calendar: calendar
         )
 
         XCTAssertEqual(progress.summaries.map(\.calories), [200, 300])
@@ -77,7 +105,8 @@ final class ProgressHistoryTests: XCTestCase {
     func testInvalidCalorieLimitProducesEmptyProgress() {
         let progress = ProgressHistory.calorieProgress(
             summaries: [summary(day: 1, calories: 200)],
-            dailyGoal: 200,
+            goalRevisions: [revision(day: 1, sequence: 1, calories: 200)],
+            calendar: calendar,
             limit: 0
         )
 
@@ -90,7 +119,8 @@ final class ProgressHistoryTests: XCTestCase {
                 summary(day: 1, calories: Int.max),
                 summary(day: 2, calories: Int.max)
             ],
-            dailyGoal: nil
+            goalRevisions: [],
+            calendar: calendar
         )
 
         XCTAssertEqual(progress.averageCalories, Double(Int.max))
@@ -228,6 +258,10 @@ final class ProgressHistoryTests: XCTestCase {
 
     private func summary(day: Int, calories: Int) -> DailyCalorieSummary {
         DailyCalorieSummary(date: date(day: day), calories: calories)
+    }
+
+    private func revision(day: Int, sequence: Int64, calories: Int) -> CalorieGoalRevisionPoint {
+        CalorieGoalRevisionPoint(effectiveDate: date(day: day), sequence: sequence, calories: calories)
     }
 
     private func point(day: Int, kilograms: Double) -> WeightProgressPoint {

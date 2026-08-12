@@ -3,7 +3,6 @@ import SwiftUI
 import os
 
 struct ConfigView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Query private var profiles: [UserProfile]
     @Query(sort: \PlateEntry.date, order: .reverse) private var entries: [PlateEntry]
@@ -30,7 +29,7 @@ struct ConfigView: View {
                                 title: "Plan",
                                 systemImage: "target",
                                 value: "\(profile.dailyCalorieGoal.formatted()) kcal",
-                                detail: "\(profile.planGoalSource == .calculated ? "Calculated estimate" : "Manual goal") · Target \(weightText(planTargetWeight(profile)))"
+                                detail: "\(planGoalSourceSummary(profile.planGoalSource)) · Target \(weightText(planTargetWeight(profile)))"
                             )
                         }
                         .accessibilityIdentifier("settings-plan-link")
@@ -91,7 +90,6 @@ struct ConfigView: View {
             .navigationTitle("Settings")
             .accessibilityIdentifier("settings-root")
             .onAppear {
-                ensureProfile()
                 reminderPreferences = .stored()
                 synchronizeReminders()
             }
@@ -130,20 +128,6 @@ struct ConfigView: View {
             return "Notification access not requested"
         case .denied:
             return "Selections saved · delivery off"
-        }
-    }
-
-    private func ensureProfile() {
-        guard profile == nil else { return }
-        modelContext.insert(UserProfile())
-        do {
-            try modelContext.save()
-        } catch {
-            modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to create settings profile: \(error.localizedDescription, privacy: .public)"
-            )
-            errorMessage = "Profile settings could not be prepared. Try again."
         }
     }
 
@@ -205,7 +189,7 @@ private struct SettingsSummaryRow: View {
 }
 
 private func planTargetWeight(_ profile: UserProfile) -> Double {
-    if profile.planGoalSource == .calculated,
+    if profile.planGoalSource == .calculated || profile.planGoalSource == .adapted,
        let stored = profile.storedCalculatedPlan {
         return stored.plan.input.targetWeightKilograms
     }
@@ -220,6 +204,6 @@ private func weightText(_ kilograms: Double) -> String {
 #if DEBUG
 #Preview("Settings") {
     ConfigView()
-        .modelContainer(PreviewData.makeContainer())
+        .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 #endif

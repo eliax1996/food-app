@@ -28,7 +28,12 @@ struct ProfileSettingsView: View {
             }
 
             Section("Plan use") {
-                if profile.storedCalculatedPlan == nil {
+                LabeledContent("Goal source", value: planGoalSourceTitle(profile.planGoalSource))
+                    .accessibilityIdentifier("profile-plan-source")
+                if profile.planGoalSource == .unknown {
+                    Text("Source is unknown, so goal check-ins are paused. Review calculated setup from Plan before enabling them.")
+                        .foregroundStyle(.secondary)
+                } else if profile.storedCalculatedPlan == nil {
                     Text("Age is saved with your manual profile. Calculated setup asks for every additional required input before making an estimate.")
                         .foregroundStyle(.secondary)
                 } else {
@@ -68,6 +73,8 @@ struct ProfileSettingsView: View {
 private struct ProfileEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
+    @Environment(\.calendar) private var calendar
 
     let profile: UserProfile
 
@@ -118,9 +125,12 @@ private struct ProfileEditor: View {
     }
 
     private func save() {
-        profile.age = age
         do {
-            try modelContext.save()
+            guard let mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            mutationCoordinator.synchronizeCalendar(calendar)
+            try mutationCoordinator.changeProfileContext(age: age)
             dismiss()
         } catch {
             modelContext.rollback()
@@ -150,6 +160,6 @@ private func heightText(
     NavigationStack {
         ProfileSettingsView(profile: UserProfile())
     }
-    .modelContainer(PreviewData.makeContainer())
+    .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 #endif

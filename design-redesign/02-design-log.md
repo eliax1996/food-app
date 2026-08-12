@@ -523,4 +523,14 @@ Retained MacroFactor, Foodnoms, Sanghvi, and Slice C evidence now resolves adapt
 
 Independent method review blocked selected-day intake bias, mismatched weight/intake periods, and stale new evidence. Architecture review blocked unstable identity, incomplete snapshots, direct plan mutation, unknown-source mislabeling, ambiguous same-day revisions, generation races, and retry identity. Contract now requires all-day evidence, piecewise interior-knot trend, full signatures, fail-closed identity migration, Unknown/Adapted sources, one serialized evidence/plan gateway, compare-and-set generation, deterministic operation keys, and exact revert. Final method and architecture reviews: **APPROVE**.
 
-Pre-code specification: `../docs/adaptive-calorie-plan-specification.md`. Implementation remains pending.
+Pre-code specification: `../docs/adaptive-calorie-plan-specification.md`.
+
+### Attempt 03 — accepted implementation
+
+Today now records explicit In progress / Complete / Needs review evidence. Empty completion requires genuine-zero confirmation; calorie/date mutations reopen evidence. Stable Plate/Weight identity, canonical snapshots, goal revisions, epochs, Unknown/Adapted sources, operation keys, full signatures, and one dedicated-context mutation coordinator make migration, proposal generation, apply, decline, and exact revert fail closed.
+
+Goal check-ins show exact collection dates and earliest eligibility, then only propose after all 42 complete days plus distributed agreeing 28/35/42 weight/intake windows. Steps remain at most 100 kcal and 200 kcal per trailing 28 days. Apply is explicit; Close preserves proposal; Decline retires it until fresh evidence; Disable confirms evidence-period reset; exact Revert remains available while revision current. Progress resolves each historical day against highest-sequence effective goal revision and labels earlier context unavailable.
+
+Critical review iterations fixed hidden Revert after disable, calendar/time-zone epoch rollover, proposal-value revalidation, stale apply retry, redundant/non-energy staleness, exact collecting guidance, empty-day ambiguity, destructive confirmations, focused tab-bar overlap, and 44-point Today controls. Attempt-03 evidence under `../screenshots/REFINE-001/` received final **3/3 APPROVE**. Hostless 195/2 skips, app-hosted 250/2 skips, and functional UI 31/31 passed.
+
+**ACCEPTED — ATTEMPT 03 / SLICE D COMPLETE. REFINE-001 COMPLETE.** Next: user-prioritized BULK-AI-FOOD-001 research/specification before implementation.

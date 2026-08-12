@@ -3,6 +3,8 @@ import Foundation
 nonisolated enum PlanGoalSource: String, Codable, CaseIterable, Sendable {
     case manual
     case calculated
+    case adapted
+    case unknown
 }
 
 nonisolated enum PlanGoalMode: String, Codable, CaseIterable, Sendable {

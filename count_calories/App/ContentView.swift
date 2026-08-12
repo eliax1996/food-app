@@ -106,6 +106,6 @@ private enum AppTab: Hashable {
 #if DEBUG
 #Preview("Complete app") {
     ContentView()
-        .modelContainer(PreviewData.makeContainer())
+        .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 #endif

@@ -4,6 +4,7 @@ import SwiftUI
 
 struct WeightLogView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
     @Environment(\.calendar) private var calendar
     @Query(sort: \WeightEntry.date, order: .reverse) private var rawEntries: [WeightEntry]
     @Query private var profiles: [UserProfile]
@@ -321,7 +322,10 @@ struct WeightLogView: View {
         kilograms: Double,
         date: Date
     ) throws {
-        let store = WeightMeasurementStore(modelContext: modelContext)
+        guard let mutationCoordinator else {
+            throw PlanEvidenceMutationError.coordinatorUnavailable
+        }
+        let store = WeightMeasurementStore(coordinator: mutationCoordinator)
         if let entry {
             try store.update(entry, kilograms: kilograms, date: date)
         } else {
@@ -333,7 +337,12 @@ struct WeightLogView: View {
     @MainActor
     private func deleteWeight(_ entry: WeightEntry) {
         do {
-            deletedMeasurements.append(try WeightMeasurementStore(modelContext: modelContext).delete(entry))
+            guard let mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            deletedMeasurements.append(
+                try WeightMeasurementStore(coordinator: mutationCoordinator).delete(entry)
+            )
             rescheduleReminders()
         } catch {
             operationError = .delete
@@ -345,7 +354,10 @@ struct WeightLogView: View {
         guard let deletedMeasurement = deletedMeasurements.last else { return }
 
         do {
-            _ = try WeightMeasurementStore(modelContext: modelContext).restore(deletedMeasurement)
+            guard let mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            _ = try WeightMeasurementStore(coordinator: mutationCoordinator).restore(deletedMeasurement)
             deletedMeasurements.removeLast()
             rescheduleReminders()
         } catch {
@@ -700,12 +712,12 @@ private struct WeightEditor: View {
 #if DEBUG
 #Preview("Weight Log") {
     WeightLogView(onViewProgress: {})
-        .modelContainer(PreviewData.makeContainer())
+        .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 
 #Preview("Weight Log — Empty") {
     WeightLogView(onViewProgress: {})
-        .modelContainer(PreviewData.makeContainer(state: .empty))
+        .previewPlanEvidenceContainer(PreviewData.makeContainer(state: .empty))
 }
 
 #Preview("Weight Editor") {

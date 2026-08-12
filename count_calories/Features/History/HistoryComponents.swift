@@ -12,12 +12,11 @@ struct CalorieProgressChart: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let progress: CalorieProgress
-    let dailyGoal: Int?
 
     private var chartMaximum: Double {
         let values = progress.summaries.map { Double($0.calories) }
-        let goal = dailyGoal.map(Double.init) ?? 0
-        return max(values.max() ?? 0, goal, 1) * 1.15
+        let goals = progress.goalContexts.compactMap { $0.calories.map(Double.init) }
+        return max(values.max() ?? 0, goals.max() ?? 0, 1) * 1.15
     }
 
     var body: some View {
@@ -31,15 +30,17 @@ struct CalorieProgressChart: View {
                 .cornerRadius(4)
             }
 
-            if let dailyGoal, dailyGoal > 0 {
-                RuleMark(y: .value("Daily goal", dailyGoal))
+            ForEach(progress.goalContexts, id: \.date) { context in
+                if let goal = context.calories {
+                    LineMark(
+                        x: .value("Goal date", context.date, unit: .day),
+                        y: .value("Historical daily goal", goal),
+                        series: .value("Goal series", "Historical goal")
+                    )
                     .foregroundStyle(.secondary)
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 4]))
-                    .annotation(position: .top, alignment: .trailing) {
-                        Text("Goal")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                    .interpolationMethod(.stepEnd)
+                }
             }
         }
         .chartYScale(domain: 0...chartMaximum)
@@ -71,7 +72,10 @@ struct CalorieProgressChart: View {
         let count = progress.summaries.count
         let dayLabel = count == 1 ? "recorded day" : "recorded days"
         let average = progress.averageCalories?.formatted(.number.precision(.fractionLength(0))) ?? "no"
-        return "Calories trend for \(count) \(dayLabel). Average \(average) calories."
+        let goalContext = progress.comparableGoalDays == 0
+            ? "Historical goal context unavailable."
+            : "Historical goal context available for \(progress.comparableGoalDays) of \(count) days."
+        return "Calories trend for \(count) \(dayLabel). Average \(average) calories. \(goalContext)"
     }
 }
 

@@ -2,6 +2,7 @@ import XCTest
 #if SWIFT_PACKAGE
 @testable import TrackingCore
 #else
+import SwiftData
 @testable import count_calories
 #endif
 
@@ -151,6 +152,7 @@ final class CaloriePlanSetupStoreTests: XCTestCase {
 }
 
 #if !SWIFT_PACKAGE
+@MainActor
 final class CalculatedPlanProfileTests: XCTestCase {
     func testExistingProfileDefaultsToManualWithNoFabricatedCalculation() {
         let profile = UserProfile(dailyCalorieGoal: 1_700)
@@ -161,7 +163,10 @@ final class CalculatedPlanProfileTests: XCTestCase {
     }
 
     func testCalculatedAcceptanceManualOverrideAndRestoreAreExplicit() throws {
-        let profile = UserProfile(dailyCalorieGoal: 1_700)
+        let (context, coordinator) = try makeCoordinator()
+        let initialProfile = UserProfile(dailyCalorieGoal: 1_700)
+        context.insert(initialProfile)
+        try context.save()
         let input = CaloriePlanInput(
             goalMode: .lose,
             currentWeightKilograms: 70,
@@ -179,7 +184,7 @@ final class CalculatedPlanProfileTests: XCTestCase {
             return XCTFail("Expected recommendation, got \(evaluation)")
         }
 
-        try profile.applyCalculatedPlan(
+        let profile = try coordinator.acceptCalculatedPlan(
             plan,
             measurementSystem: .metric,
             acceptedAt: Date(timeIntervalSince1970: 1_700_000_000)
@@ -189,28 +194,44 @@ final class CalculatedPlanProfileTests: XCTestCase {
         XCTAssertEqual(profile.storedCalculatedPlan?.plan, plan)
 
         let manualDate = Date(timeIntervalSince1970: 1_900_000_000)
-        profile.applyManualGoal(
+        try coordinator.editManualPlan(
             calories: 1_900,
             targetWeight: 64,
-            targetDate: manualDate
+            targetDate: manualDate,
+            changedAt: Date(timeIntervalSince1970: 1_800_000_000)
         )
         XCTAssertEqual(profile.planGoalSource, .manual)
         XCTAssertEqual(profile.dailyCalorieGoal, 1_900)
         XCTAssertEqual(profile.storedCalculatedPlan?.plan, plan)
 
-        XCTAssertTrue(profile.restoreStoredCalculatedGoal())
+        XCTAssertTrue(try coordinator.restoreCalculatedPlan(
+            restoredAt: Date(timeIntervalSince1970: 2_000_000_000)
+        ))
         XCTAssertEqual(profile.planGoalSource, .calculated)
         XCTAssertEqual(profile.dailyCalorieGoal, plan.calorieGoal)
         XCTAssertEqual(profile.targetWeight, plan.input.targetWeightKilograms)
         XCTAssertEqual(profile.targetDate, plan.forecastDate)
     }
 
-    func testRestoreWithoutStoredCalculationChangesNothing() {
+    func testRestoreWithoutStoredCalculationChangesNothing() throws {
+        let (context, coordinator) = try makeCoordinator()
         let profile = UserProfile(dailyCalorieGoal: 1_700)
+        context.insert(profile)
+        try context.save()
 
-        XCTAssertFalse(profile.restoreStoredCalculatedGoal())
+        XCTAssertFalse(try coordinator.restoreCalculatedPlan())
         XCTAssertEqual(profile.planGoalSource, .manual)
         XCTAssertEqual(profile.dailyCalorieGoal, 1_700)
+    }
+
+    private func makeCoordinator() throws -> (ModelContext, PlanEvidenceMutationCoordinator) {
+        let schema = Schema([UserProfile.self])
+        let container = try ModelContainer(
+            for: schema,
+            configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]
+        )
+        let context = ModelContext(container)
+        return (context, PlanEvidenceMutationCoordinator(modelContainer: container))
     }
 }
 #endif

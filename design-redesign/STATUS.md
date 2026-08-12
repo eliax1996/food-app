@@ -17,12 +17,13 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - NUTRIENTS-001: accepted attempt 01. Optional carbohydrate/protein/fat/fiber API mapping, cache migration, Food serving facts, immutable PlateEntry snapshots, custom-food entry, explicit coverage, and transparent general-adult measured guidance are visually and functionally verified.
 - REFINE-001 Slices A/B: accepted attempt 01. Calorie-goal-derived Plan references, hierarchical Settings, explicit Plan/Profile/Reminder transactions, exact meal times, Daily/Weekly weight reminders, contextual notification authorization, denied recovery, and authorization-return rescheduling are verified.
 - REFINE-001 Slice C: accepted attempt 02. Skippable/resumable supported-adult setup, explicit Mifflin–St Jeor inputs, transparent routine/rate/date calculation, infeasible recovery, Manual migration, override, and restore are verified.
+- REFINE-001 Slice D: accepted attempt 03. Explicit complete-day evidence, stable migration-safe identity, coincident 28/35/42 estimates, bounded proposal-only adaptation, serialized compare-and-set mutation, truthful collecting/check-data states, Adapted source, per-day goal history, explicit disable/zero-intake confirmation, and exact revert are verified.
 - WEIGHT-ENTRY-001: accepted attempt 01. Latest-measure defaults, direct `−1/−0.1/+0.1/+1` kg controls, and keyboard Done across all numeric entry surfaces are verified.
 - SETTINGS-DIRECT-EDIT-001: accepted attempt 01. Reminder `Off`/time, Weight, and Water rows open focused draft editing; Plan calculated setup opens, continues, closes, and resumes reliably.
 
 ## Current component
 
-REFINE-001 — **IN PROGRESS; ATTEMPTS 01–02 / SLICES A–C ACCEPTED. SLICE D CONTRACT APPROVED / IMPLEMENTATION NEXT**.
+REFINE-001 — **ACCEPTED; ATTEMPTS 01–03 / SLICES A–D COMPLETE**.
 
 Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCEPTED — ATTEMPT 01 / COMPLETE** with final root order:
 
@@ -30,11 +31,11 @@ Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCE
 Today | Weight | Progress | Settings
 ```
 
-STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders, calculated setup, direct Settings entry, and numeric-entry refinements are complete. Current work continues with evidence-gated weight adaptation before auxiliary/global/final review.
+STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders, calculated setup, evidence-gated adaptation, direct Settings entry, and numeric-entry refinements are complete. User-prioritized BULK-AI-FOOD-001 begins before auxiliary/global/final review.
 
 ## Next components
 
-1. REFINE-001 — Slice D evidence-gated adaptive tuning. Plan references, exact reminders, hierarchical Settings, calculated setup, and direct-entry follow-ups are accepted. Full scope: `COMPLETION-PLAN.md#refine`.
+1. BULK-AI-FOOD-001 — competitor/Apple research, detailed specification, then typed/dictated on-device extraction and editable food-match review.
 2. AUXILIARY-001 — Widget and Live Activity
 3. CONSISTENCY-001
 4. ROBUSTNESS-001
@@ -81,7 +82,7 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 ## Open questions
 
 - Best balance between one global Log Food action and per-meal add actions.
-- Slice D contract resolved: 42 explicit complete days, distributed weights, 28/35/42 agreement, weekly fresh evidence, ±100-kcal proposals, and exact revert. Implementation/visual hierarchy remains to validate.
+- Slice D resolved and accepted: 42 explicit complete days, distributed weights, 28/35/42 agreement, weekly fresh evidence, ±100-kcal proposals, and exact revert.
 - Whether deferred personal macro targets should be editable in addition to transparent adult population reference defaults.
 - Future cross-device consistency.
 
@@ -94,12 +95,13 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 
 ## Validation snapshot
 
-- Latest exact-tree `just validate 300`: **passed**.
+- Latest exact-tree `just validate 300`: **passed** after Slice D final docs/code.
 - Hostless validation: **178 passed / 2 opt-in live skips**.
 - Simulator compile, install, and launch: **passed**.
 - `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`.
-- Latest explicit UI target: **22/22 passed** through `TEST_CASE_TIMEOUT=60 just test-ui 900`, covering core logging/tracking, calculated setup/skip/review/persistence/resume, direct reminder rows, Plan/Settings, populated Today clearance, weight entry, keyboard Done, remote/scanner/barcode recovery, and custom nutrients.
-- App-hosted tests: **210 passed / 2 opt-in live skips**.
+- Latest explicit UI target: **31/31 passed** through `TEST_CASE_TIMEOUT=60 just test-ui 1200`, adding Today attestation and adaptive collecting/proposal/apply/decline/close/disable/revert/source regressions to existing core coverage.
+- App-hosted tests: **250 passed / 2 opt-in live skips**.
+- Hostless tests: **195 passed / 2 opt-in live skips**.
 - Full UI results retain source-less iOS 27 `Invalid frame dimension (negative or non-finite).` diagnostics while numeric keyboards open; no test or rendered flow failed.
 
 ## Visual evidence
@@ -123,6 +125,8 @@ Accepted NUTRIENTS-001 attempt-01 evidence is under `screenshots/NUTRIENTS-001/`
 Accepted REFINE-001 attempt-01 evidence is under `screenshots/REFINE-001/`: Settings, Plan/reference/editor/partial, reminders/editor/denied/small/AX3-dark, Today, and corrected nutrition detail.
 
 Accepted REFINE-001 attempt-02 evidence adds setup welcome/body/infeasible/review/AX3-dark plus Manual-entry and Calculated-basis Plan states. Final bounded visual and code judgments: **APPROVE**.
+
+Accepted REFINE-001 attempt-03 evidence adds Today In progress/genuine-zero confirmation/Complete/Needs review, exact collecting status, proposal evidence/actions, Applied/revert, and AX3-dark disable confirmation. Final critical/high architecture, safety, native-UI, historical-goal, and visual judgments: **APPROVE; visual 3/3 consensus**.
 
 Accepted SETTINGS-DIRECT-EDIT-001 evidence is under `screenshots/SETTINGS-DIRECT-EDIT-001/`: normal and AX3-dark actionable reminder summaries. Final visual judgment: **APPROVE**.
 

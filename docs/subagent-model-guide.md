@@ -274,6 +274,15 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Weakness: Luna timed out on broader three/four-image groups. One Sol visual pass falsely reported clipped Back/Close controls that direct pixels and focused Luna review showed fully visible.
 - Policy effect: use Sol medium for safety/state code review, but require direct pixel verification for visual findings; keep Luna visual groups to one or two images.
 
+### 2026-08-12 — Luna `max` + Terra `high`: adaptive-plan review and simulator evidence
+
+- Shape: safety-critical persistence review, bounded hierarchy-driven collecting/proposal/applied/Today flows, and repeated critical/high visual judgments.
+- Outcome: Terra found real cross-cutting defects in Revert availability, calendar epochs, proposal integrity, stale action handling, exact evidence guidance, and historical goal context. Luna produced reliable hierarchy/frame evidence and identified tab-bar/44-point/confirmation issues. Focused fixes ended with 3/3 visual APPROVE and 31/31 UI.
+- Validation: parent ran all `just` gates. Xcode full-suite adaptive fixtures intermittently exposed launch/preparation timing despite focused passes; deterministic fixture paths and tests were adjusted, and final full suite passed.
+- Strength: Terra high-signal architecture review; Luna precise device measurements and bounded flow reporting.
+- Weakness: broad parallel reviewer calls can timeout empty; repeated simulator sessions over-capture and consume substantial time. Xcode UI timing may differ between focused and full suite.
+- Policy effect: no standing model change. Keep Terra for safety-critical integration review, Luna for bounded MCP, and require full-suite proof after focused green.
+
 Do not change standing model policy absent repeated evidence.
 
 ## Record template

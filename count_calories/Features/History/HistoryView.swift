@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct HistoryView: View {
+    @Environment(\.calendar) private var calendar
     @Query(sort: \PlateEntry.date, order: .reverse) private var entries: [PlateEntry]
     @Query(sort: \WeightEntry.date, order: .reverse) private var weights: [WeightEntry]
     @Query private var profiles: [UserProfile]
@@ -16,18 +17,25 @@ struct HistoryView: View {
         profiles.first
     }
 
-    private var dailyGoal: Int? {
-        guard let goal = profile?.dailyCalorieGoal, goal > 0 else { return nil }
-        return goal
+    private var goalRevisions: [CalorieGoalRevisionPoint] {
+        profile?.adaptivePlanState?.goalRevisions.map {
+            CalorieGoalRevisionPoint(
+                effectiveDate: $0.effectiveDay,
+                sequence: $0.sequence,
+                calories: $0.calories
+            )
+        } ?? []
     }
 
     private var calorieProgress: CalorieProgress {
         ProgressHistory.calorieProgress(
             summaries: CalorieHistory.dailySummaries(
                 for: entries.map { CalorieRecord(date: $0.date, calories: $0.calories) },
+                calendar: calendar,
                 limit: 7
             ),
-            dailyGoal: dailyGoal
+            goalRevisions: goalRevisions,
+            calendar: calendar
         )
     }
 
@@ -92,7 +100,7 @@ struct HistoryView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                CalorieProgressChart(progress: calorieProgress, dailyGoal: dailyGoal)
+                CalorieProgressChart(progress: calorieProgress)
             }
         }
     }
@@ -139,18 +147,28 @@ struct HistoryView: View {
         let dayLabel = recordedDays == 1 ? "recorded day" : "recorded days"
         let recordedDaysText = "\(recordedDays) \(dayLabel)"
 
-        guard let dailyGoal, let difference = calorieProgress.goalDifference else {
-            return "\(recordedDaysText) • No daily goal"
+        guard let difference = calorieProgress.goalDifference,
+              calorieProgress.comparableGoalDays > 0 else {
+            return "\(recordedDaysText) • Historical goal context unavailable"
         }
 
         let relation: String
         switch difference {
         case let value where value > 0:
-            relation = "\(abs(value).formatted(.number.precision(.fractionLength(0)))) kcal above \(dailyGoal.formatted()) kcal goal"
+            relation = "Average \(abs(value).formatted(.number.precision(.fractionLength(0)))) kcal above historical daily goals"
         case let value where value < 0:
-            relation = "\(abs(value).formatted(.number.precision(.fractionLength(0)))) kcal below \(dailyGoal.formatted()) kcal goal"
+            relation = "Average \(abs(value).formatted(.number.precision(.fractionLength(0)))) kcal below historical daily goals"
         default:
-            relation = "At \(dailyGoal.formatted()) kcal goal"
+            relation = "At historical daily goals on average"
+        }
+        let comparable = calorieProgress.comparableGoalDays == 1
+            ? "1 comparable day"
+            : "\(calorieProgress.comparableGoalDays) comparable days"
+        if calorieProgress.missingGoalDays > 0 {
+            let missing = calorieProgress.missingGoalDays == 1
+                ? "1 day without goal context"
+                : "\(calorieProgress.missingGoalDays) days without goal context"
+            return "\(recordedDaysText) • \(comparable) • \(relation) • \(missing)"
         }
         return "\(recordedDaysText) • \(relation)"
     }

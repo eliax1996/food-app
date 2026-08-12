@@ -16,6 +16,8 @@ private enum PlanSettingsPresentation: Identifiable {
 
 struct PlanSettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
+    @Environment(\.calendar) private var calendar
     @Query(sort: \PlateEntry.date, order: .reverse) private var entries: [PlateEntry]
 
     let profile: UserProfile
@@ -28,7 +30,7 @@ struct PlanSettingsView: View {
     }
 
     private var displayedTargetWeight: Double {
-        if profile.planGoalSource == .calculated,
+        if (profile.planGoalSource == .calculated || profile.planGoalSource == .adapted),
            let stored = profile.storedCalculatedPlan {
             return stored.plan.input.targetWeightKilograms
         }
@@ -36,7 +38,7 @@ struct PlanSettingsView: View {
     }
 
     private var displayedTargetDate: Date? {
-        if profile.planGoalSource == .calculated,
+        if (profile.planGoalSource == .calculated || profile.planGoalSource == .adapted),
            let stored = profile.storedCalculatedPlan {
             return stored.plan.forecastDate
         }
@@ -62,6 +64,7 @@ struct PlanSettingsView: View {
             if let stored = profile.storedCalculatedPlan {
                 calculatedBasisSection(stored)
             }
+            goalCheckInsSection
             planActionsSection
             referenceSection
             measuredSection
@@ -113,7 +116,7 @@ struct PlanSettingsView: View {
             .accessibilityIdentifier("plan-current-calorie-goal")
 
             LabeledContent("Source") {
-                Text(profile.planGoalSource == .calculated ? "Calculated" : "Manual")
+                Text(planGoalSourceTitle(profile.planGoalSource))
                     .foregroundStyle(.secondary)
             }
             .accessibilityIdentifier("plan-goal-source")
@@ -124,17 +127,22 @@ struct PlanSettingsView: View {
             }
 
             if let displayedTargetDate {
-                LabeledContent(profile.planGoalSource == .calculated ? "Forecast date" : "Target date") {
+                LabeledContent(profile.planGoalSource == .calculated || profile.planGoalSource == .adapted ? "Forecast date" : "Target date") {
                     Text(displayedTargetDate.formatted(date: .abbreviated, time: .omitted))
                 }
             }
         } header: {
             Text("Current plan")
         } footer: {
-            if profile.planGoalSource == .calculated {
+            switch profile.planGoalSource {
+            case .calculated:
                 Text("Calculated estimate changes only after you confirm setup or restore it. Weight entries never adjust this goal automatically.")
-            } else {
+            case .adapted:
+                Text("Adapted from your saved calculated basis after an explicit check-in. Weight entries never change this goal automatically.")
+            case .manual:
                 Text("This calorie goal is manual. Target date is context only unless a calculated plan is explicitly accepted.")
+            case .unknown:
+                Text("Source could not be read. This goal is preserved, and goal check-ins are paused until you review calculated setup.")
             }
         }
     }
@@ -175,9 +183,29 @@ struct PlanSettingsView: View {
         } footer: {
             if profile.planGoalSource == .calculated {
                 Text("Mifflin–St Jeor estimate using accepted inputs. Static pace math is a planning approximation, not a promise or medical advice.")
+            } else if profile.planGoalSource == .adapted {
+                Text("This retained calculated basis supports your accepted adaptive check-ins. It does not overwrite the adapted goal.")
             } else {
-                Text("Saved for optional restore. Your current manual goal is not presented as this calculation.")
+                Text("Saved for optional restore. Your current goal is not presented as this calculation.")
             }
+        }
+    }
+
+    private var goalCheckInsSection: some View {
+        Section {
+            NavigationLink {
+                AdaptivePlanView(profile: profile, onReviewCalculatedSetup: beginCalculatedSetup)
+            } label: {
+                LabeledContent("Goal check-ins") {
+                    Text(adaptivePlanSummary(profile))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityIdentifier("adaptive-plan-link")
+        } header: {
+            Text("Goal check-ins")
+        } footer: {
+            Text("Check-ins use complete food-log days and repeated weights on this device. They never change your goal without confirmation.")
         }
     }
 
@@ -189,7 +217,7 @@ struct PlanSettingsView: View {
             .frame(minHeight: 44)
             .accessibilityIdentifier("start-calculated-setup")
 
-            if profile.planGoalSource == .manual,
+            if profile.planGoalSource != .calculated,
                let stored = profile.storedCalculatedPlan {
                 Button("Restore calculated plan (\(stored.plan.calorieGoal.formatted()) kcal)") {
                     restoreCalculatedGoal()
@@ -326,9 +354,12 @@ struct PlanSettingsView: View {
     }
 
     private func restoreCalculatedGoal() {
-        guard profile.restoreStoredCalculatedGoal() else { return }
         do {
-            try modelContext.save()
+            guard let mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            mutationCoordinator.synchronizeCalendar(calendar)
+            guard try mutationCoordinator.restoreCalculatedPlan() else { return }
         } catch {
             modelContext.rollback()
             AppLogger.persistence.error(
@@ -381,6 +412,8 @@ struct PlanSettingsView: View {
 private struct PlanEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
+    @Environment(\.calendar) private var calendar
 
     let profile: UserProfile
 
@@ -516,14 +549,16 @@ private struct PlanEditor: View {
     private func save() {
         guard isValid else { return }
 
-        profile.applyManualGoal(
-            calories: dailyGoal,
-            targetWeight: targetWeight,
-            targetDate: targetDate
-        )
-
         do {
-            try modelContext.save()
+            guard let mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            mutationCoordinator.synchronizeCalendar(calendar)
+            try mutationCoordinator.editManualPlan(
+                calories: dailyGoal,
+                targetWeight: targetWeight,
+                targetDate: targetDate
+            )
             dismiss()
         } catch {
             modelContext.rollback()
@@ -594,30 +629,16 @@ private func rangeText(_ range: ClosedRange<Double>) -> String {
     NavigationStack {
         PlanSettingsView(profile: UserProfile())
     }
-    .modelContainer(PreviewData.makeContainer())
+    .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 
 #Preview("Plan calculated") {
-    let profile = UserProfile()
-    let input = CaloriePlanInput(
-        goalMode: .lose,
-        currentWeightKilograms: 70,
-        targetWeightKilograms: 68,
-        age: 30,
-        heightCentimeters: 170,
-        equation: .female,
-        activityLevel: .moderate,
-        paceBasis: .weeklyRate,
-        weeklyRateKilograms: 0.25,
-        targetDate: nil
-    )
-    if case .recommendation(let plan) = CalculatedCaloriePlanCalculator.evaluate(input) {
-        try? profile.applyCalculatedPlan(plan, measurementSystem: .metric)
-    }
-    return NavigationStack {
+    let container = PreviewData.makeContainer(state: .adaptiveCollecting)
+    let profile = try! container.mainContext.fetch(FetchDescriptor<UserProfile>()).first!
+    NavigationStack {
         PlanSettingsView(profile: profile)
     }
-    .modelContainer(PreviewData.makeContainer())
+    .previewPlanEvidenceContainer(container)
 }
 
 #Preview("Plan partial") {
@@ -625,7 +646,7 @@ private func rangeText(_ range: ClosedRange<Double>) -> String {
         NavigationStack {
             PlanSettingsView(profile: UserProfile())
         }
-        .modelContainer(PreviewData.makeContainer(state: .nutritionPartial))
+        .previewPlanEvidenceContainer(PreviewData.makeContainer(state: .nutritionPartial))
         .task {
             await Task.yield()
             proxy.scrollTo("plan-measured-section", anchor: .top)
@@ -635,6 +656,6 @@ private func rangeText(_ range: ClosedRange<Double>) -> String {
 
 #Preview("Plan editor") {
     PlanEditor(profile: UserProfile())
-        .modelContainer(PreviewData.makeContainer())
+        .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
 #endif

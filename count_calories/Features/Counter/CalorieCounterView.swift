@@ -13,11 +13,14 @@ struct CalorieCounterView: View {
     private let waterGoal = 8
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
+    @Environment(\.calendar) private var calendar
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: \Food.name) private var foods: [Food]
     @Query(sort: \PlateEntry.date, order: .reverse) private var entries: [PlateEntry]
     @Query(sort: \WaterDay.date, order: .reverse) private var waterDays: [WaterDay]
+    @Query(sort: \FoodLogCompletion.attestedAt, order: .reverse) private var foodLogCompletions: [FoodLogCompletion]
     @Query private var profiles: [UserProfile]
 
     @Binding var addMealRequestID: UUID?
@@ -51,6 +54,7 @@ struct CalorieCounterView: View {
     @State private var barcodeLookupSucceeded = false
     @State private var showingBarcodeScanner = false
     @State private var showingFoodTools = false
+    @State private var confirmingEmptyFoodLogCompletion = false
     @State private var errorMessage: String?
     @State private var remoteFoodSearch: RemoteFoodSearchService?
     @State private var remoteSearchCoordinator: RemoteFoodSearchCoordinator?
@@ -64,7 +68,7 @@ struct CalorieCounterView: View {
     }
 
     private var todaysEntries: [PlateEntry] {
-        entries.filter { Calendar.current.isDateInToday($0.date) }
+        entries.filter { calendar.isDate($0.date, inSameDayAs: .now) }
     }
 
     private var todaysCalories: Int {
@@ -145,13 +149,16 @@ struct CalorieCounterView: View {
                         calories: todaysCalories,
                         calorieGoal: dailyCalorieGoal
                     )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 
                     WaterTrackerRow(
                         glasses: waterBinding,
                         goal: waterGoal
                     )
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: -3, leading: 16, bottom: -3, trailing: 16))
+
+                    foodLogStatusRow
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 
                     NavigationLink {
                         DailyNutritionView(summary: todaysNutritionSummary)
@@ -159,7 +166,7 @@ struct CalorieCounterView: View {
                         NutritionBalanceRow(summary: todaysNutritionSummary)
                     }
                     .accessibilityIdentifier("nutrition-balance-link")
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: -2, leading: 16, bottom: -2, trailing: 16))
                 }
 
                 Section("Meals") {
@@ -196,7 +203,7 @@ struct CalorieCounterView: View {
                 }
 
             }
-            .listSectionSpacing(16)
+            .listSectionSpacing(0)
             .navigationTitle("Today")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -295,6 +302,14 @@ struct CalorieCounterView: View {
                     }
                 )
             }
+            .alert("Complete empty food log?", isPresented: $confirmingEmptyFoodLogCompletion) {
+                Button("I ate nothing today") {
+                    markTodayFoodLogComplete()
+                }
+                Button("Keep logging", role: .cancel) {}
+            } message: {
+                Text("No food is logged for today. Confirm only if this is a genuine zero-intake day; missing food must stay in progress.")
+            }
             .alert("Could not complete action", isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
@@ -303,6 +318,117 @@ struct CalorieCounterView: View {
             } message: {
                 Text(errorMessage ?? "Unknown error")
             }
+        }
+    }
+
+    private enum FoodLogStatus {
+        case inProgress
+        case complete
+        case needsReview
+
+        var title: String {
+            switch self {
+            case .inProgress: "In progress"
+            case .complete: "Complete"
+            case .needsReview: "Needs review"
+            }
+        }
+
+        var actionTitle: String? {
+            switch self {
+            case .inProgress: "Mark Complete"
+            case .complete: nil
+            case .needsReview: "Reconfirm"
+            }
+        }
+    }
+
+    private var todaysFoodLogCompletion: FoodLogCompletion? {
+        let today = calendar.startOfDay(for: .now)
+        let calendarIdentifier = String(describing: calendar.identifier)
+        return foodLogCompletions.first {
+            $0.calendarIdentifier == calendarIdentifier
+                && $0.timeZoneIdentifier == calendar.timeZone.identifier
+                && $0.dayStart == today
+        }
+    }
+
+    private var foodLogStatus: FoodLogStatus {
+        guard let completion = todaysFoodLogCompletion else { return .inProgress }
+        return completion.isStale ? .needsReview : .complete
+    }
+
+    private var foodLogStatusRow: some View {
+        HStack(spacing: 8) {
+            foodLogLabel
+            Spacer(minLength: 4)
+            foodLogStatusText
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            if let actionTitle = foodLogStatus.actionTitle {
+                foodLogActionButton(actionTitle)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Food log")
+        .accessibilityValue(foodLogStatus.title)
+    }
+
+    private var foodLogLabel: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checklist")
+            Text("Food log")
+        }
+        .font(.subheadline.weight(.medium))
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var foodLogStatusText: some View {
+        Text(foodLogStatus.title)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .accessibilityIdentifier("food-log-status")
+    }
+
+    private func foodLogActionButton(_ title: String) -> some View {
+        Button(action: requestTodayFoodLogCompletion) {
+            Text(title)
+                .padding(.vertical, 5)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.regular)
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(minHeight: 44)
+        .accessibilityIdentifier("mark-food-log-complete")
+        .accessibilityLabel(title + " food log")
+        .accessibilityHint("Attests that today’s food log is finished. Adding or editing food will require reconfirmation.")
+    }
+
+    private func requestTodayFoodLogCompletion() {
+        if case .inProgress = foodLogStatus, todaysEntries.isEmpty {
+            confirmingEmptyFoodLogCompletion = true
+        } else {
+            markTodayFoodLogComplete()
+        }
+    }
+
+    private func markTodayFoodLogComplete() {
+        do {
+            guard let coordinator = mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            coordinator.synchronizeCalendar(calendar)
+            switch foodLogStatus {
+            case .needsReview:
+                _ = try coordinator.reconfirmFoodLog(for: .now)
+            case .inProgress:
+                _ = try coordinator.markFoodLogComplete(for: .now)
+            case .complete:
+                return
+            }
+        } catch {
+            AppLogger.persistence.error("Failed to attest food log: \(error.localizedDescription, privacy: .public)")
+            errorMessage = "Food log could not be marked complete. Please try again."
         }
     }
 
@@ -388,38 +514,56 @@ struct CalorieCounterView: View {
     private func savePlate() {
         guard let selectedFood else { return }
 
-        if let editingEntry {
-            editingEntry.foodName = selectedFood.name
-            editingEntry.calories = selectedCalories
-            editingEntry.weightGrams = weightGrams
-            editingEntry.quantity = max(1, Int(quantity.rounded()))
-            editingEntry.portionCount = quantity
-            editingEntry.servingUnitRawValue = selectedFood.nutritionUnit.rawValue
-            editingEntry.applyNutritionSnapshot(selectedNutrients)
-            editingEntry.mealType = selectedMeal.rawValue
-        } else {
-            let entry = PlateEntry(
-                foodName: selectedFood.name,
-                calories: selectedCalories,
-                weightGrams: weightGrams,
-                quantity: quantity,
-                servingUnit: selectedFood.nutritionUnit,
-                nutrients: selectedNutrients,
-                mealType: selectedMeal.rawValue
-            )
-            modelContext.insert(entry)
-        }
-
-        if saveChanges() {
+        do {
+            guard let coordinator = mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            coordinator.synchronizeCalendar(calendar)
+            if let editingEntry {
+                try coordinator.updatePlate(
+                    stableID: editingEntry.stableID,
+                    foodName: selectedFood.name,
+                    calories: selectedCalories,
+                    weightGrams: weightGrams,
+                    quantity: quantity,
+                    servingUnitRawValue: selectedFood.nutritionUnit.rawValue,
+                    nutrients: selectedNutrients,
+                    mealType: selectedMeal.rawValue,
+                    date: editingEntry.date
+                )
+            } else {
+                let entry = PlateEntry(
+                    foodName: selectedFood.name,
+                    calories: selectedCalories,
+                    weightGrams: weightGrams,
+                    quantity: quantity,
+                    servingUnit: selectedFood.nutritionUnit,
+                    nutrients: selectedNutrients,
+                    mealType: selectedMeal.rawValue
+                )
+                try coordinator.insertPlate(entry)
+            }
             mirrorTodayToWidgetStore()
             showingAddMeal = false
+        } catch {
+            modelContext.rollback()
+            AppLogger.persistence.error("Failed to save meal evidence: \(error.localizedDescription, privacy: .public)")
+            errorMessage = "Your meal could not be saved. Please try again."
         }
     }
 
     private func deletePlate(_ entry: PlateEntry) {
-        modelContext.delete(entry)
-        if saveChanges() {
+        do {
+            guard let coordinator = mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            coordinator.synchronizeCalendar(calendar)
+            try coordinator.deletePlate(stableID: entry.stableID)
             mirrorTodayToWidgetStore()
+        } catch {
+            modelContext.rollback()
+            AppLogger.persistence.error("Failed to delete meal evidence: \(error.localizedDescription, privacy: .public)")
+            errorMessage = "Your meal could not be deleted. Please try again."
         }
     }
 
@@ -807,7 +951,7 @@ struct CalorieCounterView: View {
         addMealRequestID: .constant(nil),
         waterAdjustmentRequest: .constant(nil)
     )
-    .modelContainer(PreviewData.makeContainer())
+    .previewPlanEvidenceContainer(PreviewData.makeContainer())
     .environment(\.locale, Locale(identifier: "en_US"))
 }
 #endif

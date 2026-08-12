@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import SwiftData
+import SwiftUI
 
 enum DesignReviewState: String, CaseIterable {
     case normal
@@ -11,6 +12,9 @@ enum DesignReviewState: String, CaseIterable {
     case nutritionPartial
     case nutritionImbalanced
     case customNutrition
+    case adaptiveCollecting
+    case adaptiveProposal
+    case adaptiveApplied
 
     static var current: DesignReviewState {
         let rawValue = ProcessInfo.processInfo.environment["DESIGN_REVIEW_STATE"] ?? "normal"
@@ -20,10 +24,13 @@ enum DesignReviewState: String, CaseIterable {
 
 @MainActor
 enum PreviewData {
+    private static var coordinators: [ObjectIdentifier: PlanEvidenceMutationCoordinator] = [:]
+
     static func makeContainer(state: DesignReviewState = .normal) -> ModelContainer {
         let schema = Schema([
             Food.self,
             PlateEntry.self,
+            FoodLogCompletion.self,
             WaterDay.self,
             WeightEntry.self,
             UserProfile.self
@@ -32,19 +39,52 @@ enum PreviewData {
 
         do {
             let container = try ModelContainer(for: schema, configurations: [configuration])
-            try seed(container.mainContext, state: state)
+            let coordinator = PlanEvidenceMutationCoordinator(modelContainer: container)
+            coordinators[ObjectIdentifier(container)] = coordinator
+            try seed(container.mainContext, state: state, coordinator: coordinator)
             return container
         } catch {
             fatalError("Could not create preview data: \(error)")
         }
     }
 
+    static func coordinator(for container: ModelContainer) -> PlanEvidenceMutationCoordinator {
+        if let coordinator = coordinators[ObjectIdentifier(container)] {
+            return coordinator
+        }
+        let coordinator = PlanEvidenceMutationCoordinator(modelContainer: container)
+        coordinators[ObjectIdentifier(container)] = coordinator
+        return coordinator
+    }
+
     static func seed(
         _ context: ModelContext,
-        state: DesignReviewState = .normal
+        state: DesignReviewState = .normal,
+        coordinator: PlanEvidenceMutationCoordinator
     ) throws {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
+
+        switch state {
+        case .adaptiveCollecting:
+            try seedAdaptiveCollecting(context, coordinator: coordinator, now: .now, calendar: calendar)
+            return
+        case .adaptiveProposal:
+            try seedAdaptiveProposal(context, coordinator: coordinator, now: .now, calendar: calendar)
+            return
+        case .adaptiveApplied:
+            try seedAdaptiveProposal(
+                context,
+                coordinator: coordinator,
+                now: .now,
+                calendar: calendar,
+                applyProposal: true
+            )
+            return
+        default:
+            break
+        }
+
         let foods = [
             Food(
                 name: "Almond Milk",
@@ -299,6 +339,135 @@ enum PreviewData {
         context.insert(WaterDay(date: .now, glasses: state == .exceeded ? 8 : 5))
         context.insert(WeightEntry(kilograms: 70.2))
         try context.save()
+    }
+
+    static func seedAdaptiveProposal(
+        _ context: ModelContext,
+        coordinator: PlanEvidenceMutationCoordinator,
+        now: Date = .now,
+        calendar: Calendar = .current,
+        applyProposal: Bool = false
+    ) throws {
+        let today = calendar.startOfDay(for: now)
+        guard let firstDay = calendar.date(byAdding: .day, value: -42, to: today) else {
+            throw CocoaError(.coderInvalidValue)
+        }
+        let plan = try adaptiveFixturePlan(now: firstDay, calendar: calendar)
+        let profile = try coordinator.acceptCalculatedPlan(
+            plan,
+            measurementSystem: .metric,
+            acceptedAt: firstDay
+        )
+        _ = try coordinator.enableAdaptiveCheckIns(
+            supportedScopeConfirmed: true,
+            enabledAt: firstDay
+        )
+
+        for offset in 0..<42 {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: firstDay),
+                  let mealDate = calendar.date(byAdding: .hour, value: 12, to: day),
+                  let weightDate = calendar.date(byAdding: .hour, value: 8, to: day) else {
+                throw CocoaError(.coderInvalidValue)
+            }
+            let plate = PlateEntry(
+                foodName: "Complete fixture day",
+                calories: 2_100,
+                weightGrams: 1,
+                quantity: 1,
+                mealType: MealType.dinner.rawValue,
+                date: mealDate
+            )
+            context.insert(plate)
+            context.insert(FoodLogCompletion(
+                components: calendar.dateComponents([.era, .year, .month, .day], from: day),
+                calendarIdentifier: String(describing: calendar.identifier),
+                timeZoneIdentifier: calendar.timeZone.identifier,
+                dayStart: day,
+                attestedAt: day,
+                attestedCalories: plate.calories,
+                canonicalPlateSnapshotData: try AdaptivePlanPersistenceCoding.encodePlateSnapshot([
+                    PlateEvidenceSnapshot(
+                        stableID: plate.stableID,
+                        dateBitPattern: plate.date.timeIntervalSinceReferenceDate.bitPattern,
+                        calories: plate.calories
+                    )
+                ])
+            ))
+            context.insert(WeightEntry(
+                date: weightDate,
+                kilograms: 75 - Double(offset) * 0.01,
+                sequence: Int64(offset + 1)
+            ))
+        }
+        try context.save()
+
+        let result = try coordinator.evaluate(
+            expectedPlanRevisionID: profile.currentPlanRevisionID,
+            expectedEvidenceRevision: profile.evidenceRevision
+        )
+        guard case .pending(let proposal) = result else {
+            throw CocoaError(.coderInvalidValue)
+        }
+        if applyProposal {
+            _ = try coordinator.applyPendingProposal(
+                id: proposal.id,
+                expectedPlanRevisionID: proposal.expectedPlanRevisionID,
+                expectedEvidenceRevision: proposal.expectedEvidenceRevision,
+                expectedEvidenceSignature: proposal.evidenceSignature
+            )
+        }
+    }
+
+    private static func seedAdaptiveCollecting(
+        _ context: ModelContext,
+        coordinator: PlanEvidenceMutationCoordinator,
+        now: Date,
+        calendar: Calendar
+    ) throws {
+        let plan = try adaptiveFixturePlan(now: now, calendar: calendar)
+        _ = try coordinator.acceptCalculatedPlan(
+            plan,
+            measurementSystem: .metric,
+            acceptedAt: now
+        )
+        _ = try coordinator.enableAdaptiveCheckIns(supportedScopeConfirmed: true)
+    }
+
+    private static func adaptiveFixturePlan(
+        now: Date,
+        calendar: Calendar
+    ) throws -> CalculatedCaloriePlan {
+        let input = CaloriePlanInput(
+            goalMode: .lose,
+            currentWeightKilograms: 75,
+            targetWeightKilograms: 70,
+            age: 30,
+            heightCentimeters: 170,
+            equation: .female,
+            activityLevel: .moderate,
+            paceBasis: .weeklyRate,
+            weeklyRateKilograms: 0.25,
+            targetDate: nil
+        )
+        guard case .recommendation(let plan) = CalculatedCaloriePlanCalculator.evaluate(
+            input,
+            now: now,
+            calendar: calendar
+        ) else {
+            throw CocoaError(.coderInvalidValue)
+        }
+        return plan
+    }
+}
+
+extension View {
+    @MainActor
+    func previewPlanEvidenceContainer(_ container: ModelContainer) -> some View {
+        modelContainer(container)
+            .environment(
+                \.planEvidenceMutationCoordinator,
+                PreviewData.coordinator(for: container)
+            )
     }
 }
 #endif
