@@ -60,6 +60,25 @@ final class CalorieTrackingTests: XCTestCase {
         XCTAssertEqual(calories, 15)
     }
 
+    func testCalorieBoundsAndCheckedTotalsRejectUnsupportedLegacyValues() {
+        XCTAssertEqual(CalorieCalculator.maximumCalories, 5_000)
+        XCTAssertTrue(CalorieCalculator.isValidCalories(0))
+        XCTAssertTrue(CalorieCalculator.isValidCalories(5_000))
+        XCTAssertFalse(CalorieCalculator.isValidCalories(-1))
+        XCTAssertFalse(CalorieCalculator.isValidCalories(5_001))
+        let assessed = CalorieCalculator.assessedTotal([5_000, Int.max, -1, 15])
+        XCTAssertEqual(assessed.calories, 5_015)
+        XCTAssertEqual(assessed.validCount, 2)
+        XCTAssertEqual(assessed.entryCount, 4)
+        XCTAssertFalse(assessed.isComplete)
+        XCTAssertNil(CalorieCalculator.calculatedCalories(
+            caloriesPerServing: 5_000,
+            servingAmount: 1,
+            consumedAmount: 2,
+            portionCount: 1
+        ))
+    }
+
     func testCaloriesScaleForFractionalBeveragePortion() {
         let calories = CalorieCalculator.calories(
             caloriesPerServing: 176,
@@ -99,6 +118,24 @@ final class CalorieTrackingTests: XCTestCase {
             ),
             0
         )
+        XCTAssertNil(CalorieCalculator.calculatedCalories(
+            caloriesPerServing: 100,
+            servingAmount: .infinity,
+            consumedAmount: 100,
+            portionCount: 1
+        ))
+        XCTAssertNil(CalorieCalculator.calculatedCalories(
+            caloriesPerServing: 100,
+            servingAmount: 100,
+            consumedAmount: .infinity,
+            portionCount: 1
+        ))
+        XCTAssertNil(CalorieCalculator.calculatedCalories(
+            caloriesPerServing: 100,
+            servingAmount: 100,
+            consumedAmount: 100,
+            portionCount: .infinity
+        ))
     }
 
     func testSuggestedMealUsesExpectedTimeWindows() {
@@ -140,6 +177,17 @@ final class CalorieTrackingTests: XCTestCase {
             DailyCalorieSummary(date: calendar.startOfDay(for: firstDay), calories: 950),
             DailyCalorieSummary(date: calendar.startOfDay(for: secondDay), calories: 1_100)
         ])
+    }
+
+    func testDailyHistoryMarksInvalidLegacyCaloriesIncomplete() {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let summary = CalorieHistory.dailySummaries(for: [
+            CalorieRecord(date: now, calories: 500),
+            CalorieRecord(date: now, calories: Int.max)
+        ]).first
+
+        XCTAssertEqual(summary?.calories, 500)
+        XCTAssertFalse(summary?.caloriesAreComplete ?? true)
     }
 
     func testDailyHistoryKeepsMostRecentFourteenDays() {

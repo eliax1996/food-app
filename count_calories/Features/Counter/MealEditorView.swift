@@ -19,7 +19,7 @@ struct MealEditorView: View {
     @Binding var searchText: String
     @Binding var amount: Double
     @Binding var portionCount: Double
-    let calories: Int
+    let calories: Int?
     let remoteSearch: RemoteFoodSearchCoordinator?
     let onSelectRemoteFood: (FoodNutrition) -> Bool
     let onCancel: () -> Void
@@ -64,6 +64,7 @@ struct MealEditorView: View {
 
     private var canSave: Bool {
         selectedFood != nil
+            && calories != nil
             && FoodAmountAdjustment.isValid(amount)
             && portionCount.isFinite
             && portionCount > 0
@@ -296,18 +297,20 @@ struct MealEditorView: View {
 
                 Section {
                     LabeledContent("Total") {
-                        Text("\(calories) kcal")
+                        Text(calories.map { "\($0) kcal" } ?? "Unsupported")
                             .font(.title3.bold())
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(calories == nil ? .red : .primary)
                             .monospacedDigit()
                             .contentTransition(.numericText())
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Calculated total")
-                    .accessibilityValue("\(calories) calories")
+                    .accessibilityValue(calories.map { "\($0) calories" } ?? "Unsupported serving total")
                     .accessibilityIdentifier("calculated-total")
                 } footer: {
-                    Text("Total updates with amount and serving count.")
+                    Text(calories == nil
+                         ? "Reduce amount or servings to stay within 5,000 kcal per food."
+                         : "Total updates with amount and serving count.")
                 }
             }
             .navigationTitle(isEditing ? "Edit food" : "Log food")

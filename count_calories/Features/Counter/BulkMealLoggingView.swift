@@ -17,7 +17,13 @@ final class BulkMealDraftController: Identifiable {
 
     var stage: Stage = .describe
     var descriptionText = ""
-    var selectedMeal: MealType
+    var selectedMeal: MealType {
+        didSet {
+            if oldValue != selectedMeal {
+                clearCommitSnapshot()
+            }
+        }
+    }
     var items: [BulkFoodReviewItem] = []
     var errorMessage: String?
     var availability: BulkFoodExtractionAvailability
@@ -155,10 +161,10 @@ final class BulkMealDraftController: Identifiable {
         guard let draft = pendingDraftChoice else { return }
         draftID = draft.id
         operationID = draft.operationID
-        commitDate = draft.commitDate
         storedDraftID = draft.id
         descriptionText = draft.description
         selectedMeal = MealType(rawValue: draft.mealType) ?? selectedMeal
+        commitDate = draft.commitDate
         commitInserts = nil
         committedLearningItems = nil
         items = draft.reviewItems.map { snapshot in
@@ -426,7 +432,22 @@ final class BulkMealDraftController: Identifiable {
         items.removeAll { $0.id == id }
     }
 
-    func makeInserts(date: Date = .now) throws -> [BulkPlateInsert] {
+    func prepareCommit(date: Date = .now) async throws -> [BulkPlateInsert] {
+        let inserts = try makeInserts(date: date)
+        guard draftStore != nil, draftLease != nil else {
+            clearCommitSnapshot()
+            throw BulkFoodPersistenceError.unavailable
+        }
+        do {
+            try await saveDraft()
+            return inserts
+        } catch {
+            clearCommitSnapshot()
+            throw error
+        }
+    }
+
+    private func makeInserts(date: Date) throws -> [BulkPlateInsert] {
         if let commitInserts { return commitInserts }
         guard !items.isEmpty, items.allSatisfy(\.isReady) else {
             throw PlanEvidenceMutationError.invalidBulkBatch
@@ -1381,25 +1402,24 @@ struct BulkMealLoggingView: View {
     private func confirm() {
         guard !isCommitting else { return }
         isCommitting = true
-        do {
-            let inserts = try controller.makeInserts()
-            try onConfirm(inserts, controller.operationID)
-            let total = inserts.compactMap { $0.match.calories(for: $0.amount) }.reduce(0, +)
-            announce("Logged \(inserts.count) foods, \(total) calories.")
-            Task {
+        Task { @MainActor in
+            do {
+                let inserts = try await controller.prepareCommit()
+                try onConfirm(inserts, controller.operationID)
+                let total = inserts.compactMap { $0.match.calories(for: $0.amount) }.reduce(0, +)
+                announce("Logged \(inserts.count) foods, \(total) calories.")
                 do {
                     try await controller.retainSuccessfulChoices()
-                    dismiss()
                 } catch {
                     AppLogger.persistence.error(
                         "Bulk post-commit learning or draft cleanup failed: \(error.localizedDescription, privacy: .public)"
                     )
-                    dismiss()
                 }
+                dismiss()
+            } catch {
+                isCommitting = false
+                controller.errorMessage = "Your foods could not be logged. Nothing was added. Please try again."
             }
-        } catch {
-            isCommitting = false
-            controller.errorMessage = "Your foods could not be logged. Nothing was added. Please try again."
         }
     }
 

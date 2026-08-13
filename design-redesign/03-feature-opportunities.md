@@ -96,7 +96,7 @@ Persist macro values and targets; migrate existing foods/entries; handle incompl
 
 ### Prototype status
 
-Not prototyped. Do not fake production values.
+Implemented and accepted in NUTRIENTS-001 and REFINE-001. Logged facts remain immutable/coverage-gated; Plan exposes transparent adult reference ranges.
 
 **Classification: HIGH VALUE**
 
@@ -130,7 +130,7 @@ None.
 
 ### Prototype status
 
-Planned in PROGRESS-001.
+Implemented and accepted in PROGRESS-001 with seven recent recorded days, average, historical goal context, and goal rule.
 
 **Classification: HIGH VALUE**
 

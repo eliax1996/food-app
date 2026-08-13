@@ -4,6 +4,7 @@ import WidgetKit
 struct WidgetDailySummary: Codable {
     var date: Date
     var calories: Int
+    var caloriesAreComplete: Bool?
     var waterGlasses: Int
     var lastWaterRecordedAt: Date?
     var calorieGoal: Int?
@@ -36,6 +37,7 @@ enum WidgetDailySummaryStore {
 
     static func save(
         calories: Int,
+        caloriesAreComplete: Bool = true,
         waterGlasses: Int,
         lastWaterRecordedAt: Date? = nil,
         calorieGoal: Int? = nil,
@@ -57,6 +59,7 @@ enum WidgetDailySummaryStore {
                 let summary = WidgetDailySummary(
                     date: Calendar.current.startOfDay(for: date),
                     calories: max(0, calories),
+                    caloriesAreComplete: caloriesAreComplete,
                     waterGlasses: newerWidgetWaterExists
                         ? min(max(0, stored?.waterGlasses ?? waterGlasses), 30)
                         : min(max(0, waterGlasses), 30),
@@ -112,6 +115,7 @@ enum WidgetDailySummaryStore {
         WidgetDailySummary(
             date: Calendar.current.startOfDay(for: .now),
             calories: 0,
+            caloriesAreComplete: true,
             waterGlasses: 0,
             lastWaterRecordedAt: nil,
             calorieGoal: 1_700,

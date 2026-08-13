@@ -160,6 +160,208 @@ final class BulkFoodBatchPersistenceTests: XCTestCase {
         XCTAssertEqual(try ModelContext(fixture.container).fetch(FetchDescriptor<PlateEntry>()).count, 2)
     }
 
+    func testControllerPrecommitDraftReplaysAfterCrashAndCivilDayChange() async throws {
+        let fixture = try makeFixture()
+        let sourceID = deterministicID(301)
+        let rowID = deterministicID(302)
+        let operationID = deterministicID(303)
+        let food = Food(
+            name: "Almond Milk",
+            calories: 15,
+            stableID: sourceID,
+            servingGrams: 100,
+            nutrientsPerServing: FoodNutrients(proteinGrams: 0.6)
+        )
+        fixture.context.insert(food)
+        fixture.context.insert(UserProfile())
+        try fixture.context.save()
+
+        let draftURL = FileManager.default.temporaryDirectory
+            .appending(path: "bulk-crash-resume-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: draftURL) }
+        let draftStore = BulkFoodDraftStore(fileURL: draftURL)
+        let firstLease = await draftStore.acquireLease()
+        let firstController = BulkMealDraftController(
+            selectedMeal: .lunch,
+            extractor: UnavailableBulkFoodExtractor(reason: .operatingSystem),
+            matcher: BulkFoodMatcher(remoteService: nil, learningStore: nil, languages: ["en"]),
+            learningStore: nil,
+            learningLease: nil,
+            draftStore: draftStore,
+            draftLease: firstLease,
+            operationID: operationID,
+            allowRemoteMatching: false
+        )
+        let match = BulkFoodMatch(
+            identity: .savedFood(sourceID),
+            displayName: food.name,
+            source: .saved,
+            servingAmount: food.servingGrams,
+            servingUnit: food.nutritionUnit,
+            caloriesPerServing: food.calories,
+            nutrientsPerServing: food.nutrientsPerServing
+        )
+        firstController.descriptionText = "100 g almond milk"
+        firstController.items = [BulkFoodReviewItem(
+            id: rowID,
+            sourceQuery: "almond milk",
+            query: food.name,
+            amount: 100,
+            unit: .grams,
+            amountOrigin: .explicitDescription,
+            selectedMatch: match,
+            candidates: [match],
+            matchPhase: .resolved
+        )]
+
+        let firstInserts = try await firstController.prepareCommit(date: fixture.now)
+        let savedPrecommit = await draftStore.load()
+        let durablePrecommit = try XCTUnwrap(savedPrecommit)
+        XCTAssertEqual(durablePrecommit.operationID, operationID)
+        XCTAssertEqual(durablePrecommit.commitDate, fixture.now)
+        XCTAssertEqual(durablePrecommit.reviewItems.count, 1)
+
+        let insertedIDs = try fixture.coordinator.insertPlateBatch(
+            firstInserts,
+            expectedDay: firstInserts[0].date,
+            operationID: operationID
+        )
+        // Simulate termination after SwiftData commit but before learning and draft cleanup.
+        let nextDay = fixture.now.addingTimeInterval(86_400)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let replayCoordinator = PlanEvidenceMutationCoordinator(
+            modelContainer: fixture.container,
+            calendar: calendar,
+            now: { nextDay }
+        )
+        let resumedController = BulkMealDraftController(
+            selectedMeal: .snack,
+            extractor: UnavailableBulkFoodExtractor(reason: .operatingSystem),
+            matcher: BulkFoodMatcher(remoteService: nil, learningStore: nil, languages: ["en"]),
+            learningStore: nil,
+            learningLease: nil,
+            draftStore: draftStore,
+            draftLease: await draftStore.acquireLease(),
+            allowRemoteMatching: false
+        )
+        await resumedController.checkForDraftIfNeeded()
+        resumedController.resumePendingDraft(savedFoods: [food])
+        let replayInserts = try await resumedController.prepareCommit(date: nextDay)
+
+        XCTAssertEqual(replayInserts, firstInserts)
+        let replayedIDs = try replayCoordinator.insertPlateBatch(
+            replayInserts,
+            expectedDay: replayInserts[0].date,
+            operationID: resumedController.operationID
+        )
+        XCTAssertEqual(replayedIDs, insertedIDs)
+        XCTAssertEqual(
+            try ModelContext(fixture.container).fetch(FetchDescriptor<PlateEntry>()).count,
+            1
+        )
+
+        try await resumedController.retainSuccessfulChoices()
+        let clearedDraft = await draftStore.load()
+        XCTAssertNil(clearedDraft)
+    }
+
+    func testCommitFailsClosedWhenDurableDraftStorageIsUnavailable() async throws {
+        let sourceID = deterministicID(306)
+        let controller = BulkMealDraftController(
+            selectedMeal: .breakfast,
+            extractor: UnavailableBulkFoodExtractor(reason: .operatingSystem),
+            matcher: BulkFoodMatcher(remoteService: nil, learningStore: nil, languages: ["en"]),
+            learningStore: nil,
+            learningLease: nil,
+            draftStore: nil,
+            draftLease: nil,
+            allowRemoteMatching: false
+        )
+        let match = BulkFoodMatch(
+            identity: .savedFood(sourceID),
+            displayName: "Almond Milk",
+            source: .saved,
+            servingAmount: 100,
+            servingUnit: .grams,
+            caloriesPerServing: 15
+        )
+        controller.items = [BulkFoodReviewItem(
+            sourceQuery: "almond milk",
+            query: "Almond Milk",
+            amount: 100,
+            unit: .grams,
+            amountOrigin: .explicitDescription,
+            selectedMatch: match,
+            candidates: [match],
+            matchPhase: .resolved
+        )]
+
+        do {
+            _ = try await controller.prepareCommit()
+            XCTFail("Expected unavailable durable draft storage")
+        } catch {
+            XCTAssertEqual(error as? BulkFoodPersistenceError, .unavailable)
+        }
+    }
+
+    func testChangingMealAfterPreparedCommitRebuildsFrozenPayload() async throws {
+        let sourceID = deterministicID(311)
+        let rowID = deterministicID(312)
+        let operationID = deterministicID(313)
+        let food = Food(
+            name: "Almond Milk",
+            calories: 15,
+            stableID: sourceID,
+            servingGrams: 100
+        )
+        let draftURL = FileManager.default.temporaryDirectory
+            .appending(path: "bulk-meal-change-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: draftURL) }
+        let draftStore = BulkFoodDraftStore(fileURL: draftURL)
+        let controller = BulkMealDraftController(
+            selectedMeal: .breakfast,
+            extractor: UnavailableBulkFoodExtractor(reason: .operatingSystem),
+            matcher: BulkFoodMatcher(remoteService: nil, learningStore: nil, languages: ["en"]),
+            learningStore: nil,
+            learningLease: nil,
+            draftStore: draftStore,
+            draftLease: await draftStore.acquireLease(),
+            operationID: operationID,
+            allowRemoteMatching: false
+        )
+        let match = BulkFoodMatch(
+            identity: .savedFood(sourceID),
+            displayName: food.name,
+            source: .saved,
+            servingAmount: 100,
+            servingUnit: .grams,
+            caloriesPerServing: 15
+        )
+        controller.items = [BulkFoodReviewItem(
+            id: rowID,
+            sourceQuery: "almond milk",
+            query: food.name,
+            amount: 100,
+            unit: .grams,
+            amountOrigin: .explicitDescription,
+            selectedMatch: match,
+            candidates: [match],
+            matchPhase: .resolved
+        )]
+
+        let firstDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let first = try await controller.prepareCommit(date: firstDate)
+        controller.selectedMeal = .dinner
+        let retryDate = firstDate.addingTimeInterval(60)
+        let rebuilt = try await controller.prepareCommit(date: retryDate)
+
+        XCTAssertEqual(first.first?.mealType, MealType.breakfast.rawValue)
+        XCTAssertEqual(first.first?.date, firstDate)
+        XCTAssertEqual(rebuilt.first?.mealType, MealType.dinner.rawValue)
+        XCTAssertEqual(rebuilt.first?.date, retryDate)
+    }
+
     func testSeparateCoordinatorReplaysCommittedBatchWithoutDuplicateMutation() throws {
         let fixture = try makeFixture()
         fixture.context.insert(UserProfile())
@@ -648,6 +850,30 @@ final class BulkFoodBatchPersistenceTests: XCTestCase {
         )
         XCTAssertThrowsError(try fixture.coordinator.insertPlateBatch(
             mixedMeals,
+            expectedDay: fixture.now,
+            operationID: UUID()
+        )) {
+            XCTAssertEqual($0 as? PlanEvidenceMutationError, .invalidBulkBatch)
+        }
+
+        let excessiveCalories = BulkPlateInsert(
+            sourceItemID: UUID(),
+            match: BulkFoodMatch(
+                identity: .barcode("55556666"),
+                displayName: "Unsupported Calories",
+                barcode: "55556666",
+                source: .openFoodFacts,
+                servingAmount: 100,
+                servingUnit: .grams,
+                caloriesPerServing: CalorieCalculator.maximumCalories + 1
+            ),
+            amount: 100,
+            unit: .grams,
+            mealType: "Lunch",
+            date: fixture.now
+        )
+        XCTAssertThrowsError(try fixture.coordinator.insertPlateBatch(
+            [excessiveCalories],
             expectedDay: fixture.now,
             operationID: UUID()
         )) {

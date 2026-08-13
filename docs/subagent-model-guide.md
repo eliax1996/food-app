@@ -283,6 +283,16 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Weakness: broad parallel reviewer calls can timeout empty; repeated simulator sessions over-capture and consume substantial time. Xcode UI timing may differ between focused and full suite.
 - Policy effect: no standing model change. Keep Terra for safety-critical integration review, Luna for bounded MCP, and require full-suite proof after focused green.
 
+### 2026-08-13 — Sol `medium`: FINAL-001 diff-only critical/high review loops
+
+- Shape: three identical neutral read-only reviews over attached 70–75 KiB final diff; no repository tools.
+- Outcome: completed reliably where repository-wide Luna/Terra/Sol tool-enabled prompts timed out empty. Review rounds found real bulk durability, calorie completeness, reminder replacement/concurrency/capacity, widget migration, Live Activity ordering, and stale-settings defects; final round reached 3/3 APPROVE.
+- Validation: parent verified every finding, applied scoped fixes, then ran exact `just` gates.
+- Strength: high-signal cross-cutting semantics at bounded context and medium effort.
+- Weakness: reviewers sometimes surfaced distinct rather than consensus findings, requiring parent scope judgment and repeated neutral rounds; attached diff cannot inspect omitted unchanged context.
+- Token/quota note: three parallel repository-wide reviewers each timed out at 900 seconds with empty output; attached-diff Sol medium completed within bounds.
+- Policy effect: for broad closure review, first attach a bounded final diff to Sol medium; use repository tools only when call-site context is genuinely absent, and parent verifies against full tree.
+
 Do not change standing model policy absent repeated evidence.
 
 ## Record template

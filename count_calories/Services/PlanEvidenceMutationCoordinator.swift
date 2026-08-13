@@ -581,7 +581,8 @@ final class PlanEvidenceMutationCoordinator {
     func insertPlate(_ entry: PlateEntry) throws {
         let operationDate = now()
         try beginOperation()
-        guard entry.calories >= 0, entry.date.timeIntervalSinceReferenceDate.isFinite else {
+        guard CalorieCalculator.isValidCalories(entry.calories),
+              entry.date.timeIntervalSinceReferenceDate.isFinite else {
             throw PlanEvidenceMutationError.invalidCalories
         }
         do {
@@ -657,7 +658,7 @@ final class PlanEvidenceMutationCoordinator {
                     && insert.amount.isFinite
                     && insert.amount >= BulkFoodLimits.minimumAmount
                     && insert.amount <= BulkFoodLimits.maximumAmount
-                    && insert.match.calories(for: insert.amount) != nil
+                    && insert.match.calories(for: insert.amount).map(CalorieCalculator.isValidCalories) == true
                     && insert.match.nutrients(for: insert.amount) != nil
             }) else {
                 throw PlanEvidenceMutationError.invalidBulkBatch
@@ -799,7 +800,8 @@ final class PlanEvidenceMutationCoordinator {
     ) throws {
         let operationDate = now()
         try beginOperation()
-        guard calories >= 0, date.timeIntervalSinceReferenceDate.isFinite else {
+        guard CalorieCalculator.isValidCalories(calories),
+              date.timeIntervalSinceReferenceDate.isFinite else {
             throw PlanEvidenceMutationError.invalidCalories
         }
         do {
@@ -1625,7 +1627,9 @@ final class PlanEvidenceMutationCoordinator {
     private func calorieTotal(_ snapshot: [PlateEvidenceSnapshot]) throws -> Int {
         var total = 0
         for plate in snapshot {
-            guard plate.calories >= 0 else { throw PlanEvidenceMutationError.invalidCalories }
+            guard FoodCaloriePolicy.isValid(plate.calories) else {
+                throw PlanEvidenceMutationError.invalidCalories
+            }
             let result = total.addingReportingOverflow(plate.calories)
             guard !result.overflow else { throw PlanEvidenceMutationError.invalidCalories }
             total = result.partialValue

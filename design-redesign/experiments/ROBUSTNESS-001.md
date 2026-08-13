@@ -44,4 +44,4 @@ Earlier accepted component evidence supplements scanner, bulk review, widget, Li
 
 ## Decision
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: FINAL-001.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Historical next milestone FINAL-001 is now complete.

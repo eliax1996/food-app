@@ -24,6 +24,7 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - AUXILIARY-001: accepted attempt 01. Medium widget shows remaining/over goal and durable water controls; explicit start/stop Live Activity uses goal-aware Lock Screen and Dynamic Island layouts without display-only mutations.
 - CONSISTENCY-001: accepted attempt 01. Food-action language and water bounds are reconciled; whole-app navigation, hierarchy, states, and destructive semantics passed 3/3 critical/high review.
 - ROBUSTNESS-001: accepted attempt 01. Light/dark, normal/AX3, small/large, long/extreme/empty/dense matrix is retained; Today water/status and Settings summaries adapt cleanly at accessibility sizes.
+- FINAL-001: accepted complete. Final primary journeys, 14 representative captures, exact +15 kcal Almond Milk proof, persistence/nutrition/reminder hardening, 3/3 independent approval, and all final gates are retained.
 
 ## Current component
 
@@ -37,6 +38,8 @@ CONSISTENCY-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Cross-product audit stand
 
 ROBUSTNESS-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Accessibility layout stacking, deterministic preview isolation, fixed small/large fixtures, focused scroll reachability, and retained cross-component evidence cover full stress matrix. Final critical/high review consensus: **3/3 APPROVE**.
 
+FINAL-001 — **ACCEPTED / COMPLETE**. Original redesign Definition of Done is met; full outcome: `FINAL-REPORT.md`.
+
 Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCEPTED — ATTEMPT 01 / COMPLETE** with final root order:
 
 ```text
@@ -47,7 +50,7 @@ STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders,
 
 ## Next components
 
-1. FINAL-001 and `FINAL-REPORT.md`
+No remaining closure component. Competitor-gap iteration is separate future work.
 
 ## Accepted design principles
 
@@ -87,9 +90,9 @@ STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders,
 
 Detailed active backlog: `PRODUCT-BACKLOG.md`.
 
-## Open questions
+## Deferred opportunities
 
-- Best balance between one global Log Food action and per-meal add actions.
+- Reassess one global Log food action versus per-meal shortcuts only with fresh usage/category evidence.
 - Slice D resolved and accepted: 42 explicit complete days, distributed weights, 28/35/42 agreement, weekly fresh evidence, ±100-kcal proposals, and exact revert.
 - Whether deferred personal macro targets should be editable in addition to transparent adult population reference defaults.
 - Future cross-device consistency.
@@ -103,16 +106,15 @@ Detailed active backlog: `PRODUCT-BACKLOG.md`.
 
 ## Validation snapshot
 
-- Latest exact-tree `just validate 300`: **passed** after Slice D final docs/code.
-- Hostless validation: **178 passed / 2 opt-in live skips**.
-- Simulator compile, install, and launch: **passed**.
-- `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`.
-- Latest explicit UI target: **31/31 passed** through `TEST_CASE_TIMEOUT=60 just test-ui 1200`, adding Today attestation and adaptive collecting/proposal/apply/decline/close/disable/revert/source regressions to existing core coverage.
-- App-hosted tests: **250 passed / 2 opt-in live skips**.
-- Hostless tests: **195 passed / 2 opt-in live skips**.
-- Full UI results retain source-less iOS 27 `Invalid frame dimension (negative or non-finite).` diagnostics while numeric keyboards open; no test or rendered flow failed.
+- Final exact-tree `just validate 300`: **passed** — 222 hostless tests / 2 opt-in live skips; app + widget compile, install, and launch passed.
+- Final app-hosted `just test-app-unit 600`: **309 passed / 2 opt-in live skips**.
+- Final functional `TEST_CASE_TIMEOUT=60 just test-ui 1800`: **46/46 passed**.
+- `git diff --check`: **passed**.
+- Live Open Food Facts checks remain intentionally opt-in.
 
 ## Visual evidence
+
+Final representative set is under `screenshots/final/` and indexed in `SCREENSHOTS.md`; closure comparison and evidence map live in `FINAL-REPORT.md`.
 
 Accepted TRACKING-IA-001 visual files are only these attempt-01 files under `screenshots/TRACKING-IA-001/`:
 

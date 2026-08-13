@@ -3,6 +3,7 @@ import Foundation
 struct WidgetDailySummary: Codable {
     var date: Date
     var calories: Int
+    var caloriesAreComplete: Bool?
     var waterGlasses: Int
     var lastWaterRecordedAt: Date?
     var calorieGoal: Int?
@@ -10,6 +11,7 @@ struct WidgetDailySummary: Codable {
     var revision: Int64?
 
     var resolvedCalorieGoal: Int { max(1, calorieGoal ?? 1_700) }
+    var hasCompleteCalories: Bool { caloriesAreComplete ?? false }
     var resolvedWaterGoal: Int { max(1, waterGoal ?? 8) }
     var resolvedRevision: Int64 { max(0, revision ?? 0) }
 }
@@ -62,6 +64,7 @@ enum WidgetDailySummaryStore {
         WidgetDailySummary(
             date: Calendar.current.startOfDay(for: .now),
             calories: 0,
+            caloriesAreComplete: true,
             waterGlasses: 0,
             lastWaterRecordedAt: nil,
             calorieGoal: 1_700,

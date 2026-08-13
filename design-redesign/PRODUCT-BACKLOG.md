@@ -1,6 +1,15 @@
 # Product redesign backlog
 
-Persistent prioritized backlog. Read with `STATUS.md` before each redesign phase. Update status, evidence, decisions, tests, and outcome as work progresses.
+Persistent prioritized backlog. Original redesign closure is complete; entries below preserve accepted decisions and deferred opportunities for later evidence-backed iterations.
+
+## Closure — [FINAL-001] Whole-product acceptance
+
+**Status:** ACCEPTED / COMPLETE
+**Priority:** CLOSURE
+
+Fourteen final captures, exact +15 kcal default Almond Milk proof, final persistence/nutrition/reminder hardening, 3/3 independent critical/high approval, 222 hostless / 2 skips, 309 app-hosted / 2 skips, and 46/46 functional UI close original redesign. See `FINAL-REPORT.md` and `experiments/FINAL-001.md`.
+
+No unresolved high-priority redesign item remains. Future queue starts with fresh competitor-gap reassessment; retained candidates are date-first calorie diary, optional personal macro targets, and HealthKit/account/cross-device consistency.
 
 ## Priority 1 — [FOOD-REMOTE-SEARCH-001] Remote food search and query cache
 

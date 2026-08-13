@@ -256,7 +256,7 @@ nonisolated struct BulkFoodMatch: Codable, Equatable, Identifiable, Sendable {
         let servingCaloriesDouble = food.calories(for: food.defaultAmount.value)
         guard servingCaloriesDouble.isFinite,
               servingCaloriesDouble >= 0,
-              servingCaloriesDouble <= Double(Int.max) else { return nil }
+              servingCaloriesDouble <= Double(FoodCaloriePolicy.maximumCaloriesPerFood) else { return nil }
         return BulkFoodMatch(
             identity: .barcode(food.barcode),
             displayName: food.name,
@@ -289,7 +289,9 @@ nonisolated struct BulkFoodMatch: Codable, Equatable, Identifiable, Sendable {
               amount > 0,
               caloriesPerServing >= 0 else { return nil }
         let value = Double(caloriesPerServing) / servingAmount * amount
-        guard value.isFinite, value >= 0, value <= Double(Int.max) else { return nil }
+        guard value.isFinite,
+              value >= 0,
+              value <= Double(FoodCaloriePolicy.maximumCaloriesPerFood) else { return nil }
         return Int(value.rounded())
     }
 
@@ -316,7 +318,7 @@ nonisolated struct BulkFoodMatch: Codable, Equatable, Identifiable, Sendable {
             && servingAmount.isFinite
             && servingAmount > 0
             && servingAmount <= BulkFoodLimits.maximumAmount
-            && caloriesPerServing >= 0
+            && FoodCaloriePolicy.isValid(caloriesPerServing)
     }
 
     private static func isValidBarcode(_ barcode: String) -> Bool {

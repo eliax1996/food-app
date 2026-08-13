@@ -27,13 +27,21 @@ struct HistoryView: View {
         } ?? []
     }
 
+    private var dailyCalorieSummaries: [DailyCalorieSummary] {
+        CalorieHistory.dailySummaries(
+            for: entries.map { CalorieRecord(date: $0.date, calories: $0.calories) },
+            calendar: calendar,
+            limit: 7
+        )
+    }
+
+    private var incompleteCalorieDayCount: Int {
+        dailyCalorieSummaries.count(where: { !$0.caloriesAreComplete })
+    }
+
     private var calorieProgress: CalorieProgress {
         ProgressHistory.calorieProgress(
-            summaries: CalorieHistory.dailySummaries(
-                for: entries.map { CalorieRecord(date: $0.date, calories: $0.calories) },
-                calendar: calendar,
-                limit: 7
-            ),
+            summaries: dailyCalorieSummaries,
             goalRevisions: goalRevisions,
             calendar: calendar
         )
@@ -80,6 +88,15 @@ struct HistoryView: View {
     @ViewBuilder
     private var calorieSection: some View {
         Section("Calories") {
+            if incompleteCalorieDayCount > 0 {
+                Label(
+                    "\(incompleteCalorieDayCount) recorded \(incompleteCalorieDayCount == 1 ? "day has" : "days have") incomplete calorie data and \(incompleteCalorieDayCount == 1 ? "is" : "are") excluded from trends.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("progress-calorie-incomplete")
+            }
             if calorieProgress.summaries.isEmpty {
                 ContentUnavailableView(
                     "No recorded days",

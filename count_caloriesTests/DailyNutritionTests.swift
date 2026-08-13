@@ -180,6 +180,38 @@ final class DailyNutritionTests: XCTestCase {
         XCTAssertEqual(summary.guidance, [.withinReferences])
     }
 
+    func testUnsupportedLegacyCaloriesSuppressLoggedEnergyGuidance() {
+        let summary = DailyNutrition.summary(
+            records: [
+                LoggedNutrition(
+                    calories: 500,
+                    nutrients: FoodNutrients(
+                        carbohydratesGrams: 50,
+                        proteinGrams: 20,
+                        fatGrams: 20,
+                        fiberGrams: 5
+                    )
+                ),
+                LoggedNutrition(
+                    calories: Int.max,
+                    nutrients: FoodNutrients(
+                        carbohydratesGrams: 100,
+                        proteinGrams: 40,
+                        fatGrams: 40,
+                        fiberGrams: 10
+                    )
+                )
+            ],
+            calorieGoal: 1_700
+        )
+
+        XCTAssertTrue(summary.hasCompleteMacroCoverage)
+        XCTAssertNotNil(summary.macroSplit)
+        XCTAssertNil(summary.macroEnergyShare)
+        XCTAssertTrue(summary.guidance.isEmpty)
+        XCTAssertEqual(summary.totalCalories, 500)
+    }
+
     func testInvalidFactsBecomeUnknownInsteadOfZero() {
         let nutrients = FoodNutrients(
             carbohydratesGrams: -.infinity,

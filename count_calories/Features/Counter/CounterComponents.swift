@@ -3,6 +3,7 @@ import SwiftUI
 struct DailyProgressHeader: View {
     let calories: Int
     let calorieGoal: Int
+    var caloriesAreComplete = true
 
     private var safeGoal: Int {
         max(calorieGoal, 1)
@@ -38,9 +39,15 @@ struct DailyProgressHeader: View {
                 }
             }
 
-            ProgressView(value: calorieProgress)
-                .tint(calories > calorieGoal ? .red : .orange)
-                .accessibilityHidden(true)
+            if caloriesAreComplete {
+                ProgressView(value: calorieProgress)
+                    .tint(calories > calorieGoal ? .red : .orange)
+                    .accessibilityHidden(true)
+            } else {
+                Label("Calorie total incomplete", systemImage: "exclamationmark.triangle")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.orange)
+            }
 
             HStack {
                 calorieMetric(title: "Eaten", value: calories)
@@ -53,12 +60,14 @@ struct DailyProgressHeader: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Daily calories")
-        .accessibilityValue("\(calories) eaten, \(statusValue) \(statusLabel), daily goal \(calorieGoal)")
+        .accessibilityValue(caloriesAreComplete
+            ? "\(calories) eaten, \(statusValue) \(statusLabel), daily goal \(calorieGoal)"
+            : "Known food entries total \(calories) calories. Daily budget status unavailable because one or more logged foods has invalid calorie data.")
         .accessibilityIdentifier("daily-calorie-total")
     }
 
     private var statusText: some View {
-        Text(statusValue, format: .number)
+        Text(caloriesAreComplete ? statusValue.formatted() : "—")
             .font(.largeTitle.bold())
             .monospacedDigit()
             .foregroundStyle(statusColor)
@@ -66,7 +75,7 @@ struct DailyProgressHeader: View {
     }
 
     private var statusDescription: some View {
-        Text(statusLabel)
+        Text(caloriesAreComplete ? statusLabel : "budget status unavailable")
             .font(.headline)
             .foregroundStyle(calories > calorieGoal ? Color.red : Color.primary.opacity(0.65))
     }
@@ -155,6 +164,7 @@ struct MealSummaryRow: View {
     let mealType: MealType
     let entries: [PlateEntry]
     let calories: Int
+    var caloriesAreComplete = true
 
     private var detail: String {
         switch entries.count {
@@ -191,7 +201,9 @@ struct MealSummaryRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(mealType.rawValue)
-        .accessibilityValue("\(detail), \(calories) calories")
+        .accessibilityValue(caloriesAreComplete
+            ? "\(detail), \(calories) calories"
+            : "\(detail), calorie total incomplete")
     }
 
     private var title: some View {
@@ -209,7 +221,11 @@ struct MealSummaryRow: View {
 
     @ViewBuilder
     private var calorieText: some View {
-        if calories > 0 {
+        if !caloriesAreComplete {
+            Label("Incomplete", systemImage: "exclamationmark.triangle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+        } else if calories > 0 {
             Text("\(calories) kcal")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()

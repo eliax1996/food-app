@@ -8,6 +8,13 @@ nonisolated struct CalorieRecord: Equatable, Sendable {
 nonisolated struct DailyCalorieSummary: Equatable, Sendable {
     let date: Date
     let calories: Int
+    let caloriesAreComplete: Bool
+
+    init(date: Date, calories: Int, caloriesAreComplete: Bool = true) {
+        self.date = date
+        self.calories = calories
+        self.caloriesAreComplete = caloriesAreComplete
+    }
 }
 
 nonisolated enum CalorieHistory {
@@ -22,9 +29,11 @@ nonisolated enum CalorieHistory {
             calendar.startOfDay(for: record.date)
         }
         let summaries = groupedRecords.map { date, dayRecords in
-            DailyCalorieSummary(
+            let total = CalorieCalculator.assessedTotal(dayRecords.map(\.calories))
+            return DailyCalorieSummary(
                 date: date,
-                calories: dayRecords.reduce(0) { $0 + $1.calories }
+                calories: total.calories,
+                caloriesAreComplete: total.isComplete
             )
         }
 

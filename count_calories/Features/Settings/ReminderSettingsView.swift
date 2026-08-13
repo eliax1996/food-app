@@ -258,6 +258,7 @@ struct ReminderSettingsView: View {
     @MainActor
     private func save(_ draft: ReminderPreferences) async -> String? {
         draft.store()
+        preferences = draft
 
         var requestError: String?
         if draft.hasEnabledReminder {
@@ -269,22 +270,24 @@ struct ReminderSettingsView: View {
         }
 
         let state = await ReminderNotificationManager.shared.authorizationState()
-        await reschedule(preferences: draft)
-        preferences = draft
+        let schedulingResult = await reschedule(preferences: draft)
         authorizationState = state
         onSaved(draft, state)
+        if requestError == nil, schedulingResult == .failed {
+            requestError = "Your reminder choices were saved, but notifications could not be updated. Previous reminders were kept where possible; try again."
+        }
         return requestError
     }
 
     @MainActor
     private func refreshAuthorization() async {
         let state = await ReminderNotificationManager.shared.authorizationState()
-        await reschedule(preferences: preferences)
+        _ = await reschedule(preferences: preferences)
         authorizationState = state
         onSaved(preferences, state)
     }
 
-    private func reschedule(preferences: ReminderPreferences) async {
+    private func reschedule(preferences: ReminderPreferences) async -> ReminderSchedulingResult {
         await ReminderNotificationManager.shared.reschedule(
             meals: entries.map {
                 MealReminderRecord(mealType: $0.mealType, date: $0.date)

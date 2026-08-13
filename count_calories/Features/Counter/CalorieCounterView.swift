@@ -78,8 +78,12 @@ struct CalorieCounterView: View {
         entries.filter { calendar.isDate($0.date, inSameDayAs: .now) }
     }
 
+    private var todaysCalorieTotal: FoodCalorieTotal {
+        CalorieCalculator.assessedTotal(todaysEntries.map(\.calories))
+    }
+
     private var todaysCalories: Int {
-        todaysEntries.reduce(0) { $0 + $1.calories }
+        todaysCalorieTotal.calories
     }
 
     private var todaysWater: WaterDay? {
@@ -124,8 +128,8 @@ struct CalorieCounterView: View {
         }
     }
 
-    private func calories(for mealType: MealType) -> Int {
-        todaysEntries(for: mealType).reduce(0) { $0 + $1.calories }
+    private func calorieTotal(for mealType: MealType) -> FoodCalorieTotal {
+        CalorieCalculator.assessedTotal(todaysEntries(for: mealType).map(\.calories))
     }
 
     private var recentFoods: [Food] {
@@ -142,9 +146,9 @@ struct CalorieCounterView: View {
         .map { $0 }
     }
 
-    private var selectedCalories: Int {
-        guard let selectedFood else { return 0 }
-        return CalorieCalculator.calories(
+    private var selectedCalories: Int? {
+        guard let selectedFood else { return nil }
+        return CalorieCalculator.calculatedCalories(
             caloriesPerServing: selectedFood.calories,
             servingAmount: selectedFood.servingGrams,
             consumedAmount: weightGrams,
@@ -165,7 +169,8 @@ struct CalorieCounterView: View {
                 Section {
                     DailyProgressHeader(
                         calories: todaysCalories,
-                        calorieGoal: dailyCalorieGoal
+                        calorieGoal: dailyCalorieGoal,
+                        caloriesAreComplete: todaysCalorieTotal.isComplete
                     )
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 
@@ -204,6 +209,7 @@ struct CalorieCounterView: View {
 
                     ForEach(MealType.allCases) { mealType in
                         let mealEntries = todaysEntries(for: mealType)
+                        let mealCalorieTotal = calorieTotal(for: mealType)
 
                         NavigationLink {
                             MealDetailView(
@@ -219,7 +225,8 @@ struct CalorieCounterView: View {
                             MealSummaryRow(
                                 mealType: mealType,
                                 entries: mealEntries,
-                                calories: calories(for: mealType)
+                                calories: mealCalorieTotal.calories,
+                                caloriesAreComplete: mealCalorieTotal.isComplete
                             )
                         }
                         .accessibilityIdentifier("meal-summary-\(mealType.rawValue.lowercased())")
@@ -660,9 +667,12 @@ struct CalorieCounterView: View {
             throw PlanEvidenceMutationError.coordinatorUnavailable
         }
         coordinator.synchronizeCalendar(calendar)
+        guard let committedDay = inserts.first?.date else {
+            throw PlanEvidenceMutationError.invalidBulkBatch
+        }
         let insertedIDs = try coordinator.insertPlateBatch(
             inserts,
-            expectedDay: .now,
+            expectedDay: committedDay,
             operationID: operationID
         )
         guard insertedIDs.count == inserts.count else {
@@ -692,7 +702,10 @@ struct CalorieCounterView: View {
     }
 
     private func savePlate() {
-        guard let selectedFood else { return }
+        guard let selectedFood, let selectedCalories else {
+            errorMessage = "This serving produces an unsupported calorie total. Reduce the amount or servings."
+            return
+        }
 
         do {
             guard let coordinator = mutationCoordinator else {
@@ -765,7 +778,14 @@ struct CalorieCounterView: View {
     private func selectRemoteFood(_ nutrition: FoodNutrition) -> Bool {
         let servingAmount = nutrition.defaultAmount.value
         let servingUnit = nutrition.defaultAmount.unit
-        let servingCalories = Int(nutrition.calories(for: servingAmount).rounded())
+        let rawServingCalories = nutrition.calories(for: servingAmount)
+        guard rawServingCalories.isFinite,
+              rawServingCalories >= 0,
+              rawServingCalories <= Double(CalorieCalculator.maximumCalories) else {
+            errorMessage = "This food reports an unsupported calorie value. Choose another record or create a custom food."
+            return false
+        }
+        let servingCalories = Int(rawServingCalories.rounded())
         let food = foods.first { $0.barcode == nutrition.barcode } ?? Food(
             name: nutrition.name,
             calories: servingCalories,
@@ -799,7 +819,9 @@ struct CalorieCounterView: View {
 
     private func addFood() {
         let trimmedName = newFoodName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty, newFoodCalories >= 0, newFoodServingGrams > 0 else {
+        guard !trimmedName.isEmpty,
+              CalorieCalculator.isValidCalories(newFoodCalories),
+              newFoodServingGrams > 0 else {
             return
         }
 
@@ -1001,7 +1023,14 @@ struct CalorieCounterView: View {
 
             let servingAmount = nutrition.defaultAmount.value
             let servingUnit = nutrition.defaultAmount.unit
-            let servingCalories = Int(nutrition.calories(for: servingAmount).rounded())
+            let rawServingCalories = nutrition.calories(for: servingAmount)
+            guard rawServingCalories.isFinite,
+                  rawServingCalories >= 0,
+                  rawServingCalories <= Double(CalorieCalculator.maximumCalories) else {
+                finishBarcodeLookup(generation, failure: .incomplete)
+                return
+            }
+            let servingCalories = Int(rawServingCalories.rounded())
             let food = foods.first {
                 $0.matchesLookupProduct(barcode: nutrition.barcode, name: nutrition.name)
             } ?? Food(
@@ -1113,6 +1142,7 @@ struct CalorieCounterView: View {
 
         WidgetDailySummaryStore.save(
             calories: calories,
+            caloriesAreComplete: todaysCalorieTotal.isComplete,
             waterGlasses: waterGlasses,
             lastWaterRecordedAt: todaysWater?.lastRecordedAt,
             calorieGoal: dailyCalorieGoal,
@@ -1121,17 +1151,24 @@ struct CalorieCounterView: View {
         )
         rescheduleReminders()
 
+        let synchronization = CaloriesLiveActivityManager.synchronize(
+            calories: calories,
+            caloriesAreComplete: todaysCalorieTotal.isComplete,
+            waterGlasses: waterGlasses,
+            calorieGoal: dailyCalorieGoal,
+            waterGoal: waterGoal
+        )
         Task {
-            await CaloriesLiveActivityManager.updateIfActive(
-                calories: calories,
-                waterGlasses: waterGlasses,
-                calorieGoal: dailyCalorieGoal,
-                waterGoal: waterGoal
-            )
+            await synchronization.value
+            isLiveActivityActive = CaloriesLiveActivityManager.isActive
         }
     }
 
     private func startLiveActivity() {
+        guard todaysCalorieTotal.isComplete else {
+            liveActivityMessage = "Live Activity is unavailable until every logged food has valid calorie data."
+            return
+        }
         switch CaloriesLiveActivityManager.start(
             calories: todaysCalories,
             waterGlasses: todaysWater?.glasses ?? 0,

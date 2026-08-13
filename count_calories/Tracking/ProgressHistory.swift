@@ -78,7 +78,11 @@ nonisolated enum ProgressHistory {
 
         let recordedSummaries = Array(
             summaries
-                .filter { $0.calories >= 0 && $0.date.timeIntervalSinceReferenceDate.isFinite }
+                .filter {
+                    $0.caloriesAreComplete
+                        && $0.calories >= 0
+                        && $0.date.timeIntervalSinceReferenceDate.isFinite
+                }
                 .sorted { $0.date < $1.date }
                 .suffix(limit)
         )

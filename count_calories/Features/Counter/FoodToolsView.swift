@@ -115,7 +115,7 @@ struct FoodToolsView: View {
 
     private var canSaveFood: Bool {
         !foodName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && calories >= 0
+            && CalorieCalculator.isValidCalories(calories)
             && servingAmount.isFinite
             && servingAmount > 0
             && [carbohydrates, protein, fat, fiber].allSatisfy {
@@ -237,7 +237,7 @@ struct FoodToolsView: View {
                 } header: {
                     Text("Custom food")
                 } footer: {
-                    Text("Enter a name to save calories for the serving amount shown above.")
+                    Text("Enter a name and 0–\(CalorieCalculator.maximumCalories.formatted()) kcal for the serving amount shown above.")
                 }
             }
             .navigationTitle("Food tools")

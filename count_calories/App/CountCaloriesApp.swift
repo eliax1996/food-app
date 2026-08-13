@@ -1,11 +1,47 @@
+import Combine
 import SwiftData
 import SwiftUI
+import os
+
+@MainActor
+final class AppPersistence: ObservableObject {
+    struct Ready {
+        let modelContainer: ModelContainer
+        let mutationCoordinator: PlanEvidenceMutationCoordinator
+    }
+
+    @Published private(set) var ready: Ready?
+    @Published private(set) var hasError = false
+
+    private let makeContainer: () throws -> ModelContainer
+
+    init(makeContainer: @escaping () throws -> ModelContainer) {
+        self.makeContainer = makeContainer
+        retry()
+    }
+
+    func retry() {
+        do {
+            let container = try makeContainer()
+            ready = Ready(
+                modelContainer: container,
+                mutationCoordinator: PlanEvidenceMutationCoordinator(modelContainer: container)
+            )
+            hasError = false
+        } catch {
+            ready = nil
+            hasError = true
+            AppLogger.persistence.error(
+                "Failed to open persistent store: \(error.localizedDescription, privacy: .public)"
+            )
+        }
+    }
+}
 
 @main
 struct CountCaloriesApp: App {
     private let arguments: [String]
-    private let modelContainer: ModelContainer
-    private let mutationCoordinator: PlanEvidenceMutationCoordinator
+    @StateObject private var persistence: AppPersistence
 
     @MainActor
     init() {
@@ -25,37 +61,47 @@ struct CountCaloriesApp: App {
             WeightEntry.self,
             UserProfile.self
         ])
-        do {
+        _persistence = StateObject(wrappedValue: AppPersistence {
             let configuration = ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: usesInMemoryStore
             )
-            let container = try ModelContainer(for: schema, configurations: [configuration])
-            modelContainer = container
-            mutationCoordinator = PlanEvidenceMutationCoordinator(modelContainer: container)
-        } catch {
-            fatalError("Could not create model container: \(error)")
-        }
+            return try ModelContainer(for: schema, configurations: [configuration])
+        })
     }
 
     var body: some Scene {
         WindowGroup {
-            Group {
+            if let ready = persistence.ready {
+                Group {
 #if DEBUG
-                if arguments.contains("-ui-testing") {
-                    UITestingRoot()
-                } else if arguments.contains("-design-review") {
-                    DesignReviewRoot()
-                } else {
-                    ContentView()
-                }
+                    if arguments.contains("-ui-testing") {
+                        UITestingRoot()
+                    } else if arguments.contains("-design-review") {
+                        DesignReviewRoot()
+                    } else {
+                        ContentView()
+                    }
 #else
-                ContentView()
+                    ContentView()
 #endif
+                }
+                .modelContainer(ready.modelContainer)
+                .environment(\.planEvidenceMutationCoordinator, ready.mutationCoordinator)
+                .modifier(WidgetWaterImportModifier(modelContainer: ready.modelContainer))
+            } else {
+                ContentUnavailableView {
+                    Label("Saved data unavailable", systemImage: "externaldrive.badge.exclamationmark")
+                } description: {
+                    Text("Count Calories couldn’t open its saved data. Nothing was deleted. Try again after storage becomes available.")
+                } actions: {
+                    Button("Try Again", action: persistence.retry)
+                        .buttonStyle(.borderedProminent)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("retry-persistent-store")
+                }
+                .accessibilityIdentifier("persistent-store-error")
             }
-            .modelContainer(modelContainer)
-            .environment(\.planEvidenceMutationCoordinator, mutationCoordinator)
-            .modifier(WidgetWaterImportModifier(modelContainer: modelContainer))
         }
     }
 }

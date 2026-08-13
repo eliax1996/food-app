@@ -120,23 +120,33 @@ struct CaloriesWidgetEntryView: View {
     private var calorieSummary: some View {
         VStack(alignment: .leading, spacing: 1) {
             Label {
-                Text(calorieStatus.value, format: .number)
-                    .monospacedDigit()
+                if entry.summary.hasCompleteCalories {
+                    Text(calorieStatus.value, format: .number)
+                        .monospacedDigit()
+                } else {
+                    Text("—")
+                }
             } icon: {
-                Image(systemName: calorieStatus.isOverGoal ? "exclamationmark.circle.fill" : "flame.fill")
-                    .foregroundStyle(calorieStatus.isOverGoal ? .red : .orange)
+                Image(systemName: entry.summary.hasCompleteCalories
+                    ? (calorieStatus.isOverGoal ? "exclamationmark.circle.fill" : "flame.fill")
+                    : "exclamationmark.triangle.fill")
+                    .foregroundStyle(entry.summary.hasCompleteCalories
+                        ? (calorieStatus.isOverGoal ? .red : .orange)
+                        : .orange)
             }
             .font(.title2.bold())
             .lineLimit(1)
             .minimumScaleFactor(0.72)
 
-            Text(calorieStatus.label)
+            Text(entry.summary.hasCompleteCalories ? calorieStatus.label : "calories incomplete")
                 .font(.caption)
-                .foregroundStyle(calorieStatus.isOverGoal ? .red : .secondary)
+                .foregroundStyle(entry.summary.hasCompleteCalories && calorieStatus.isOverGoal ? .red : .secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
 
-            Text("\(entry.summary.calories.formatted()) eaten · \(entry.summary.resolvedCalorieGoal.formatted()) goal")
+            Text(entry.summary.hasCompleteCalories
+                 ? "\(entry.summary.calories.formatted()) eaten · \(entry.summary.resolvedCalorieGoal.formatted()) goal"
+                 : "Open app to review logged data")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -144,9 +154,9 @@ struct CaloriesWidgetEntryView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Daily calories")
-        .accessibilityValue(
-            "\(entry.summary.calories) eaten, \(calorieStatus.value) \(calorieStatus.label), daily goal \(entry.summary.resolvedCalorieGoal)"
-        )
+        .accessibilityValue(entry.summary.hasCompleteCalories
+            ? "\(entry.summary.calories) eaten, \(calorieStatus.value) \(calorieStatus.label), daily goal \(entry.summary.resolvedCalorieGoal)"
+            : "Calorie total incomplete. Open Count Calories to review logged data.")
     }
 
     private var waterSummary: some View {
@@ -309,6 +319,7 @@ private extension WidgetDailySummary {
     static let preview = WidgetDailySummary(
         date: .now,
         calories: 1_240,
+        caloriesAreComplete: true,
         waterGlasses: 5,
         lastWaterRecordedAt: .now,
         calorieGoal: 2_000,
@@ -341,6 +352,7 @@ private extension WidgetDailySummary {
         summary: WidgetDailySummary(
             date: .now,
             calories: 2_125,
+            caloriesAreComplete: true,
             waterGlasses: 8,
             lastWaterRecordedAt: .now,
             calorieGoal: 2_000,

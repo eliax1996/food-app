@@ -1,6 +1,9 @@
 import Foundation
 import XCTest
 #if !SWIFT_PACKAGE
+import UserNotifications
+#endif
+#if !SWIFT_PACKAGE
 import SwiftData
 #endif
 #if SWIFT_PACKAGE
@@ -11,6 +14,52 @@ import SwiftData
 
 @MainActor
 final class ReminderNotificationTests: XCTestCase {
+#if !SWIFT_PACKAGE
+    func testFailedReminderReplacementRestoresPreviousRequestsAndRemovesIntroducedOnes() async {
+        let old = notificationRequest(identifier: "count-calories.reminder.old")
+        let unchanged = notificationRequest(identifier: "count-calories.reminder.same")
+        let introduced = notificationRequest(identifier: "count-calories.reminder.new")
+        var stored = Dictionary(uniqueKeysWithValues: [old, unchanged].map { ($0.identifier, $0) })
+        var desiredAttempts = 0
+
+        let succeeded = await ReminderNotificationManager.replacePendingRequests(
+            existingRequests: [old, unchanged],
+            desiredRequests: [unchanged, introduced],
+            add: { request in
+                desiredAttempts += 1
+                if request.identifier == introduced.identifier, desiredAttempts == 2 {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+                stored[request.identifier] = request
+            },
+            remove: { identifiers in
+                identifiers.forEach { stored.removeValue(forKey: $0) }
+            }
+        )
+
+        XCTAssertFalse(succeeded)
+        XCTAssertEqual(Set(stored.keys), Set([old.identifier, unchanged.identifier]))
+    }
+
+    func testSuccessfulReminderReplacementAddsDesiredBeforeRemovingObsolete() async {
+        let old = notificationRequest(identifier: "count-calories.reminder.old")
+        let replacement = notificationRequest(identifier: "count-calories.reminder.new")
+        var events: [String] = []
+
+        let succeeded = await ReminderNotificationManager.replacePendingRequests(
+            existingRequests: [old],
+            desiredRequests: [replacement],
+            add: { request in events.append("add:\(request.identifier)") },
+            remove: { identifiers in events.append("remove:\(identifiers.joined(separator: ","))") }
+        )
+
+        XCTAssertTrue(succeeded)
+        XCTAssertEqual(events, [
+            "remove:\(old.identifier)",
+            "add:\(replacement.identifier)"
+        ])
+    }
+#endif
     func testMealPlansSkipMealsAlreadyRecordedThatDay() throws {
         let calendar = utcCalendar()
         let now = try date(2026, 6, 10, 8, 0, calendar: calendar)
@@ -542,6 +591,16 @@ final class ReminderNotificationTests: XCTestCase {
 
         XCTAssertTrue(plans.isEmpty)
     }
+
+#if !SWIFT_PACKAGE
+    private func notificationRequest(identifier: String) -> UNNotificationRequest {
+        UNNotificationRequest(
+            identifier: identifier,
+            content: UNMutableNotificationContent(),
+            trigger: nil
+        )
+    }
+#endif
 
     private func utcCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)

@@ -1,6 +1,6 @@
 # Count Calories
 
-Native SwiftUI calorie tracker for daily food, water, weight, goals, reminders, barcode and remote nutrition lookup with offline query caching, widgets, Live Activities, and keyboard-free ±10/±1 amount adjustment.
+Native SwiftUI calorie tracker for daily food, water, weight, goals, reminders, barcode and cached remote nutrition lookup, typed/on-device dictated bulk meal review, widgets, Live Activities, and keyboard-free ±10/±1 amount adjustment.
 
 ## Development
 
@@ -34,9 +34,11 @@ Empirical strengths, weaknesses, quota behavior, and policy changes are tracked 
 
 Use Xcode MCP once to explore or visually inspect a flow. If the same flow must be repeated to prove behavior—or it protects a critical journey—promote it to deterministic XCTest UI coverage before another manual proof. UI tests may cost CPU, but replace repeated agent navigation and save tokens/time. Test-authoring subagents must add step diagnostics and run/fix the created tests to green with a higher bounded timeout (`just test-ui 240` by default), not stop after generating code or the first failure. Keep tests isolated from live network, camera, permissions, wall clock, and uncontrolled persisted state.
 
-## Accepted TRACKING-IA-001 milestone
+## Product redesign
 
-`TRACKING-IA-001` is **ACCEPTED — ATTEMPT 01 / COMPLETE**. Final root is:
+Original autonomous redesign is **COMPLETE**. Final report, baseline comparison, screenshots, independent review, and exact validation: [`design-redesign/FINAL-REPORT.md`](design-redesign/FINAL-REPORT.md).
+
+Final root is:
 
 ```text
 Today | Weight | Progress | Settings
@@ -50,22 +52,16 @@ Today | Weight | Progress | Settings
 
 Final results:
 
-- `just validate 300`: **passed**.
-- Hostless validation: **125 passed / 2 opt-in live skips**.
-- Simulator build, install, and launch: **passed**.
-- `scripts/iterate.zsh` scopes `test-ui` to `count_caloriesUITests` and excludes performance tests; app units remain `test-app-unit`.
-- Explicit UI target: **6/6 passed**, covering four tabs; prompt → chart; two same-day readings; backdated regrouping; edit; delete cancel/confirm/undo; Settings; and direct `View full trends` → Progress / Weight.
-- App-hosted persistence tests passed after final duplicate-profile/future-row correctness fixes and again in an integrated run.
-- One later standalone `just test-app-unit 300` timed out before XCTest due to external Xcode 27 host instability; not a red product gate.
+- `just validate 300`: **222 hostless passed / 2 opt-in live skips**; app + widget compile, simulator install, and launch passed.
+- `just test-app-unit 600`: **309 passed / 2 opt-in live skips**.
+- `TEST_CASE_TIMEOUT=60 just test-ui 1800`: **46/46 passed**.
+- Three independent final critical/high reviews: **APPROVE / APPROVE / APPROVE**.
 
-Accepted TRACKING visual files are only `design-redesign/screenshots/TRACKING-IA-001/attempt-01-*`. `superseded-three-tab-*` files remain historical; `rejected-one-reading-chart.png` remains rejected evidence.
+## Redesign evidence
 
-Next component: empty/error/loading states, then global consistency, dark mode, Dynamic Type, and small-device checks.
+Screenshot-driven final state and evidence live under `design-redesign/`:
 
-## Active product redesign
-
-Screenshot-driven redesign state and evidence live under `design-redesign/`:
-
+- `design-redesign/FINAL-REPORT.md`
 - `design-redesign/STATUS.md`
 - `design-redesign/SCREENSHOTS.md`
 - `design-redesign/02-design-log.md`

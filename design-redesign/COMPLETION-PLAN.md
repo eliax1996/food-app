@@ -1,8 +1,8 @@
 # Product redesign completion plan
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Started:** 2026-08-09
-**Last updated:** 2026-08-13 — ROBUSTNESS-001 accepted; FINAL-001 next
+**Completed:** 2026-08-13 — FINAL-001 accepted; `FINAL-REPORT.md` published
 
 ## Goal
 
@@ -28,7 +28,7 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
 - Accepted NUTRIENTS-001 optional macro/fiber API mapping, persistence snapshots, coverage-gated daily balance, custom-food entry, and transparent general-adult comparison.
 - Latest accepted nutrient milestone: exact-tree `just validate 300` passed; 140 hostless tests passed with 2 opt-in live skips; app-hosted tests passed 167 with 2 skips; explicit functional UI target passed 12/12.
 
-## Missing before whole-product DONE
+## Definition of Done record
 
 1. **STATES-001 — COMPLETE: empty/loading/error/offline/permission states**
    - Accepted attempt 04 with live remote offline, scanner permission, dark/large-text scanner, and barcode loading/offline evidence.
@@ -64,19 +64,15 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
    - Exercised primary surfaces in light/dark, normal/AX3, fixed small/large iPhone, and long/extreme/empty/dense fixtures.
    - Fixed accessibility stacking for Today status/water and Settings summaries; added deterministic preview isolation and focused scroll-reachability proof.
 
-8. **FINAL-001**
-   - Perform clean build/install/launch and full primary-journey walkthrough.
-   - Capture final screenshots under `screenshots/final/`.
-   - Compare baseline versus final.
-   - Obtain independent whole-product product-design, native-iOS, and nutrition-competitiveness judgments.
-   - Fix every critical/high-impact finding or document explicit external blocker.
+8. **FINAL-001 — COMPLETE**
+   - Final app, widget, and Live Activity journeys captured under `screenshots/final/`; baseline comparison published in `FINAL-REPORT.md`.
+   - Default Almond Milk +15 kcal path protected by deterministic domain/UI proof.
+   - Independent critical/high review converged at 3/3 APPROVE after persistence, calorie-completeness, reminder, and migration hardening.
 
-9. **Closure documentation and gates**
-   - Reconcile stale historical/current test statements.
-   - Update `STATUS.md`, `SCREENSHOTS.md`, design log, backlog, and experiment records.
-   - Create `FINAL-REPORT.md` with actual evidence links.
-   - Run final bounded `just` validation suites.
-   - Ensure `STATUS.md` contains no unresolved high-priority design work.
+9. **Closure documentation and gates — COMPLETE**
+   - Current status, screenshot index, design log, backlog, experiment, README, and working notes reconciled.
+   - Final gates: 222 hostless / 2 skips; 309 app-hosted / 2 skips; 46/46 functional UI; build/install/launch and diff check passed.
+   - No unresolved high-priority redesign work remains.
 
 ## Iteration protocol
 
@@ -107,8 +103,8 @@ For each component:
 | AUXILIARY-001 | COMPLETE | Attempt 01 accepted: medium widget + explicit goal-aware Live Activity, locked revisioned water handoff, light/dark/AX3 evidence, and 3/3 critical/high approval. |
 | CONSISTENCY-001 | COMPLETE | Attempt 01 accepted: whole-app audit, food-action semantics, water bounds, intentional-difference record, and 3/3 critical/high approval. |
 | ROBUSTNESS-001 | COMPLETE | Attempt 01 accepted: full stress matrix, accessibility layout fixes, focused reachability UI, retained evidence, and 3/3 critical/high approval. |
-| FINAL-001 | PENDING | `screenshots/final/` currently empty. |
-| FINAL-REPORT | PENDING | File does not yet exist. |
+| FINAL-001 | COMPLETE | Fourteen representative final captures; +15 kcal proof; final hardening; 3/3 independent approval; exact-tree gates green. |
+| FINAL-REPORT | COMPLETE | `FINAL-REPORT.md` contains baseline comparison, evidence, guarantees, reviews, validation, and deferred opportunities. |
 
 ## Refine
 
@@ -227,6 +223,6 @@ Before coding each Refine feature:
 - No hidden assumptions for missing height/physiological/activity data.
 - User can inspect, decline, override, and revert recommendations.
 
-## Current next action
+## Closure decision
 
-Commit accepted ROBUSTNESS-001 work. Then execute FINAL-001 and produce `FINAL-REPORT.md`.
+Original autonomous redesign is complete. Next work, if requested, begins a separate competitor-gap iteration from current accepted baseline.

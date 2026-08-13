@@ -8,6 +8,22 @@ Keep paths relative to this file.
 
 Device unless noted: iPhone 17 Pro, iOS 27.0, portrait, light appearance.
 
+## FINAL-001
+
+Representative whole-product closure set:
+
+- ![Final Today](screenshots/final/today-light.png) — budget-first Today, water, evidence, nutrition, and four meal summaries.
+- ![Final Log food](screenshots/final/log-food-light.png) — direct single-food entry and exact amount/serving controls.
+- ![Final nutrition balance](screenshots/final/nutrition-balance-light.png) — measured facts, references, coverage, and scope.
+- ![Final bulk review](screenshots/final/bulk-review-light.png) — editable provisional rows backed by verified nutrition records.
+- ![Final empty Weight Log](screenshots/final/weight-log-empty-light.png) and ![final populated Weight Log](screenshots/final/weight-log-populated-light.png) — useful empty action and raw-measurement history.
+- ![Final calorie Progress](screenshots/final/progress-calories-light.png) and ![final weight Progress](screenshots/final/progress-weight-light.png) — separate target-aware analytics.
+- ![Final Settings](screenshots/final/settings-light.png), ![final Plan](screenshots/final/plan-light.png), and ![final Reminders](screenshots/final/reminders-light.png) — focused configuration hierarchy.
+- ![Final Today AX3 dark](screenshots/final/today-ax3-dark.png) — accessibility-size dark stress proof.
+- ![Final medium widget](screenshots/final/widget-medium-light.png) and ![final Live Activity](screenshots/final/live-activity-light.png) — goal-aware auxiliary surfaces.
+
+Status: **ACCEPTED — COMPLETE**. Final review consensus **3/3 APPROVE**; validation **222 hostless / 2 skips, 309 app-hosted / 2 skips, 46/46 UI**. Full comparison: `FINAL-REPORT.md`.
+
 ## NAV-001 / TRACKING-IA-001
 
 Baseline: all files under `screenshots/baseline/`

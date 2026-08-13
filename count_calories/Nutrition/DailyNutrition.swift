@@ -3,9 +3,11 @@ import Foundation
 nonisolated struct LoggedNutrition: Equatable, Sendable {
     let calories: Int
     let nutrients: FoodNutrients
+    let hasValidCalories: Bool
 
     init(calories: Int, nutrients: FoodNutrients) {
-        self.calories = max(0, calories)
+        hasValidCalories = FoodCaloriePolicy.isValid(calories)
+        self.calories = hasValidCalories ? calories : 0
         self.nutrients = nutrients
     }
 }
@@ -100,6 +102,7 @@ nonisolated struct DailyNutritionSummary: Equatable, Sendable {
     let fiberKnownCount: Int
     let macroCompleteCount: Int
     let completeCount: Int
+    let calorieValidCount: Int
     let macroSplit: MacroEnergySplit?
     let macroEnergyShare: MacroEnergyShare?
     let fiberReferenceGrams: Double?
@@ -109,6 +112,7 @@ nonisolated struct DailyNutritionSummary: Equatable, Sendable {
     var hasCompleteMacroCoverage: Bool { entryCount > 0 && macroCompleteCount == entryCount }
     var hasCompleteFiberCoverage: Bool { entryCount > 0 && fiberKnownCount == entryCount }
     var hasCompleteCoverage: Bool { entryCount > 0 && completeCount == entryCount }
+    var hasCompleteCalorieCoverage: Bool { entryCount > 0 && calorieValidCount == entryCount }
 
     func knownCount(for nutrient: Macronutrient) -> Int {
         switch nutrient {
@@ -169,10 +173,11 @@ nonisolated enum DailyNutrition {
             fatGrams: fatTotal,
             fiberGrams: fiberTotal
         )
-        let totalCalories = records.reduce(0) { $0 + $1.calories }
+        let totalCalories = FoodCaloriePolicy.total(records.map(\.calories))
         let macrosAreComplete = !records.isEmpty && macroCompleteCount == records.count
+        let caloriesAreComplete = records.allSatisfy(\.hasValidCalories)
         let split = macrosAreComplete ? macroEnergySplit(for: knownNutrients) : nil
-        let energyShare = macrosAreComplete
+        let energyShare = macrosAreComplete && caloriesAreComplete
             ? macroEnergyShare(for: knownNutrients, totalCalories: totalCalories)
             : nil
 
@@ -186,6 +191,7 @@ nonisolated enum DailyNutrition {
             fiberKnownCount: fiberKnownCount,
             macroCompleteCount: macroCompleteCount,
             completeCount: completeCount,
+            calorieValidCount: records.count(where: \.hasValidCalories),
             macroSplit: split,
             macroEnergyShare: energyShare,
             fiberReferenceGrams: calorieGoal > 0 ? 14 * Double(calorieGoal) / 1_000 : nil,

@@ -583,4 +583,28 @@ Today food-log status/action now stacks at accessibility sizes and uses `ViewTha
 
 Incremental build and focused AX3 UI passed. Final independent critical/high robustness review: **APPROVE / APPROVE / APPROVE**. Matrix/evidence: `docs/whole-app-robustness-assessment.md` and `screenshots/ROBUSTNESS-001/`.
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: FINAL-001.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Historical next milestone FINAL-001 follows below.
+
+## [FINAL-001] Whole-product closure
+
+### Purpose
+
+Prove accepted redesign works as one product, not only as isolated milestones, and close critical/high edge cases before declaring completion.
+
+### Final evidence
+
+Fourteen representative captures under `screenshots/final/` cover Today, Log food, Nutrition, bulk review, empty/populated Weight Log, calorie/weight Progress, Settings, Plan, Reminders, widget, Live Activity, and AX3 dark Today. Baseline comparison and embedded evidence: `FINAL-REPORT.md`.
+
+### Critical iterations
+
+Final neutral reviews found cross-cutting risks beyond normal fixtures: non-durable bulk precommit, destructive store startup, unsupported food calories, stale/partial legacy calorie totals, reminder replacement races/capacity/rollback, stale auxiliary calorie state, and invalid-energy nutrition guidance. Fixes fail closed, preserve retry/manual paths, and add deterministic coverage.
+
+### Validation and decision
+
+- `just validate 300`: 222 hostless pass / 2 opt-in live skips; app + widget compile/install/launch passed.
+- `just test-app-unit 600`: 309 pass / 2 opt-in live skips.
+- `TEST_CASE_TIMEOUT=60 just test-ui 1800`: 46/46 pass.
+- Final independent critical/high review: **APPROVE / APPROVE / APPROVE**.
+- `git diff --check`: passed.
+
+**ACCEPTED — COMPLETE. Original autonomous redesign Definition of Done met.**

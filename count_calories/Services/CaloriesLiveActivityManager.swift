@@ -4,6 +4,9 @@ import os
 
 @MainActor
 enum CaloriesLiveActivityManager {
+    private static var synchronizationGeneration = 0
+    private static var synchronizationTask: Task<Void, Never>?
+
     enum StartResult: Equatable {
         case started
         case alreadyActive
@@ -58,6 +61,38 @@ enum CaloriesLiveActivityManager {
             state.calorieGoal = max(1, calorieGoal)
             await activity.update(activityContent(state: state))
         }
+    }
+
+    @discardableResult
+    static func synchronize(
+        calories: Int,
+        caloriesAreComplete: Bool,
+        waterGlasses: Int,
+        calorieGoal: Int,
+        waterGoal: Int
+    ) -> Task<Void, Never> {
+        synchronizationGeneration += 1
+        let generation = synchronizationGeneration
+        let predecessor = synchronizationTask
+        let operation = Task { @MainActor in
+            _ = await predecessor?.value
+            guard generation == synchronizationGeneration else { return }
+            if caloriesAreComplete {
+                await updateIfActive(
+                    calories: calories,
+                    waterGlasses: waterGlasses,
+                    calorieGoal: calorieGoal,
+                    waterGoal: waterGoal
+                )
+            } else {
+                await stop()
+            }
+            if generation == synchronizationGeneration {
+                synchronizationTask = nil
+            }
+        }
+        synchronizationTask = operation
+        return operation
     }
 
     static func updateIfActive(

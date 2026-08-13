@@ -68,10 +68,13 @@ Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check item
 - [x] Implement SpeechAnalyzer dictation, permission/assets/lifecycle recovery, local-data controls, deterministic tests, and light/dark/AX3 evidence.
 - [x] Redesign meal-reminder overview to show every saved time and Enabled/Disabled state; separate enablement from timing behind one customization action.
 
-## Remaining whole-product sequence
+## Whole-product closure
 
 - [x] AUXILIARY-001 — accepted attempt 01: goal-aware medium widget, explicit Live Activity lifecycle, durable widget-water handoff, and visual evidence.
 - [x] CONSISTENCY-001 — accepted attempt 01: cross-product language, action semantics, shared bounds, states, navigation, and destructive behavior reconciled.
 - [x] ROBUSTNESS-001 — accepted attempt 01: full appearance/type/device/data stress matrix, accessibility stacking fixes, and focused reachability proof.
-- [ ] FINAL-001 — final journeys, screenshots, independent reviews, final validation, and `FINAL-REPORT.md`.
+- [x] FINAL-001 — final journeys, 14 screenshots, exact +15 kcal proof, 3/3 independent approval, final gates, and `FINAL-REPORT.md` complete.
+
+## Future product work
+
 - [ ] Competitor-gap iteration — after closure, reassess current category products and implement next evidence-backed missing feature without copying branded styles.

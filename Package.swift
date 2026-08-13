@@ -19,6 +19,7 @@ let package = Package(
         ),
         .target(
             name: "TrackingCore",
+            dependencies: ["CaloriesCore"],
             path: "count_calories/Tracking"
         ),
         .testTarget(

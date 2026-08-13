@@ -119,6 +119,9 @@ struct NutritionBalanceRow: View {
     }
 
     private var guidanceHeadline: String {
+        guard summary.hasCompleteCalorieCoverage else {
+            return "Guidance paused because logged calorie data is unavailable."
+        }
         guard summary.hasCompleteMacroCoverage, let first = summary.guidance.first else {
             return "Guidance paused until macro coverage is complete."
         }
@@ -298,7 +301,7 @@ struct DailyNutritionView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Guidance paused")
                             .font(.headline)
-                        Text("Macro data is complete for \(summary.macroCompleteCount) of \(summary.entryCount) logged foods. No missing values were estimated.")
+                        Text(guidancePausedReason)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -309,6 +312,13 @@ struct DailyNutritionView: View {
             }
         }
         .accessibilityIdentifier("nutrition-guidance")
+    }
+
+    private var guidancePausedReason: String {
+        if !summary.hasCompleteCalorieCoverage {
+            return "Food-label calories are valid for \(summary.calorieValidCount) of \(summary.entryCount) logged foods. Logged-energy guidance is unavailable; no missing values were estimated."
+        }
+        return "Macro data is complete for \(summary.macroCompleteCount) of \(summary.entryCount) logged foods. No missing values were estimated."
     }
 
     private var coverageSection: some View {
