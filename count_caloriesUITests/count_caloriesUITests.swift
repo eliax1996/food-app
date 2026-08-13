@@ -2933,6 +2933,42 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testTodayAccessibilityLayoutKeepsPrimaryControlsReachable() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-design-review",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = [
+            "DESIGN_REVIEW_STATE": "normal",
+            "DESIGN_REVIEW_APPEARANCE": "dark",
+            "DESIGN_REVIEW_DYNAMIC_TYPE": "accessibility3"
+        ]
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "AX3 Today: app did not reach foreground; state=\(app.state)."
+        )
+
+        let status = app.staticTexts["food-log-status"]
+        let complete = app.buttons["mark-food-log-complete"]
+        assertLabel(status, expected: "In progress", phase: "AX3 Today")
+        assertHittable(complete, identifier: "mark-food-log-complete", phase: "AX3 Today")
+        XCTAssertGreaterThanOrEqual(complete.frame.height, 44, "AX3 Today: completion target too short.")
+
+        let nutrition = app.descendants(matching: .any)
+            .matching(identifier: "nutrition-balance-link")
+            .firstMatch
+        for _ in 0..<4 where !nutrition.isHittable { app.swipeUp() }
+        assertHittable(nutrition, identifier: "nutrition-balance-link", phase: "AX3 Today")
+
+        let addMeal = app.buttons["add-meal"]
+        for _ in 0..<6 where !addMeal.isHittable { app.swipeUp() }
+        assertHittable(addMeal, identifier: "add-meal", phase: "AX3 Today")
+    }
+
+    @MainActor
     func testEmptyTodayCompletionBecomesNeedsReviewAfterDefaultMeal() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]

@@ -84,51 +84,68 @@ struct DailyProgressHeader: View {
 }
 
 struct WaterTrackerRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     @Binding var glasses: Int
     let goal: Int
 
     var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                Label("Water", systemImage: "drop.fill")
-                    .font(.headline)
-                    .foregroundStyle(.blue)
-                Text("\(glasses) of \(goal) glasses")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.primary.opacity(0.65))
-                    .monospacedDigit()
-            }
-
-            Spacer(minLength: 8)
-
-            HStack(spacing: 8) {
-                Button {
-                    glasses = max(0, glasses - 1)
-                } label: {
-                    Image(systemName: "minus")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44)
-                        .background(.quaternary, in: Circle())
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    waterSummary
+                    waterControls
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Remove glass")
-                .disabled(glasses == 0)
-
-                Button {
-                    glasses = min(30, glasses + 1)
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background(.blue, in: Circle())
+            } else {
+                HStack(spacing: 16) {
+                    waterSummary
+                    Spacer(minLength: 8)
+                    waterControls
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add glass")
-                .disabled(glasses == 30)
             }
-            .accessibilityElement(children: .contain)
         }
+    }
+
+    private var waterSummary: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label("Water", systemImage: "drop.fill")
+                .font(.headline)
+                .foregroundStyle(.blue)
+            Text("\(glasses) of \(goal) glasses")
+                .font(.subheadline)
+                .foregroundStyle(Color.primary.opacity(0.65))
+                .monospacedDigit()
+        }
+    }
+
+    private var waterControls: some View {
+        HStack(spacing: 8) {
+            Button {
+                glasses = max(0, glasses - 1)
+            } label: {
+                Image(systemName: "minus")
+                    .font(.body.weight(.semibold))
+                    .frame(width: 44, height: 44)
+                    .background(.quaternary, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove glass")
+            .disabled(glasses == 0)
+
+            Button {
+                glasses = min(30, glasses + 1)
+            } label: {
+                Image(systemName: "plus")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.blue, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add glass")
+            .disabled(glasses == 30)
+        }
+        .accessibilityElement(children: .contain)
     }
 }
 

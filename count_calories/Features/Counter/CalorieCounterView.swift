@@ -102,6 +102,7 @@ struct CalorieCounterView: View {
     private var isDesignReview: Bool {
 #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-design-review")
+            || ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
 #else
         false
 #endif
@@ -436,14 +437,40 @@ struct CalorieCounterView: View {
     }
 
     private var foodLogStatusRow: some View {
-        HStack(spacing: 8) {
-            foodLogLabel
-            Spacer(minLength: 4)
-            foodLogStatusText
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            if let actionTitle = foodLogStatus.actionTitle {
-                foodLogActionButton(actionTitle)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    foodLogLabel
+                    foodLogStatusText
+                    if let actionTitle = foodLogStatus.actionTitle {
+                        foodLogActionButton(actionTitle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        foodLogLabel
+                        Spacer(minLength: 4)
+                        foodLogStatusText
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        if let actionTitle = foodLogStatus.actionTitle {
+                            foodLogActionButton(actionTitle)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            foodLogLabel
+                            Spacer(minLength: 8)
+                            foodLogStatusText
+                        }
+                        if let actionTitle = foodLogStatus.actionTitle {
+                            foodLogActionButton(actionTitle)
+                        }
+                    }
+                }
             }
         }
         .accessibilityElement(children: .contain)

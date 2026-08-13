@@ -108,4 +108,24 @@ private enum AppTab: Hashable {
     ContentView()
         .previewPlanEvidenceContainer(PreviewData.makeContainer())
 }
+
+#Preview("Complete app — Small", traits: .fixedLayout(width: 375, height: 667)) {
+    ContentView()
+        .previewPlanEvidenceContainer(PreviewData.makeContainer())
+}
+
+#Preview("Complete app — Empty", traits: .fixedLayout(width: 375, height: 667)) {
+    ContentView()
+        .previewPlanEvidenceContainer(PreviewData.makeContainer(state: .empty))
+}
+
+#Preview("Complete app — Dense", traits: .fixedLayout(width: 430, height: 932)) {
+    ContentView()
+        .previewPlanEvidenceContainer(PreviewData.makeContainer(state: .longContent))
+}
+
+#Preview("Complete app — Over goal", traits: .fixedLayout(width: 430, height: 932)) {
+    ContentView()
+        .previewPlanEvidenceContainer(PreviewData.makeContainer(state: .exceeded))
+}
 #endif

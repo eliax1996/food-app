@@ -2,7 +2,7 @@
 
 **Status:** IN PROGRESS
 **Started:** 2026-08-09
-**Last updated:** 2026-08-13 — CONSISTENCY-001 accepted; ROBUSTNESS-001 next
+**Last updated:** 2026-08-13 — ROBUSTNESS-001 accepted; FINAL-001 next
 
 ## Goal
 
@@ -60,11 +60,9 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
    - Compared accepted app/widget/Live Activity screens and current source together.
    - Standardized food action semantics, aligned water bounds across entry paths, and accepted intentional navigation/dialog differences after 3/3 critical/high approval.
 
-7. **ROBUSTNESS-001**
-   - Exercise primary surfaces in light and dark appearance.
-   - Test normal and Accessibility Dynamic Type.
-   - Test small and large iPhone layouts.
-   - Test long names, extreme values, empty data, and dense data.
+7. **ROBUSTNESS-001 — COMPLETE**
+   - Exercised primary surfaces in light/dark, normal/AX3, fixed small/large iPhone, and long/extreme/empty/dense fixtures.
+   - Fixed accessibility stacking for Today status/water and Settings summaries; added deterministic preview isolation and focused scroll-reachability proof.
 
 8. **FINAL-001**
    - Perform clean build/install/launch and full primary-journey walkthrough.
@@ -108,7 +106,7 @@ For each component:
 | BULK-AI-FOOD-001 | COMPLETE | Attempt 01 accepted: typed/dictated local extraction, editable verified review, bounded local learning/drafts, custom recovery, atomic idempotent persistence, and 3/3 final critical/high approval. |
 | AUXILIARY-001 | COMPLETE | Attempt 01 accepted: medium widget + explicit goal-aware Live Activity, locked revisioned water handoff, light/dark/AX3 evidence, and 3/3 critical/high approval. |
 | CONSISTENCY-001 | COMPLETE | Attempt 01 accepted: whole-app audit, food-action semantics, water bounds, intentional-difference record, and 3/3 critical/high approval. |
-| ROBUSTNESS-001 | PENDING | Partial Meal/Amount/Weight evidence only. |
+| ROBUSTNESS-001 | COMPLETE | Attempt 01 accepted: full stress matrix, accessibility layout fixes, focused reachability UI, retained evidence, and 3/3 critical/high approval. |
 | FINAL-001 | PENDING | `screenshots/final/` currently empty. |
 | FINAL-REPORT | PENDING | File does not yet exist. |
 
@@ -231,4 +229,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-Commit accepted CONSISTENCY-001 work. Then execute ROBUSTNESS-001 before FINAL-001.
+Commit accepted ROBUSTNESS-001 work. Then execute FINAL-001 and produce `FINAL-REPORT.md`.

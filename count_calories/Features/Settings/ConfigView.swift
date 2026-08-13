@@ -221,6 +221,8 @@ struct ConfigView: View {
 }
 
 private struct SettingsSummaryRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let title: String
     let systemImage: String
     let value: String
@@ -229,16 +231,25 @@ private struct SettingsSummaryRow: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline) {
+                if dynamicTypeSize.isAccessibilitySize {
                     Text(title)
-                    Spacer(minLength: 12)
                     Text(value)
                         .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing)
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(title)
+                        Spacer(minLength: 12)
+                        Text(value)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             .padding(.vertical, 2)
         } icon: {

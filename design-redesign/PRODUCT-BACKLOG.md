@@ -416,3 +416,12 @@ Medium widget now matches Today’s remaining/over-goal hierarchy, shows eaten/g
 **Priority:** CLOSURE
 
 Accepted app/widget surfaces share one navigation, hierarchy, semantic-color, typography, state, and confirmation system. Final fixes standardized persisted intake actions as **Log food**, named provisional bulk insertion **Add another food**, and enforced one-glass bounded water deep links. Intentional Weight Log, dialog, bulk, destructive-check-in, and widget-family differences are documented in `docs/whole-app-consistency-assessment.md`. Final critical/high review: **3/3 APPROVE**.
+
+---
+
+## Priority 7 — [ROBUSTNESS-001] Whole-app stress matrix
+
+**Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
+**Priority:** CLOSURE
+
+Light/dark, normal/AX3, fixed small/large iPhone, and long/extreme/empty/dense fixtures are covered. Today status and water controls plus Settings summary rows now adapt vertically at accessibility sizes; preview fixtures ignore external widget side effects; focused UI proves lower primary actions remain scroll-reachable. Evidence and final 3/3 critical/high approval are recorded in `docs/whole-app-robustness-assessment.md`.

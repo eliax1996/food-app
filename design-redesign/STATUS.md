@@ -23,6 +23,7 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - BULK-AI-FOOD-001: accepted attempt 01. Typed/on-device dictated descriptions produce provisional editable rows; nutrition stays record-owned; explicit/default estimates require acceptance; local retained choices and seven-day drafts are bounded/clearable; confirmation is atomic and idempotent with custom/saved recovery.
 - AUXILIARY-001: accepted attempt 01. Medium widget shows remaining/over goal and durable water controls; explicit start/stop Live Activity uses goal-aware Lock Screen and Dynamic Island layouts without display-only mutations.
 - CONSISTENCY-001: accepted attempt 01. Food-action language and water bounds are reconciled; whole-app navigation, hierarchy, states, and destructive semantics passed 3/3 critical/high review.
+- ROBUSTNESS-001: accepted attempt 01. Light/dark, normal/AX3, small/large, long/extreme/empty/dense matrix is retained; Today water/status and Settings summaries adapt cleanly at accessibility sizes.
 
 ## Current component
 
@@ -34,6 +35,8 @@ AUXILIARY-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Widget/Live Activity now ma
 
 CONSISTENCY-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Cross-product audit standardized **Log food** versus **Add another food**, closed water deep-link bound drift, and accepted intentional Weight/bulk/dialog differences. Final critical/high review consensus: **3/3 APPROVE**.
 
+ROBUSTNESS-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Accessibility layout stacking, deterministic preview isolation, fixed small/large fixtures, focused scroll reachability, and retained cross-component evidence cover full stress matrix. Final critical/high review consensus: **3/3 APPROVE**.
+
 Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCEPTED — ATTEMPT 01 / COMPLETE** with final root order:
 
 ```text
@@ -44,8 +47,7 @@ STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders,
 
 ## Next components
 
-1. ROBUSTNESS-001
-2. FINAL-001 and `FINAL-REPORT.md`
+1. FINAL-001 and `FINAL-REPORT.md`
 
 ## Accepted design principles
 

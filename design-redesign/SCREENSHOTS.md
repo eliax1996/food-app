@@ -303,6 +303,18 @@ Accepted attempt 01 evidence:
 
 Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Live Activity lifecycle is explicit; cross-process widget water uses locked revision handoff into SwiftData; final critical/high source review consensus **3/3 APPROVE**. App-hosted 300 pass / 2 live skips; hostless 219 / 2 live skips; 45 broad UI tests passed with one unrelated timeout that passed focused rerun.
 
+## ROBUSTNESS-001
+
+Accepted attempt 01 stress evidence:
+
+- ![Today normal](screenshots/ROBUSTNESS-001/today-normal-light.png), ![small](screenshots/ROBUSTNESS-001/today-small-light.png), and ![empty small](screenshots/ROBUSTNESS-001/today-empty-small.png) — standard hierarchy survives normal and compact layouts without fixture contamination.
+- ![Over goal large](screenshots/ROBUSTNESS-001/today-over-goal-large.png) and ![dense large](screenshots/ROBUSTNESS-001/today-dense-large.png) — explicit extreme status and all meal summaries remain visible.
+- ![Today AX3 dark](screenshots/ROBUSTNESS-001/today-ax3-dark.png), ![small AX3 dark](screenshots/ROBUSTNESS-001/today-small-ax3-dark.png), and ![dense AX3 dark](screenshots/ROBUSTNESS-001/today-dense-ax3-dark.png) — status/action and water controls adapt vertically; scroll proof covers lower actions.
+- ![Weight AX3 dark](screenshots/ROBUSTNESS-001/weight-ax3-dark.png), ![Settings AX3 dark](screenshots/ROBUSTNESS-001/settings-ax3-dark.png), ![Meal editor AX3 dark](screenshots/ROBUSTNESS-001/meal-editor-ax3-dark.png), and ![Nutrition AX3 dark](screenshots/ROBUSTNESS-001/nutrition-ax3-dark.png) — domain screens retain readable values and navigation.
+- ![Reminder editor small](screenshots/ROBUSTNESS-001/reminder-editor-small.png) — fixed 375×667 editor preserves Save/Cancel and all meal switches.
+
+Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Focused AX3 reachability test passed; final critical/high robustness review consensus **3/3 APPROVE**.
+
 ## WEIGHT-ENTRY-001
 
 Accepted attempt 01 evidence:

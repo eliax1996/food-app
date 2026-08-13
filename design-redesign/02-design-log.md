@@ -574,3 +574,13 @@ Initial independent audit found mixed **Add Food/Add food/Log food** semantics a
 Hostless 219 / 2 live skips, app-hosted affected suite 300 / 2 skips, focused atomic bulk UI, incremental build, and `git diff --check` passed. Final independent critical/high consistency review: **APPROVE / APPROVE / APPROVE**.
 
 **ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: ROBUSTNESS-001.
+
+## [ROBUSTNESS-001] Whole-app stress matrix
+
+Added fixed whole-app previews for small 375×667, large 430×932, empty, dense/long, and over-goal fixtures; compared these with retained dark/AX3 evidence for every major domain. Initial AX3 rendering found horizontal Today status/action clipping, Water wrapping mid-word, Settings values wrapping character-by-character, and App Group water contaminating preview fixtures.
+
+Today food-log status/action now stacks at accessibility sizes and uses `ViewThatFits` narrow fallback; Water stacks its 44-point controls under summary at accessibility sizes; Settings summary title/value/detail stacks; previews suppress external widget/activity side effects. Focused AX3 UI proves status, completion, Nutrition, and Log food remain reachable by scrolling.
+
+Incremental build and focused AX3 UI passed. Final independent critical/high robustness review: **APPROVE / APPROVE / APPROVE**. Matrix/evidence: `docs/whole-app-robustness-assessment.md` and `screenshots/ROBUSTNESS-001/`.
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: FINAL-001.

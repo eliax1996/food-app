@@ -15,18 +15,17 @@ Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 - Dedicated Weight Log
 - Root `Today | Weight | Progress | Settings`
 
-Latest accepted milestone: CONSISTENCY-001 attempt 01 whole-app language/action/state audit. Current: ROBUSTNESS-001 next.
+Latest accepted milestone: ROBUSTNESS-001 attempt 01 whole-app stress matrix and accessibility layout fixes. Current: FINAL-001 next.
 
 ## Current component
 
-`CONSISTENCY-001`: accepted screen/source comparison, Log food versus Add another food semantics, bounded water entry paths, and documented intentional navigation/dialog differences.
+`ROBUSTNESS-001`: light/dark, normal/AX3, fixed small/large layouts, long/extreme/empty/dense fixtures, vertical accessibility adaptations, and deterministic preview isolation.
 
-`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–D, WEIGHT-ENTRY-001, SETTINGS-DIRECT-EDIT-001, BULK-AI-FOOD-001, AUXILIARY-001, and CONSISTENCY-001 are accepted and complete.
+`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–D, WEIGHT-ENTRY-001, SETTINGS-DIRECT-EDIT-001, BULK-AI-FOOD-001, AUXILIARY-001, CONSISTENCY-001, and ROBUSTNESS-001 are accepted and complete.
 
 ## Remaining sequence
 
-1. ROBUSTNESS-001
-2. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
+1. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
 
 ## Current validation baseline
 
@@ -38,4 +37,4 @@ Latest accepted milestone: CONSISTENCY-001 attempt 01 whole-app language/action/
 
 ## Immediate action
 
-Begin ROBUSTNESS-001 from accepted CONSISTENCY-001 tree; exercise light/dark, normal/AX3, small/large iPhone, long/extreme/empty/dense states.
+Execute FINAL-001: clean final journeys, refreshed `screenshots/final/`, whole-product independent judgments, full gates, documentation reconciliation, and `FINAL-REPORT.md`.
