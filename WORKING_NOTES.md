@@ -15,19 +15,18 @@ Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 - Dedicated Weight Log
 - Root `Today | Weight | Progress | Settings`
 
-Latest accepted milestone: AUXILIARY-001 attempt 01 goal-aware medium widget, explicit Live Activity lifecycle, and durable widget-water handoff. Current: CONSISTENCY-001 next.
+Latest accepted milestone: CONSISTENCY-001 attempt 01 whole-app language/action/state audit. Current: ROBUSTNESS-001 next.
 
 ## Current component
 
-`AUXILIARY-001`: remaining/over-goal medium widget, App Group lock/revision water persistence, explicit start/stop Live Activity, current dynamic goals, and Lock Screen/Dynamic Island evidence.
+`CONSISTENCY-001`: accepted screen/source comparison, Log food versus Add another food semantics, bounded water entry paths, and documented intentional navigation/dialog differences.
 
-`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–D, WEIGHT-ENTRY-001, SETTINGS-DIRECT-EDIT-001, BULK-AI-FOOD-001, and AUXILIARY-001 are accepted and complete.
+`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–D, WEIGHT-ENTRY-001, SETTINGS-DIRECT-EDIT-001, BULK-AI-FOOD-001, AUXILIARY-001, and CONSISTENCY-001 are accepted and complete.
 
 ## Remaining sequence
 
-1. CONSISTENCY-001
-2. ROBUSTNESS-001
-3. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
+1. ROBUSTNESS-001
+2. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
 
 ## Current validation baseline
 
@@ -39,4 +38,4 @@ Latest accepted milestone: AUXILIARY-001 attempt 01 goal-aware medium widget, ex
 
 ## Immediate action
 
-Begin CONSISTENCY-001 from accepted AUXILIARY-001 tree; compare terminology, hierarchy, actions, navigation, states, and destructive behavior across accepted surfaces.
+Begin ROBUSTNESS-001 from accepted CONSISTENCY-001 tree; exercise light/dark, normal/AX3, small/large iPhone, long/extreme/empty/dense states.

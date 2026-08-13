@@ -22,6 +22,7 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - SETTINGS-DIRECT-EDIT-001: accepted attempt 01. Reminder overview shows every saved meal time plus Enabled/Disabled state; one **Customize Meal Reminders** action separates meal enablement from notification timing; Weight and Water retain focused draft editing. Plan calculated setup opens, continues, closes, and resumes reliably.
 - BULK-AI-FOOD-001: accepted attempt 01. Typed/on-device dictated descriptions produce provisional editable rows; nutrition stays record-owned; explicit/default estimates require acceptance; local retained choices and seven-day drafts are bounded/clearable; confirmation is atomic and idempotent with custom/saved recovery.
 - AUXILIARY-001: accepted attempt 01. Medium widget shows remaining/over goal and durable water controls; explicit start/stop Live Activity uses goal-aware Lock Screen and Dynamic Island layouts without display-only mutations.
+- CONSISTENCY-001: accepted attempt 01. Food-action language and water bounds are reconciled; whole-app navigation, hierarchy, states, and destructive semantics passed 3/3 critical/high review.
 
 ## Current component
 
@@ -30,6 +31,8 @@ REFINE-001 — **ACCEPTED; ATTEMPTS 01–03 / SLICES A–D COMPLETE**.
 BULK-AI-FOOD-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Typed and dictated local-first extraction, editable review, verified nutrition matching, manual/custom recovery, truthful privacy controls, bounded retained learning/drafts, and atomic idempotent confirmation are implemented. Final critical/high code-review consensus: **3/3 APPROVE**.
 
 AUXILIARY-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Widget/Live Activity now match Today’s remaining-calorie hierarchy, widget water is locked/revisioned into SwiftData, and Live Activity lifecycle is explicit. Final critical/high code-review consensus: **3/3 APPROVE**.
+
+CONSISTENCY-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Cross-product audit standardized **Log food** versus **Add another food**, closed water deep-link bound drift, and accepted intentional Weight/bulk/dialog differences. Final critical/high review consensus: **3/3 APPROVE**.
 
 Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCEPTED — ATTEMPT 01 / COMPLETE** with final root order:
 
@@ -41,9 +44,8 @@ STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders,
 
 ## Next components
 
-1. CONSISTENCY-001
-2. ROBUSTNESS-001
-3. FINAL-001 and `FINAL-REPORT.md`
+1. ROBUSTNESS-001
+2. FINAL-001 and `FINAL-REPORT.md`
 
 ## Accepted design principles
 

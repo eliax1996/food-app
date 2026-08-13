@@ -2,7 +2,7 @@
 
 **Status:** IN PROGRESS
 **Started:** 2026-08-09
-**Last updated:** 2026-08-13 — AUXILIARY-001 accepted; CONSISTENCY-001 next
+**Last updated:** 2026-08-13 — CONSISTENCY-001 accepted; ROBUSTNESS-001 next
 
 ## Goal
 
@@ -56,9 +56,9 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
    - Medium widget uses remaining/over-goal hierarchy, durable bounded water controls, and readable normal/dark/AX3 evidence.
    - Live Activity requires explicit start/stop, updates dynamic goals, and presents truthful Lock Screen/Dynamic Island state without display-only mutations.
 
-6. **CONSISTENCY-001**
-   - Compare all accepted screens together.
-   - Reconcile terminology, typography, spacing, iconography, chart language, actions, empty states, navigation, and destructive behavior.
+6. **CONSISTENCY-001 — COMPLETE**
+   - Compared accepted app/widget/Live Activity screens and current source together.
+   - Standardized food action semantics, aligned water bounds across entry paths, and accepted intentional navigation/dialog differences after 3/3 critical/high approval.
 
 7. **ROBUSTNESS-001**
    - Exercise primary surfaces in light and dark appearance.
@@ -107,7 +107,7 @@ For each component:
 | REFINE-001 | COMPLETE | Attempts 01–03 accepted: Plan references, reminders, hierarchical Settings, direct entry, optional calculator, explicit complete-day evidence, bounded proposal-only adaptation, Adapted source, exact revert, 3/3 visual approval, and 31/31 UI. |
 | BULK-AI-FOOD-001 | COMPLETE | Attempt 01 accepted: typed/dictated local extraction, editable verified review, bounded local learning/drafts, custom recovery, atomic idempotent persistence, and 3/3 final critical/high approval. |
 | AUXILIARY-001 | COMPLETE | Attempt 01 accepted: medium widget + explicit goal-aware Live Activity, locked revisioned water handoff, light/dark/AX3 evidence, and 3/3 critical/high approval. |
-| CONSISTENCY-001 | PENDING | Requires completed component set. |
+| CONSISTENCY-001 | COMPLETE | Attempt 01 accepted: whole-app audit, food-action semantics, water bounds, intentional-difference record, and 3/3 critical/high approval. |
 | ROBUSTNESS-001 | PENDING | Partial Meal/Amount/Weight evidence only. |
 | FINAL-001 | PENDING | `screenshots/final/` currently empty. |
 | FINAL-REPORT | PENDING | File does not yet exist. |
@@ -231,4 +231,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-Commit accepted AUXILIARY-001 work. Then execute CONSISTENCY-001 before ROBUSTNESS-001 and FINAL-001.
+Commit accepted CONSISTENCY-001 work. Then execute ROBUSTNESS-001 before FINAL-001.

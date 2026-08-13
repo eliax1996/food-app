@@ -528,7 +528,7 @@ struct CalorieCounterView: View {
 
     private func adjustWater(by delta: Int) {
         let day = todaysWater ?? createTodayWaterDay()
-        day.glasses = max(0, day.glasses + delta)
+        day.glasses = min(max(0, day.glasses + delta), 30)
         if delta > 0 {
             day.lastRecordedAt = .now
         }

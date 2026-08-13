@@ -407,3 +407,12 @@ NUTRIENTS-001 is accepted and now supplies trustworthy persisted actuals, covera
 **Priority:** CLOSURE
 
 Medium widget now matches Today’s remaining/over-goal hierarchy, shows eaten/goal and water progress, and keeps Log food plus bounded water actions. Cross-process locked revision handoff preserves widget water until SwiftData imports it. Live Activity requires explicit Start/Stop, carries current goals in dynamic state, and provides goal-aware Lock Screen/Dynamic Island layouts without display-only mutation controls. Light/dark/AX3 evidence and final 3/3 critical/high approval are retained in `design-redesign/experiments/AUXILIARY-001.md`.
+
+---
+
+## Priority 6 — [CONSISTENCY-001] Whole-app consistency
+
+**Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
+**Priority:** CLOSURE
+
+Accepted app/widget surfaces share one navigation, hierarchy, semantic-color, typography, state, and confirmation system. Final fixes standardized persisted intake actions as **Log food**, named provisional bulk insertion **Add another food**, and enforced one-glass bounded water deep links. Intentional Weight Log, dialog, bulk, destructive-check-in, and widget-family differences are documented in `docs/whole-app-consistency-assessment.md`. Final critical/high review: **3/3 APPROVE**.

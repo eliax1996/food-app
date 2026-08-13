@@ -16,7 +16,7 @@ enum AppDeepLinkAction: Equatable {
                 .first(where: { $0.name == "delta" })?
                 .value
                 .flatMap(Int.init) ?? 0
-            guard delta != 0 else { return nil }
+            guard delta == -1 || delta == 1 else { return nil }
             self = .adjustWater(by: delta)
         default:
             return nil

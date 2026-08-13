@@ -178,6 +178,8 @@ final class CalorieTrackingTests: XCTestCase {
         XCTAssertNil(AppDeepLinkAction(url: URL(string: "countcalories://water")!))
         XCTAssertNil(AppDeepLinkAction(url: URL(string: "countcalories://water?delta=0")!))
         XCTAssertNil(AppDeepLinkAction(url: URL(string: "countcalories://water?delta=glass")!))
+        XCTAssertNil(AppDeepLinkAction(url: URL(string: "countcalories://water?delta=2")!))
+        XCTAssertNil(AppDeepLinkAction(url: URL(string: "countcalories://water?delta=-50")!))
     }
 
     private var calendar: Calendar {

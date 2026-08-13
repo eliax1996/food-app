@@ -1081,7 +1081,7 @@ struct BulkMealLoggingView: View {
                 Button {
                     controller.addManualItem(savedFoods: foods)
                 } label: {
-                    Label("Add Food", systemImage: "plus.circle")
+                    Label("Add another food", systemImage: "plus.circle")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)

@@ -71,7 +71,7 @@ Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check item
 ## Remaining whole-product sequence
 
 - [x] AUXILIARY-001 — accepted attempt 01: goal-aware medium widget, explicit Live Activity lifecycle, durable widget-water handoff, and visual evidence.
-- [ ] CONSISTENCY-001 — cross-screen terminology, spacing, typography, iconography, actions, and state language.
+- [x] CONSISTENCY-001 — accepted attempt 01: cross-product language, action semantics, shared bounds, states, navigation, and destructive behavior reconciled.
 - [ ] ROBUSTNESS-001 — light/dark, Dynamic Type, small/large phones, long/extreme/empty/dense states.
 - [ ] FINAL-001 — final journeys, screenshots, independent reviews, final validation, and `FINAL-REPORT.md`.
 - [ ] Competitor-gap iteration — after closure, reassess current category products and implement next evidence-backed missing feature without copying branded styles.

@@ -217,9 +217,9 @@ struct MealDetailView: View {
                     ContentUnavailableView(
                         "Nothing logged for \(mealType.rawValue.lowercased())",
                         systemImage: mealType.systemImage,
-                        description: Text("Add food when you're ready.")
+                        description: Text("Log food when you're ready.")
                     )
-                    Button("Add Food", action: onAdd)
+                    Button("Log food", action: onAdd)
                         .accessibilityIdentifier("meal-detail-add-food")
                 }
             } else {
@@ -251,7 +251,7 @@ struct MealDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: onAdd) {
-                    Label("Add food", systemImage: "plus")
+                    Label("Log food", systemImage: "plus")
                 }
             }
         }

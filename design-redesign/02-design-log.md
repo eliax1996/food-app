@@ -564,3 +564,13 @@ Live Activity no longer starts implicitly during ordinary Today synchronization.
 App + widget iOS 17 build passed. Hostless remained 219 / 2 live skips; app-hosted passed 300 / 2 skips. Broad UI executed 45 passing tests with one unrelated amount-test timeout that passed focused rerun. Light, over-goal, dark AX3 widget plus Lock Screen/compact/expanded Live Activity previews are retained. Final three independent critical/high source reviewers: **APPROVE / APPROVE / APPROVE**.
 
 **ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: CONSISTENCY-001.
+
+## [CONSISTENCY-001] Whole-app language and behavior
+
+Reviewed 126 retained images plus current app/widget source across navigation, hierarchy, type, spacing, icons, actions, states, accessibility, and destructive behavior. Root order, grouped native forms, semantic orange/blue/red roles, numeric typography, chart interaction, focused Settings editors, and explicit confirmations are coherent.
+
+Initial independent audit found mixed **Add Food/Add food/Log food** semantics and arbitrary water deep-link deltas that bypassed Today/widget bounds. Meal detail now uses **Log food**; provisional bulk insertion says **Add another food**; water links allow only `-1`/`1`; Today clamps `0...30`. Intentional Weight Log, bulk section, dialog-capitalization, destructive-check-in, and medium-widget differences are documented.
+
+Hostless 219 / 2 live skips, app-hosted affected suite 300 / 2 skips, focused atomic bulk UI, incremental build, and `git diff --check` passed. Final independent critical/high consistency review: **APPROVE / APPROVE / APPROVE**.
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: ROBUSTNESS-001.
