@@ -8,6 +8,47 @@ import XCTest
 
 @MainActor
 final class CalorieTrackingTests: XCTestCase {
+#if !SWIFT_PACKAGE
+    func testLiveActivityCalorieStatusHandlesRemainingOverAndInvalidValues() {
+        let remaining = CaloriesActivityAttributes.ContentState(
+            calories: 1_240,
+            waterGlasses: 5,
+            calorieGoal: 2_000,
+            waterGoal: 8
+        ).calorieStatus()
+        let over = CaloriesActivityAttributes.ContentState(
+            calories: 2_125,
+            waterGlasses: 8,
+            calorieGoal: 2_000,
+            waterGoal: 8
+        ).calorieStatus()
+        let invalid = CaloriesActivityAttributes.ContentState(
+            calories: -40,
+            waterGlasses: 0,
+            calorieGoal: 0,
+            waterGoal: 0
+        ).calorieStatus()
+
+        XCTAssertEqual(remaining.value, 760)
+        XCTAssertFalse(remaining.isOverGoal)
+        XCTAssertEqual(remaining.label, "kcal remaining")
+        XCTAssertEqual(over.value, 125)
+        XCTAssertTrue(over.isOverGoal)
+        XCTAssertEqual(over.label, "kcal over")
+        XCTAssertEqual(invalid.value, 1)
+        XCTAssertFalse(invalid.isOverGoal)
+        XCTAssertEqual(
+            CaloriesActivityAttributes.ContentState(
+                calories: 0,
+                waterGlasses: 0,
+                calorieGoal: nil,
+                waterGoal: nil
+            ).resolvedCalorieGoal,
+            1_700
+        )
+    }
+#endif
+
     func testDefaultAlmondMilkServingContains15Calories() {
         let calories = CalorieCalculator.calories(
             caloriesPerServing: 15,

@@ -398,3 +398,12 @@ A calorie goal alone does not explain what a broadly balanced adult macro compos
 ### Scheduling decision
 
 NUTRIENTS-001 is accepted and now supplies trustworthy persisted actuals, coverage, and measured daily comparison. Goal-integrated theoretical values proceed with REFINE-001’s explainable Plan/calorie-goal work.
+
+---
+
+## Priority 5 — [AUXILIARY-001] Widget and Live Activity
+
+**Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
+**Priority:** CLOSURE
+
+Medium widget now matches Today’s remaining/over-goal hierarchy, shows eaten/goal and water progress, and keeps Log food plus bounded water actions. Cross-process locked revision handoff preserves widget water until SwiftData imports it. Live Activity requires explicit Start/Stop, carries current goals in dynamic state, and provides goal-aware Lock Screen/Dynamic Island layouts without display-only mutation controls. Light/dark/AX3 evidence and final 3/3 critical/high approval are retained in `design-redesign/experiments/AUXILIARY-001.md`.

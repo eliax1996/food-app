@@ -63,6 +63,8 @@ struct CalorieCounterView: View {
     @State private var errorMessage: String?
     @State private var remoteFoodSearch: RemoteFoodSearchService?
     @State private var remoteSearchCoordinator: RemoteFoodSearchCoordinator?
+    @State private var isLiveActivityActive = false
+    @State private var liveActivityMessage: String?
 
     init(
         addMealRequestID: Binding<UUID?>,
@@ -256,12 +258,27 @@ struct CalorieCounterView: View {
                         Button(action: showCustomFoodTools) {
                             Label("Create custom food", systemImage: "plus.circle")
                         }
+
+                        Divider()
+
+                        if isLiveActivityActive {
+                            Button(action: stopLiveActivity) {
+                                Label("Stop Live Activity", systemImage: "stop.circle")
+                            }
+                            .accessibilityIdentifier("stop-live-activity")
+                        } else {
+                            Button(action: startLiveActivity) {
+                                Label("Start Live Activity", systemImage: "waveform.path")
+                            }
+                            .accessibilityIdentifier("start-live-activity")
+                        }
                     } label: {
                         Label("More logging options", systemImage: "ellipsis.circle")
                     }
                 }
             }
             .onAppear {
+                isLiveActivityActive = CaloriesLiveActivityManager.isActive
                 prepareLocalData()
                 if remoteFoodSearch == nil {
                     let service = FoodSearchServiceFactory.make()
@@ -285,7 +302,16 @@ struct CalorieCounterView: View {
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else { return }
                 synchronizeWaterFromWidgetStore()
+                isLiveActivityActive = CaloriesLiveActivityManager.isActive
                 mirrorTodayToWidgetStore()
+            }
+            .alert("Live Activity", isPresented: Binding(
+                get: { liveActivityMessage != nil },
+                set: { if !$0 { liveActivityMessage = nil } }
+            )) {
+                Button("Dismiss", role: .cancel) {}
+            } message: {
+                Text(liveActivityMessage ?? "Unknown error")
             }
             .sheet(isPresented: $showingAddMeal, onDismiss: mealEditorDidDismiss) {
                 MealEditorView(
@@ -494,7 +520,7 @@ struct CalorieCounterView: View {
                     day.lastRecordedAt = .now
                 }
                 if saveChanges() {
-                    mirrorTodayToWidgetStore()
+                    mirrorTodayToWidgetStore(preservePendingWidgetWater: false)
                 }
             }
         )
@@ -507,7 +533,7 @@ struct CalorieCounterView: View {
             day.lastRecordedAt = .now
         }
         if saveChanges() {
-            mirrorTodayToWidgetStore()
+            mirrorTodayToWidgetStore(preservePendingWidgetWater: false)
         }
     }
 
@@ -1050,7 +1076,9 @@ struct CalorieCounterView: View {
         _ = saveChanges()
     }
 
-    private func mirrorTodayToWidgetStore() {
+    private func mirrorTodayToWidgetStore(
+        preservePendingWidgetWater: Bool = true
+    ) {
         guard !isDesignReview else { return }
 
         let calories = todaysCalories
@@ -1059,17 +1087,43 @@ struct CalorieCounterView: View {
         WidgetDailySummaryStore.save(
             calories: calories,
             waterGlasses: waterGlasses,
-            lastWaterRecordedAt: todaysWater?.lastRecordedAt
+            lastWaterRecordedAt: todaysWater?.lastRecordedAt,
+            calorieGoal: dailyCalorieGoal,
+            waterGoal: waterGoal,
+            preservePendingWidgetWater: preservePendingWidgetWater
         )
         rescheduleReminders()
 
         Task {
-            await CaloriesLiveActivityManager.update(
+            await CaloriesLiveActivityManager.updateIfActive(
                 calories: calories,
                 waterGlasses: waterGlasses,
                 calorieGoal: dailyCalorieGoal,
                 waterGoal: waterGoal
             )
+        }
+    }
+
+    private func startLiveActivity() {
+        switch CaloriesLiveActivityManager.start(
+            calories: todaysCalories,
+            waterGlasses: todaysWater?.glasses ?? 0,
+            calorieGoal: dailyCalorieGoal,
+            waterGoal: waterGoal
+        ) {
+        case .started, .alreadyActive:
+            isLiveActivityActive = true
+        case .unavailable:
+            liveActivityMessage = "Live Activities are unavailable or disabled in Settings."
+        case .failed:
+            liveActivityMessage = "Live Activity could not start. Please try again."
+        }
+    }
+
+    private func stopLiveActivity() {
+        Task {
+            await CaloriesLiveActivityManager.stop()
+            isLiveActivityActive = CaloriesLiveActivityManager.isActive
         }
     }
 

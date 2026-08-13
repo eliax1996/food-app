@@ -70,7 +70,7 @@ Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check item
 
 ## Remaining whole-product sequence
 
-- [ ] AUXILIARY-001 — widget and Live Activity audit/improvement.
+- [x] AUXILIARY-001 — accepted attempt 01: goal-aware medium widget, explicit Live Activity lifecycle, durable widget-water handoff, and visual evidence.
 - [ ] CONSISTENCY-001 — cross-screen terminology, spacing, typography, iconography, actions, and state language.
 - [ ] ROBUSTNESS-001 — light/dark, Dynamic Type, small/large phones, long/extreme/empty/dense states.
 - [ ] FINAL-001 — final journeys, screenshots, independent reviews, final validation, and `FINAL-REPORT.md`.

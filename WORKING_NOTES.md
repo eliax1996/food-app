@@ -15,31 +15,28 @@ Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 - Dedicated Weight Log
 - Root `Today | Weight | Progress | Settings`
 
-Latest accepted milestone: BULK-AI-FOOD-001 attempt 01 typed/dictated editable bulk review, atomic persistence, and clarified reminder customization. Current: AUXILIARY-001 next.
+Latest accepted milestone: AUXILIARY-001 attempt 01 goal-aware medium widget, explicit Live Activity lifecycle, and durable widget-water handoff. Current: CONSISTENCY-001 next.
 
 ## Current component
 
-`BULK-AI-FOOD-001`: deeply researched typed/dictated bulk meal description, Apple on-device structured extraction, asynchronous food matching, editable provisional review, explicit atomic confirmation, retained corrections, and LRU-aware generic matching.
+`AUXILIARY-001`: remaining/over-goal medium widget, App Group lock/revision water persistence, explicit start/stop Live Activity, current dynamic goals, and Lock Screen/Dynamic Island evidence.
 
-`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–D, WEIGHT-ENTRY-001, and SETTINGS-DIRECT-EDIT-001 are accepted and complete.
+`STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–D, WEIGHT-ENTRY-001, SETTINGS-DIRECT-EDIT-001, BULK-AI-FOOD-001, and AUXILIARY-001 are accepted and complete.
 
 ## Remaining sequence
 
-1. AUXILIARY-001 — audit and improve/accept widget and Live Activity surfaces with evidence.
-2. AUXILIARY-001 — Widget and Live Activity
-3. CONSISTENCY-001
-4. ROBUSTNESS-001
-5. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
+1. CONSISTENCY-001
+2. ROBUSTNESS-001
+3. FINAL-001, final screenshots, judges, validation, and `FINAL-REPORT.md`
 
 ## Current validation baseline
 
-- exact-tree `just validate 300`: passed
-- hostless: 195 passed / 2 opt-in live skips
-- functional UI target: 31/31 passed through `TEST_CASE_TIMEOUT=60 just test-ui 1200`
-- exact-tree `just validate 300`: passed (hostless + simulator build/install/launch)
-- app-hosted: 250 passed / 2 opt-in live skips
-- REFINE Slice D architecture/safety/native UI/historical goal reviews: APPROVE; visual 3/3 APPROVE
+- hostless: 219 passed / 2 opt-in live skips
+- app-hosted: 300 passed / 2 opt-in live skips
+- functional UI: 45 tests passed; one unrelated one-minute timeout passed focused rerun
+- AUXILIARY critical/high source review: 3/3 APPROVE
+- latest incremental app + widget build: passed
 
 ## Immediate action
 
-Begin AUXILIARY-001 from accepted BULK-AI-FOOD-001 tree; preserve bulk/reminder gates and evidence.
+Begin CONSISTENCY-001 from accepted AUXILIARY-001 tree; compare terminology, hierarchy, actions, navigation, states, and destructive behavior across accepted surfaces.

@@ -291,6 +291,18 @@ Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Device walkthrough logged defaul
 
 Reminder customization follow-up was device-verified: passive meal rows expose saved times plus Enabled/Disabled; **Customize Meal Reminders** offers separate enablement and timing editors without unrelated Weight/Water controls. Verification captures remain in Xcode action artifacts; refreshed final capture belongs to ROBUSTNESS/FINAL evidence.
 
+## AUXILIARY-001
+
+Accepted attempt 01 evidence:
+
+- ![Medium widget light](screenshots/AUXILIARY-001/attempt-01-widget-medium-light.png) — remaining calories lead; eaten/goal, water progress, Log food, and bounded water actions remain glanceable.
+- ![Medium widget AX3 dark](screenshots/AUXILIARY-001/attempt-01-widget-medium-ax3-dark.png) — supported family stays readable at accessibility text size.
+- ![Over-goal widget](screenshots/AUXILIARY-001/attempt-01-widget-over-goal.png) — red icon and explicit `kcal over` wording avoid color-only meaning.
+- ![Live Activity Lock Screen](screenshots/AUXILIARY-001/attempt-01-live-lock-screen.png) and ![AX3 dark](screenshots/AUXILIARY-001/attempt-01-live-lock-screen-ax3-dark.png) — goal-aware status and one truthful Log food handoff.
+- ![Dynamic Island compact](screenshots/AUXILIARY-001/attempt-01-live-compact.png) and ![expanded](screenshots/AUXILIARY-001/attempt-01-live-expanded.png) — compact calorie/water answers and expanded labels preserve system hierarchy.
+
+Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Live Activity lifecycle is explicit; cross-process widget water uses locked revision handoff into SwiftData; final critical/high source review consensus **3/3 APPROVE**. App-hosted 300 pass / 2 live skips; hostless 219 / 2 live skips; 45 broad UI tests passed with one unrelated timeout that passed focused rerun.
+
 ## WEIGHT-ENTRY-001
 
 Accepted attempt 01 evidence:

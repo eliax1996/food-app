@@ -55,6 +55,7 @@ struct CountCaloriesApp: App {
             }
             .modelContainer(modelContainer)
             .environment(\.planEvidenceMutationCoordinator, mutationCoordinator)
+            .modifier(WidgetWaterImportModifier(modelContainer: modelContainer))
         }
     }
 }

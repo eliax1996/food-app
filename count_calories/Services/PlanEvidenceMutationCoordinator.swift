@@ -399,6 +399,10 @@ final class PlanEvidenceMutationCoordinator {
             }
             try resetPlanMutation(profile: profile, reason: "calculated-plan-accepted", at: operationDate)
             try modelContext.save()
+            WidgetDailySummaryStore.refreshCalorieGoal(profile.dailyCalorieGoal)
+            Task {
+                await CaloriesLiveActivityManager.refreshCalorieGoalIfActive(profile.dailyCalorieGoal)
+            }
             return profile
         } catch {
             modelContext.rollback()
@@ -1342,6 +1346,16 @@ final class PlanEvidenceMutationCoordinator {
     private func save(_ phase: SavePhase) throws {
         try beforeSave(phase)
         try modelContext.save()
+        synchronizeAuxiliaryGoalSurfacesIfNeeded(for: phase)
+    }
+
+    private func synchronizeAuxiliaryGoalSurfacesIfNeeded(for phase: SavePhase) {
+        guard phase == .mutation,
+              let profile = try? requiredProfile() else { return }
+        WidgetDailySummaryStore.refreshCalorieGoal(profile.dailyCalorieGoal)
+        Task {
+            await CaloriesLiveActivityManager.refreshCalorieGoalIfActive(profile.dailyCalorieGoal)
+        }
     }
 
     private func ensureNoUnrelatedChanges(allowing allowed: [any PersistentModel] = []) throws {

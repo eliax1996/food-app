@@ -550,3 +550,17 @@ No-match recovery can suspend bulk review, open existing custom-food flow, then 
 Hostless 219 pass / 2 opt-in live skips; app-hosted 297 pass / 2 skips; broad functional UI passed 44/44 on the final tree. `just validate 300` and `git diff --check` passed. Final three independent critical/high source reviewers: **APPROVE / APPROVE / APPROVE**.
 
 **ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: AUXILIARY-001.
+
+## [AUXILIARY-001] Widget and Live Activity
+
+### Accepted implementation
+
+Existing small/medium composition clipped its metrics/actions and reported consumed calories instead of Today’s primary remaining answer. Medium-only widget now leads with remaining/over goal, keeps eaten/goal and water progress visible, and retains truthful Log food plus bounded water actions. App Group data gained backward-compatible goal/revision fields, a cross-process file lock, and revision acknowledgement so app mirroring cannot overwrite pending widget water before SwiftData import.
+
+Live Activity no longer starts implicitly during ordinary Today synchronization. Today’s toolbar menu exposes explicit Start/Stop; dynamic state carries current goals; Lock Screen and Dynamic Island show remaining/over status and water context. Display-only Live Activity water controls were removed; widget water updates its active Live Activity only after shared-state commit.
+
+### Validation
+
+App + widget iOS 17 build passed. Hostless remained 219 / 2 live skips; app-hosted passed 300 / 2 skips. Broad UI executed 45 passing tests with one unrelated amount-test timeout that passed focused rerun. Light, over-goal, dark AX3 widget plus Lock Screen/compact/expanded Live Activity previews are retained. Final three independent critical/high source reviewers: **APPROVE / APPROVE / APPROVE**.
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: CONSISTENCY-001.

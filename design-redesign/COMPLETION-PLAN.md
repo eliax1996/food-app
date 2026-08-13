@@ -2,7 +2,7 @@
 
 **Status:** IN PROGRESS
 **Started:** 2026-08-09
-**Last updated:** 2026-08-12 — BULK-AI-FOOD-001 accepted; AUXILIARY-001 next
+**Last updated:** 2026-08-13 — AUXILIARY-001 accepted; CONSISTENCY-001 next
 
 ## Goal
 
@@ -52,9 +52,9 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
    - Bounded local learning/drafts, stale-result rejection, explicit estimate acceptance, custom recovery, and one atomic idempotent batch transaction are implemented.
    - Attempt-01 light/dark/AX3 evidence, 297 app-hosted pass / 2 live skips, 219 hostless pass / 2 live skips, focused reminder/bulk UI proofs, and 3/3 final critical/high review approval are recorded.
 
-5. **AUXILIARY-001 — Widget and Live Activity**
-   - Audit user-facing widget and Live Activity surfaces.
-   - Improve or explicitly accept them with visual evidence and documented scope.
+5. **AUXILIARY-001 — COMPLETE: Widget and Live Activity**
+   - Medium widget uses remaining/over-goal hierarchy, durable bounded water controls, and readable normal/dark/AX3 evidence.
+   - Live Activity requires explicit start/stop, updates dynamic goals, and presents truthful Lock Screen/Dynamic Island state without display-only mutations.
 
 6. **CONSISTENCY-001**
    - Compare all accepted screens together.
@@ -106,7 +106,7 @@ For each component:
 | NUTRIENTS-001 | COMPLETE | Accepted attempt 01: optional API/cache facts, immutable snapshots, custom entry, coverage-gated balance, 3/3 critical/high visual approval, 140 hostless pass / 2 skips, 167 app-host pass / 2 skips, and 12/12 UI. |
 | REFINE-001 | COMPLETE | Attempts 01–03 accepted: Plan references, reminders, hierarchical Settings, direct entry, optional calculator, explicit complete-day evidence, bounded proposal-only adaptation, Adapted source, exact revert, 3/3 visual approval, and 31/31 UI. |
 | BULK-AI-FOOD-001 | COMPLETE | Attempt 01 accepted: typed/dictated local extraction, editable verified review, bounded local learning/drafts, custom recovery, atomic idempotent persistence, and 3/3 final critical/high approval. |
-| AUXILIARY-001 | PENDING | No widget/Live Activity visual audit yet. |
+| AUXILIARY-001 | COMPLETE | Attempt 01 accepted: medium widget + explicit goal-aware Live Activity, locked revisioned water handoff, light/dark/AX3 evidence, and 3/3 critical/high approval. |
 | CONSISTENCY-001 | PENDING | Requires completed component set. |
 | ROBUSTNESS-001 | PENDING | Partial Meal/Amount/Weight evidence only. |
 | FINAL-001 | PENDING | `screenshots/final/` currently empty. |
@@ -231,4 +231,4 @@ Before coding each Refine feature:
 
 ## Current next action
 
-Commit accepted BULK-AI-FOOD-001 and reminder customization work. Then execute AUXILIARY-001 widget/Live Activity audit before CONSISTENCY-001, ROBUSTNESS-001, and FINAL-001.
+Commit accepted AUXILIARY-001 work. Then execute CONSISTENCY-001 before ROBUSTNESS-001 and FINAL-001.

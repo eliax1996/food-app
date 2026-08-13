@@ -5,6 +5,13 @@ struct WidgetDailySummary: Codable {
     var calories: Int
     var waterGlasses: Int
     var lastWaterRecordedAt: Date?
+    var calorieGoal: Int?
+    var waterGoal: Int?
+    var revision: Int64?
+
+    var resolvedCalorieGoal: Int { max(1, calorieGoal ?? 1_700) }
+    var resolvedWaterGoal: Int { max(1, waterGoal ?? 8) }
+    var resolvedRevision: Int64 { max(0, revision ?? 0) }
 }
 
 enum WidgetDailySummaryStore {
@@ -12,36 +19,71 @@ enum WidgetDailySummaryStore {
     static let widgetKind = "CaloriesSummaryWidget"
 
     private static let summaryKey = "dailySummary"
+    private static let lockFileName = "daily-summary.lock"
+
     static func load() -> WidgetDailySummary {
+        (try? withExclusiveLock { loadUnlocked() }) ?? emptySummary()
+    }
+
+    static func adjustWater(by delta: Int) -> WidgetDailySummary {
+        (try? withExclusiveLock {
+            var summary = loadUnlocked()
+            let previous = summary.waterGlasses
+            summary.waterGlasses = min(max(0, previous + delta), 30)
+            if summary.waterGlasses > previous {
+                summary.lastWaterRecordedAt = .now
+            }
+            if summary.waterGlasses != previous {
+                summary.revision = summary.resolvedRevision + 1
+                saveUnlocked(summary)
+            }
+            return summary
+        }) ?? load()
+    }
+
+    private static func loadUnlocked() -> WidgetDailySummary {
         guard
             let data = defaults.data(forKey: summaryKey),
             let summary = try? JSONDecoder().decode(WidgetDailySummary.self, from: data),
             Calendar.current.isDateInToday(summary.date)
         else {
-            return WidgetDailySummary(
-                date: Calendar.current.startOfDay(for: .now),
-                calories: 0,
-                waterGlasses: 0,
-                lastWaterRecordedAt: nil
-            )
+            return emptySummary()
         }
-
         return summary
     }
 
-    static func adjustWater(by delta: Int) {
-        var summary = load()
-        summary.waterGlasses = max(0, summary.waterGlasses + delta)
-        if delta > 0 {
-            summary.lastWaterRecordedAt = .now
-        }
-        save(summary)
-    }
-
-    static func save(_ summary: WidgetDailySummary) {
+    private static func saveUnlocked(_ summary: WidgetDailySummary) {
         if let data = try? JSONEncoder().encode(summary) {
             defaults.set(data, forKey: summaryKey)
         }
+    }
+
+    private static func emptySummary() -> WidgetDailySummary {
+        WidgetDailySummary(
+            date: Calendar.current.startOfDay(for: .now),
+            calories: 0,
+            waterGlasses: 0,
+            lastWaterRecordedAt: nil,
+            calorieGoal: 1_700,
+            waterGoal: 8,
+            revision: 0
+        )
+    }
+
+    private static func withExclusiveLock<T>(_ operation: () throws -> T) throws -> T {
+        let descriptor = open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard descriptor >= 0 else { throw POSIXError(.EIO) }
+        defer { close(descriptor) }
+        guard flock(descriptor, LOCK_EX) == 0 else { throw POSIXError(.EIO) }
+        defer { flock(descriptor, LOCK_UN) }
+        return try operation()
+    }
+
+    private static var lockURL: URL {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)?
+            .appendingPathComponent(lockFileName)
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent(lockFileName)
     }
 
     private static var defaults: UserDefaults {

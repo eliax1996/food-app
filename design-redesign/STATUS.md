@@ -21,6 +21,7 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - WEIGHT-ENTRY-001: accepted attempt 01. Latest-measure defaults, direct `−1/−0.1/+0.1/+1` kg controls, and keyboard Done across all numeric entry surfaces are verified.
 - SETTINGS-DIRECT-EDIT-001: accepted attempt 01. Reminder overview shows every saved meal time plus Enabled/Disabled state; one **Customize Meal Reminders** action separates meal enablement from notification timing; Weight and Water retain focused draft editing. Plan calculated setup opens, continues, closes, and resumes reliably.
 - BULK-AI-FOOD-001: accepted attempt 01. Typed/on-device dictated descriptions produce provisional editable rows; nutrition stays record-owned; explicit/default estimates require acceptance; local retained choices and seven-day drafts are bounded/clearable; confirmation is atomic and idempotent with custom/saved recovery.
+- AUXILIARY-001: accepted attempt 01. Medium widget shows remaining/over goal and durable water controls; explicit start/stop Live Activity uses goal-aware Lock Screen and Dynamic Island layouts without display-only mutations.
 
 ## Current component
 
@@ -28,20 +29,21 @@ REFINE-001 — **ACCEPTED; ATTEMPTS 01–03 / SLICES A–D COMPLETE**.
 
 BULK-AI-FOOD-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Typed and dictated local-first extraction, editable review, verified nutrition matching, manual/custom recovery, truthful privacy controls, bounded retained learning/drafts, and atomic idempotent confirmation are implemented. Final critical/high code-review consensus: **3/3 APPROVE**.
 
+AUXILIARY-001 — **ACCEPTED; ATTEMPT 01 COMPLETE**. Widget/Live Activity now match Today’s remaining-calorie hierarchy, widget water is locked/revisioned into SwiftData, and Live Activity lifecycle is explicit. Final critical/high code-review consensus: **3/3 APPROVE**.
+
 Whole-product closure plan: `COMPLETION-PLAN.md`. TRACKING-IA-001 remains **ACCEPTED — ATTEMPT 01 / COMPLETE** with final root order:
 
 ```text
 Today | Weight | Progress | Settings
 ```
 
-STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders, calculated setup, evidence-gated adaptation, direct Settings entry, numeric-entry refinements, and BULK-AI-FOOD-001 are complete. Auxiliary/global/final review follows.
+STATES-001, NUTRIENTS-001, NUTRITION-GOALS-001, hierarchical Settings/reminders, calculated setup, evidence-gated adaptation, direct Settings entry, numeric-entry refinements, BULK-AI-FOOD-001, and AUXILIARY-001 are complete. Global/final review follows.
 
 ## Next components
 
-1. AUXILIARY-001 — Widget and Live Activity
-2. CONSISTENCY-001
-3. ROBUSTNESS-001
-4. FINAL-001 and `FINAL-REPORT.md`
+1. CONSISTENCY-001
+2. ROBUSTNESS-001
+3. FINAL-001 and `FINAL-REPORT.md`
 
 ## Accepted design principles
 

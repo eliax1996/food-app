@@ -995,6 +995,32 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testTodayExposesExplicitLiveActivityStart() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US",
+            "-ui-test-session", UUID().uuidString
+        ]
+        let moreLoggingOptions = app.buttons["More logging options"]
+        let startLiveActivity = app.buttons["start-live-activity"]
+
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Launch: app did not reach foreground; state=\(app.state)."
+        )
+        assertHittable(moreLoggingOptions, identifier: "More logging options", phase: "Launch")
+        moreLoggingOptions.tap()
+        assertHittable(
+            startLiveActivity,
+            identifier: "start-live-activity",
+            phase: "Live Activity menu"
+        )
+    }
+
+    @MainActor
     func testFoodToolsBarcodeOfflineRecoveryThenSuccess() throws {
         let app = XCUIApplication()
         app.launchArguments = [
