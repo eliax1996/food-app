@@ -40,7 +40,7 @@ Normal light view shows date, total, two meal groups, row snapshots, and recorde
 ## Validation
 
 - Focused `CalorieDiaryTests`: 5/5 passed, including paired milliliter and unknown-unit normalization.
-- `just validate 300`: 228 hostless passed / 2 opt-in live skips; app + widget compile/install/launch passed.
+- `just validate 300`: 228 hostless tests / 2 opt-in live skips; app + widget compile/install/launch passed.
 - `just test-app-unit 600`: 315 passed / 2 opt-in live skips.
 - Full functional UI: 47/47 passed, including selected calorie day → View Day → three meal groups → adjacent recorded day; no mutation control.
 - Three independent critical/high product/code/visual reviews: **APPROVE / APPROVE / APPROVE**.

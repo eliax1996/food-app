@@ -52,7 +52,7 @@ Today | Weight | Progress | Settings
 
 Final results:
 
-- `just validate 300`: **228 hostless passed / 2 opt-in live skips**; app + widget compile, simulator install, and launch passed.
+- `just validate 300`: **228 hostless tests / 2 opt-in live skips**; app + widget compile, simulator install, and launch passed.
 - `just test-app-unit 600`: **315 passed / 2 opt-in live skips**.
 - `TEST_CASE_TIMEOUT=60 just test-ui 1800`: **47/47 passed**.
 - Original closure and post-closure diary critical/high reviews: **APPROVE / APPROVE / APPROVE**.

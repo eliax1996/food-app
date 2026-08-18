@@ -25,7 +25,7 @@ Historical diary mutation/copy, personal macro targets, and HealthKit/sync remai
 
 ## Final validation
 
-- hostless: 228 passed / 2 opt-in live skips
+- hostless: 228 tests / 2 opt-in live skips
 - app-hosted: 315 passed / 2 opt-in live skips
 - functional UI: 47/47 passed
 - post-closure independent critical/high review: 3/3 APPROVE

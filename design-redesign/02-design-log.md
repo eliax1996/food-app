@@ -627,7 +627,7 @@ Normal light and AX3 dark previews verify hierarchy, long-name wrapping, stacked
 
 ### Validation and decision
 
-- `just validate 300`: 228 hostless pass / 2 opt-in live skips; app + widget compile/install/launch passed.
+- `just validate 300`: 228 hostless tests / 2 opt-in live skips; app + widget compile/install/launch passed.
 - `just test-app-unit 600`: 315 pass / 2 opt-in live skips.
 - Functional UI: 47/47 pass after focused accessibility-container correction.
 - Independent critical/high review: **APPROVE / APPROVE / APPROVE**.
