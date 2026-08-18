@@ -1,6 +1,6 @@
 # Count Calories
 
-Native SwiftUI calorie tracker for daily food, water, weight, goals, reminders, barcode and cached remote nutrition lookup, typed/on-device dictated bulk meal review, widgets, Live Activities, and keyboard-free ±10/±1 amount adjustment.
+Native SwiftUI calorie tracker for daily food, water, weight, goals, reminders, barcode and cached remote nutrition lookup, typed/on-device dictated bulk meal review, date-first historical Food Diary detail, widgets, Live Activities, and keyboard-free ±10/±1 amount adjustment.
 
 ## Development
 
@@ -46,16 +46,16 @@ Today | Weight | Progress | Settings
 
 - **Today:** current-day calorie, food, and water actions.
 - **Weight / Weight Log:** raw measurement CRUD, independent date/time backdating, same-day preservation, confirmation plus undo, summary, and basic seven-reading raw chart. One reading shows useful prompt; two or more show chart context.
-- **Progress:** fuller fourteen-reading weight analytics and interpretation; no weight CRUD. `View full trends` routes directly to Progress / Weight.
+- **Progress:** fuller fourteen-reading weight analytics and interpretation; selected calorie days open read-only meal-grouped Food Diary detail with recorded-day navigation. No weight or historical-food CRUD. `View full trends` routes directly to Progress / Weight.
 - **Settings:** target weight, age, daily calorie goal, target date, and reminders; no current-weight field or save path.
-- No historical calorie CRUD or generic Calories/Water/Weight table. Future calorie history remains a separate date-first day diary.
+- No historical calorie CRUD or generic Calories/Water/Weight table. Historical food detail stays separate, date-first, meal-grouped, and read-only.
 
 Final results:
 
-- `just validate 300`: **222 hostless passed / 2 opt-in live skips**; app + widget compile, simulator install, and launch passed.
-- `just test-app-unit 600`: **309 passed / 2 opt-in live skips**.
-- `TEST_CASE_TIMEOUT=60 just test-ui 1800`: **46/46 passed**.
-- Three independent final critical/high reviews: **APPROVE / APPROVE / APPROVE**.
+- `just validate 300`: **228 hostless passed / 2 opt-in live skips**; app + widget compile, simulator install, and launch passed.
+- `just test-app-unit 600`: **315 passed / 2 opt-in live skips**.
+- `TEST_CASE_TIMEOUT=60 just test-ui 1800`: **47/47 passed**.
+- Original closure and post-closure diary critical/high reviews: **APPROVE / APPROVE / APPROVE**.
 
 ## Redesign evidence
 

@@ -9,7 +9,13 @@ Persistent prioritized backlog. Original redesign closure is complete; entries b
 
 Fourteen final captures, exact +15 kcal default Almond Milk proof, final persistence/nutrition/reminder hardening, 3/3 independent critical/high approval, 222 hostless / 2 skips, 309 app-hosted / 2 skips, and 46/46 functional UI close original redesign. See `FINAL-REPORT.md` and `experiments/FINAL-001.md`.
 
-No unresolved high-priority redesign item remains. Future queue starts with fresh competitor-gap reassessment; retained candidates are date-first calorie diary, optional personal macro targets, and HealthKit/account/cross-device consistency.
+No unresolved high-priority redesign item remains. COMPETITOR-GAP-001 reassessed category evidence and implemented read-only date-first historical Food Diary detail. Remaining future candidates are historical mutation/copy under a separate contract, optional personal macro targets, and HealthKit/account/cross-device consistency.
+
+## Post-closure — [COMPETITOR-GAP-001] Historical Food Diary
+
+**Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
+
+Selected Calories points in Progress expose **View Day** into a native read-only diary. Recorded days retain assessed totals, meal ordering, immutable name/calorie/paired g-or-ml amount/portion/time snapshots, and previous/next recorded-day navigation. Invalid legacy calories mark totals incomplete. Historical mutation/copy and mixed metric history remain excluded. Current exact-tree gates: 228 hostless / 2 skips, 315 app-hosted / 2 skips, 47/47 functional UI, and 3/3 independent critical/high approval. Research: `../docs/historical-calorie-diary-assessment.md`; evidence: `screenshots/COMPETITOR-GAP-001/`; experiment: `experiments/COMPETITOR-GAP-001.md`.
 
 ## Priority 1 — [FOOD-REMOTE-SEARCH-001] Remote food search and query cache
 
@@ -181,7 +187,7 @@ Today | Weight | Progress | Settings
 3. Weight shows current/recent-seven-reading/target summary, compact raw-seven-reading native line + points with target rule, grouped newest-first measurements, toolbar add, row edit/backdate, multiple same-day entries, delete confirmation, and stacked undo. One reading shows a useful prompt; explicit endpoint dates appear only with at least two readings. `View full trends` selects `Progress` / `Weight`.
 4. Progress owns fuller fourteen-reading analytics and interpretation. Progress has no weight create/edit/delete controls.
 5. Settings retains target weight, age, calorie goal, target date, and reminders; it has no current-weight field or save path.
-6. No calorie CRUD is added. Future calorie history is a separate date-first day diary with meal-grouped food rows, never a generic mixed Calories/Water/Weight table.
+6. No calorie CRUD is added. Date-first meal-grouped diary detail remains a separate scope from generic mixed Calories/Water/Weight history and was later implemented read-only in COMPETITOR-GAP-001.
 
 Full decision, evidence labels, exact source URLs, and access date: `docs/tracking-navigation-assessment.md` (all external sources accessed 2026-08-08).
 

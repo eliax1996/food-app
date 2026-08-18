@@ -2,7 +2,7 @@
 
 **Status:** COMPLETE
 **Started:** 2026-08-09
-**Completed:** 2026-08-13 — FINAL-001 accepted; `FINAL-REPORT.md` published
+**Completed:** 2026-08-13 — FINAL-001 accepted; post-closure COMPETITOR-GAP-001 accepted 2026-08-18
 
 ## Goal
 
@@ -24,6 +24,7 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
   - dedicated Weight Log and `Today | Weight | Progress | Settings` navigation.
 - Preserved accepted, rejected, and superseded experiment screenshots.
 - Added deterministic hostless, app-hosted persistence, and UI regression coverage.
+- Completed post-closure category reassessment and accepted read-only date-first historical Food Diary detail from selected Progress calorie days.
 - Completed STATES-001 truthful remote loading/empty/offline recovery, scanner permission/availability recovery, and inline barcode lookup recovery.
 - Accepted NUTRIENTS-001 optional macro/fiber API mapping, persistence snapshots, coverage-gated daily balance, custom-food entry, and transparent general-adult comparison.
 - Latest accepted nutrient milestone: exact-tree `just validate 300` passed; 140 hostless tests passed with 2 opt-in live skips; app-hosted tests passed 167 with 2 skips; explicit functional UI target passed 12/12.
@@ -71,8 +72,14 @@ Finish the original autonomous iOS calorie-tracker redesign against its full Def
 
 9. **Closure documentation and gates — COMPLETE**
    - Current status, screenshot index, design log, backlog, experiment, README, and working notes reconciled.
-   - Final gates: 222 hostless / 2 skips; 309 app-hosted / 2 skips; 46/46 functional UI; build/install/launch and diff check passed.
+   - FINAL-001 gates: 222 hostless / 2 skips; 309 app-hosted / 2 skips; 46/46 functional UI; build/install/launch and diff check passed.
    - No unresolved high-priority redesign work remains.
+
+10. **COMPETITOR-GAP-001 — COMPLETE**
+   - Fresh category reassessment selected date-first historical food detail rather than generic mixed metric history.
+   - Progress selection now opens a read-only meal-grouped Food Diary with immutable snapshots, incomplete-calorie truthfulness, and previous/next recorded-day navigation.
+   - Light and AX3-dark evidence retained; domain/UI coverage and 3/3 independent critical/high approval accepted.
+   - Current exact-tree gates: 228 hostless / 2 skips; 315 app-hosted / 2 skips; 47/47 functional UI; build/install/launch and diff check passed.
 
 ## Iteration protocol
 
@@ -105,6 +112,7 @@ For each component:
 | ROBUSTNESS-001 | COMPLETE | Attempt 01 accepted: full stress matrix, accessibility layout fixes, focused reachability UI, retained evidence, and 3/3 critical/high approval. |
 | FINAL-001 | COMPLETE | Fourteen representative final captures; +15 kcal proof; final hardening; 3/3 independent approval; exact-tree gates green. |
 | FINAL-REPORT | COMPLETE | `FINAL-REPORT.md` contains baseline comparison, evidence, guarantees, reviews, validation, and deferred opportunities. |
+| COMPETITOR-GAP-001 | COMPLETE | Attempt 01 accepted: selected Progress calorie day → read-only meal-grouped Food Diary → adjacent recorded day; normal/AX3-dark evidence; 3/3 approval; exact-tree gates green. |
 
 ## Refine
 
@@ -225,4 +233,4 @@ Before coding each Refine feature:
 
 ## Closure decision
 
-Original autonomous redesign is complete. Next work, if requested, begins a separate competitor-gap iteration from current accepted baseline.
+Original autonomous redesign and queued competitor-gap iteration are complete. Next work requires a new explicit evidence-backed product contract.

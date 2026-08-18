@@ -202,6 +202,11 @@ extension PlateEntry {
         self.modifiedAt = modifiedAt
     }
 
+    // Legacy property name predates volume servings. Magnitude is expressed in nutritionUnit.
+    var loggedAmount: Double {
+        weightGrams
+    }
+
     var portionQuantity: Double {
         portionCount ?? Double(quantity)
     }

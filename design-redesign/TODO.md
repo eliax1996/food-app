@@ -75,6 +75,6 @@ Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check item
 - [x] ROBUSTNESS-001 — accepted attempt 01: full appearance/type/device/data stress matrix, accessibility stacking fixes, and focused reachability proof.
 - [x] FINAL-001 — final journeys, 14 screenshots, exact +15 kcal proof, 3/3 independent approval, final gates, and `FINAL-REPORT.md` complete.
 
-## Future product work
+## Post-closure product work
 
-- [ ] Competitor-gap iteration — after closure, reassess current category products and implement next evidence-backed missing feature without copying branded styles.
+- [x] COMPETITOR-GAP-001 — reassessed current category evidence and added read-only date-first historical Food Diary from selected Progress days, with immutable snapshots, recorded-day navigation, truthfulness tests, visual evidence, and 3/3 approval.

@@ -12,6 +12,7 @@ struct CalorieProgressChart: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let progress: CalorieProgress
+    let diaryDays: [CalorieDiaryDay]
 
     @State private var chartSelectionDate: Date?
     @State private var selectedDate: Date?
@@ -116,24 +117,37 @@ struct CalorieProgressChart: View {
 
             if let selectedSummary {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Selected day")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Text(selectedSummary.date.formatted(date: .complete, time: .omitted))
-                        .accessibilityIdentifier("progress-calorie-selected-date")
-                    Text("\(selectedSummary.calories.formatted(.number)) kcal")
-                        .accessibilityIdentifier("progress-calorie-selected-calories")
-                    Text(calorieGoalText(for: selectedSummary.date))
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("progress-calorie-selected-goal")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Selected day")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(selectedSummary.date.formatted(date: .complete, time: .omitted))
+                            .accessibilityIdentifier("progress-calorie-selected-date")
+                        Text("\(selectedSummary.calories.formatted(.number)) kcal")
+                            .accessibilityIdentifier("progress-calorie-selected-calories")
+                        Text(calorieGoalText(for: selectedSummary.date))
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("progress-calorie-selected-goal")
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(calorieSelectionAccessibilityLabel)
+                    .accessibilityIdentifier("progress-calorie-selected-detail")
+
+                    if let diaryDay = selectedDiaryDay {
+                        NavigationLink {
+                            CalorieDiaryView(days: diaryDays, initialDate: diaryDay.date)
+                        } label: {
+                            Label("View Day", systemImage: "list.bullet.rectangle")
+                                .frame(minHeight: 44)
+                        }
+                        .accessibilityIdentifier("progress-calorie-view-day")
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(calorieSelectionAccessibilityLabel)
-                .accessibilityIdentifier("progress-calorie-selected-detail")
+                .accessibilityElement(children: .contain)
             } else {
                 Text("Tap or drag a recorded day to inspect exact calories and historical goal context.")
                     .font(.caption)
@@ -173,6 +187,11 @@ struct CalorieProgressChart: View {
             return "No recorded day selected. Swipe up or down to cycle recorded days."
         }
         return "Selected \(selectedSummary.date.formatted(date: .complete, time: .omitted)), \(selectedSummary.calories.formatted(.number)) kcal. \(calorieGoalText(for: selectedSummary.date))."
+    }
+
+    private var selectedDiaryDay: CalorieDiaryDay? {
+        guard let selectedSummary else { return nil }
+        return diaryDays.first { $0.date == selectedSummary.date }
     }
 
     private var calorieSelectionAccessibilityLabel: String {

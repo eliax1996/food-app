@@ -4,7 +4,9 @@
 
 **Closure milestone:** FINAL-001
 
-**Date:** 2026-08-13
+**Post-closure milestone:** COMPETITOR-GAP-001
+
+**Date:** 2026-08-18
 
 ## Outcome
 
@@ -24,7 +26,7 @@ Program meets redesign Definition of Done: primary journeys implemented and reta
 | Food logging | Hidden/limited selection and keyboard-heavy correction | Search-first local/remote discovery, recents, scanner/manual fallback, exact fields, presets, and keyboard-free ±10/±1 |
 | Multi-food meals | One item per flow | Typed or on-device dictated description → provisional editable verified rows → one atomic confirmation |
 | Nutrition | Calories only | Immutable logged macro/fiber snapshots, explicit coverage, measured facts, and transparent adult references without opaque score |
-| Weight/history | Sparse combined history | Dedicated Weight Log CRUD plus separate target-aware calorie and weight Progress analytics |
+| Weight/history | Sparse combined history | Dedicated Weight Log CRUD, separate target-aware calorie/weight Progress analytics, and read-only meal-grouped Food Diary detail for selected recorded calorie days |
 | Plan | Manual goal fields | Optional explainable calculated plan, infeasible recovery, Manual/Calculated/Adapted provenance, proposal-only evidence-gated adaptation, exact revert |
 | Reminders | Fixed/basic controls | Independent exact meal, water, daily/weekly weight intent; permission-aware scheduling and retryable errors |
 | Auxiliary surfaces | Secondary consumed-calorie presentation | Goal-aware medium widget and explicit Live Activity matching Today hierarchy |
@@ -62,11 +64,22 @@ Final walkthrough and deterministic fixtures cover:
 2. Log food with default Almond Milk at 100 g / 15 kcal.
 3. Bulk meal review with editable query, amount, source, and atomic total.
 4. Empty/populated Weight Log and calorie/weight Progress.
-5. Settings → Plan and Settings → Reminders.
-6. Widget and explicit Live Activity.
-7. Accessibility 3 dark Today reachability.
+5. Progress calorie selection → View Day → read-only meal-grouped Food Diary → adjacent recorded day.
+6. Settings → Plan and Settings → Reminders.
+7. Widget and explicit Live Activity.
+8. Accessibility 3 dark Today and Food Diary reachability.
 
 Default Almond Milk arithmetic is protected at domain and UI levels: one save changes Today by exactly **+15 kcal**.
+
+## Post-closure competitor gap
+
+Fresh category reassessment selected date-first historical food detail as clearest retained gap. COMPETITOR-GAP-001 adds **View Day** from a selected Progress calorie point into a native read-only diary with localized date, assessed calorie completeness, meal ordering, immutable logged snapshots, and previous/next recorded-day navigation. It does not mix food, water, and weight history or imply historical mutation/copy.
+
+![Historical Food Diary](screenshots/COMPETITOR-GAP-001/attempt-01-diary-light.png)
+
+![Historical Food Diary at Accessibility 3 in dark appearance](screenshots/COMPETITOR-GAP-001/attempt-01-diary-ax3-dark.png)
+
+Research and contract: [`../docs/historical-calorie-diary-assessment.md`](../docs/historical-calorie-diary-assessment.md). Experiment: [`experiments/COMPETITOR-GAP-001.md`](experiments/COMPETITOR-GAP-001.md).
 
 ## Product and safety guarantees
 
@@ -94,15 +107,17 @@ Reviewer 2: APPROVE
 Reviewer 3: APPROVE
 ```
 
-No unresolved critical/high design or engineering finding remains.
+No unresolved critical/high design or engineering finding remains. Post-closure diary review independently converged at **APPROVE / APPROVE / APPROVE** under identical critical/high criteria.
 
 ## Final validation
 
+Current exact-tree gates after COMPETITOR-GAP-001:
+
 | Gate | Result |
 |---|---|
-| `just validate 300` | Passed: 222 hostless tests, 2 opt-in live skips; app + widget compile, install, launch passed |
-| `just test-app-unit 600` | Passed: 309 tests, 2 opt-in live skips |
-| `TEST_CASE_TIMEOUT=60 just test-ui 1800` | Passed: 46/46 functional UI tests |
+| `just validate 300` | Passed: 228 hostless tests, 2 opt-in live skips; app + widget compile, install, launch passed |
+| `just test-app-unit 600` | Passed: 315 tests, 2 opt-in live skips |
+| `TEST_CASE_TIMEOUT=60 just test-ui 1800` | Passed: 47/47 functional UI tests |
 | `git diff --check` | Passed |
 
 Live Open Food Facts tests remain intentionally opt-in; deterministic mocked/cache/API-contract tests run in normal gates.
@@ -111,10 +126,9 @@ Live Open Food Facts tests remain intentionally opt-in; deterministic mocked/cac
 
 No high-priority redesign work remains. Separate evidence-backed future opportunities:
 
-- date-first historical calorie diary, never generic mixed metric journal;
+- historical diary create/edit/delete/copy only after snapshot, attestation, destination, duplicate, confirmation, undo, and goal-history rules are specified;
 - optional personal macro targets with distinct safety contract;
-- HealthKit/account/cross-device consistency;
-- competitor-gap iteration after fresh category reassessment.
+- HealthKit/account/cross-device consistency.
 
 Rejected directions remain rejected: LLM-authored nutrition, silent bulk logging, cloud upload of full meal text, scanner-only entry, opaque scores, and reminder-window claims without stronger evidence.
 
@@ -125,8 +139,9 @@ Rejected directions remain rejected: LLM-authored nutrition, silent bulk logging
 - Design decisions: [`02-design-log.md`](02-design-log.md)
 - Durable backlog: [`PRODUCT-BACKLOG.md`](PRODUCT-BACKLOG.md)
 - Closure experiment: [`experiments/FINAL-001.md`](experiments/FINAL-001.md)
+- Post-closure experiment: [`experiments/COMPETITOR-GAP-001.md`](experiments/COMPETITOR-GAP-001.md)
 - Full completion plan: [`COMPLETION-PLAN.md`](COMPLETION-PLAN.md)
 
 ## Final decision
 
-**Original autonomous Count Calories redesign is COMPLETE.**
+**Original autonomous Count Calories redesign and queued COMPETITOR-GAP-001 iteration are COMPLETE.**

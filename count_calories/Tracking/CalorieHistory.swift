@@ -25,7 +25,9 @@ nonisolated enum CalorieHistory {
     ) -> [DailyCalorieSummary] {
         guard limit > 0 else { return [] }
 
-        let groupedRecords = Dictionary(grouping: records) { record in
+        let groupedRecords = Dictionary(grouping: records.filter {
+            $0.date.timeIntervalSinceReferenceDate.isFinite
+        }) { record in
             calendar.startOfDay(for: record.date)
         }
         let summaries = groupedRecords.map { date, dayRecords in

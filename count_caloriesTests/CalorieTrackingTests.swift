@@ -179,6 +179,16 @@ final class CalorieTrackingTests: XCTestCase {
         ])
     }
 
+    func testDailyHistoryRejectsNonfiniteDates() {
+        let validDate = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let summaries = CalorieHistory.dailySummaries(for: [
+            CalorieRecord(date: validDate, calories: 500),
+            CalorieRecord(date: Date(timeIntervalSinceReferenceDate: .infinity), calories: 900)
+        ])
+
+        XCTAssertEqual(summaries, [DailyCalorieSummary(date: Calendar.current.startOfDay(for: validDate), calories: 500)])
+    }
+
     func testDailyHistoryMarksInvalidLegacyCaloriesIncomplete() {
         let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
         let summary = CalorieHistory.dailySummaries(for: [

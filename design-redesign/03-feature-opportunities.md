@@ -136,6 +136,40 @@ Implemented and accepted in PROGRESS-001 with seven recent recorded days, averag
 
 ---
 
+## Date-first historical Food Diary
+
+### User problem
+
+Progress totals did not explain which logged foods produced a recorded day.
+
+### Competitive evidence
+
+Fresh category reassessment retained date-first diaries with meal-specific food rows and kept weight history separate; generic mixed journals were not supported.
+
+### Proposed UX
+
+Select a recorded calorie day in Progress, choose **View Day**, inspect read-only meal-grouped immutable snapshots, then move between previous/next recorded days.
+
+### Why it belongs in this product
+
+Existing `PlateEntry` snapshots already retain historical identity, name, calories, amount, portions, meal, and time locally. Read-only detail closes context gap without inventing risky mutation semantics.
+
+### Expected impact
+
+Faster explanation of historical calorie totals and stronger trust in Progress.
+
+### Required backend/data support
+
+None for read-only v1. Historical add/edit/delete/copy requires separate contracts and remains deferred.
+
+### Prototype status
+
+Implemented and accepted in COMPETITOR-GAP-001 attempt 01 with light/AX3-dark evidence, deterministic tests, 47/47 full UI, and 3/3 critical/high approval.
+
+**Classification: HIGH VALUE**
+
+---
+
 ## Photo/AI meal recognition
 
 ### User problem

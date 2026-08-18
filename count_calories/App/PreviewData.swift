@@ -323,14 +323,22 @@ enum PreviewData {
         let historicalCalories = [1_610, 1_745, 1_530, 1_680, 1_820, 1_590, 1_705, 1_655, 1_480, 1_760, 1_625, 1_690, 1_550]
         for (index, calories) in historicalCalories.enumerated() {
             let dayOffset = -(index + 1)
-            context.insert(PlateEntry(
-                foodName: "Recorded meals",
-                calories: calories,
-                weightGrams: 1,
-                quantity: 1,
-                mealType: MealType.dinner.rawValue,
-                date: mealDate(hour: 19, dayOffset: dayOffset)
-            ))
+            let historicalMeals: [(String, Int, Double, MealType, Int)] = [
+                ("Oatmeal with Blueberries", calories * 3 / 10, 280, .breakfast, 8),
+                ("Grilled Chicken & Quinoa Bowl", calories * 4 / 10, 420, .lunch, 13),
+                ("Greek Yogurt & Honey", calories - calories * 3 / 10 - calories * 4 / 10, 200, .dinner, 19)
+            ]
+            for meal in historicalMeals {
+                context.insert(PlateEntry(
+                    foodName: meal.0,
+                    calories: meal.1,
+                    weightGrams: meal.2,
+                    quantity: 1,
+                    nutrients: nutrientsForMeal(meal.0, calories: meal.1),
+                    mealType: meal.3.rawValue,
+                    date: mealDate(hour: meal.4, dayOffset: dayOffset)
+                ))
+            }
             context.insert(WeightEntry(
                 date: mealDate(hour: 8, dayOffset: dayOffset),
                 kilograms: 70.9 - Double(index) * 0.06

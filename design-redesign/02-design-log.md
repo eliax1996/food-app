@@ -332,7 +332,7 @@ This is transparent supersession, not a claim that initial nutrition evidence wa
 - Root **Weight** destination uses navigation title **Weight Log**.
 - **Progress** remains analytics-only; its Weight view owns fuller fourteen-reading analytics and no CRUD.
 - **Settings** retains target weight, age, calorie goal, target date, and reminders; no current-weight field or save path.
-- No calorie CRUD and no generic Calories/Water/Weight table. Future calorie history remains a separate date-first day diary.
+- No calorie CRUD and no generic Calories/Water/Weight table. Date-first diary detail was reserved for separate scope and later implemented read-only in COMPETITOR-GAP-001.
 
 ### Weight tab
 
@@ -608,3 +608,29 @@ Final neutral reviews found cross-cutting risks beyond normal fixtures: non-dura
 - `git diff --check`: passed.
 
 **ACCEPTED — COMPLETE. Original autonomous redesign Definition of Done met.**
+
+## [COMPETITOR-GAP-001] Historical Food Diary
+
+### Purpose
+
+Close clearest retained category gap: Progress showed exact historical calorie totals but not foods behind selected days.
+
+### Evidence-backed direction
+
+Fresh reassessment retained date-first, food/meal-specific history as category convention and rejected generic mixed food/water/weight journal. Full source review, current-app critique, scope, privacy, accessibility, and acceptance contract: `../docs/historical-calorie-diary-assessment.md`.
+
+### Accepted implementation
+
+Selecting a recorded calorie day in Progress now exposes **View Day**. Native read-only Food Diary shows localized date, assessed total, entry count, meal groups in Breakfast/Lunch/Dinner/Snack order, and immutable logged name/calorie/paired g-or-ml amount/portion/time snapshots. Previous/next controls traverse recorded days only. Invalid legacy calories stay visible and mark total incomplete. Historical create/edit/delete/copy, water, weight, current-food recalculation, and fabricated historical goals remain out of scope.
+
+Normal light and AX3 dark previews verify hierarchy, long-name wrapping, stacked metadata, navigation, and scroll continuation. Focused domain tests cover local-calendar grouping, stable ordering, invalid calorie completeness, nonfinite dates, and recorded-day adjacency. Functional UI proves Progress selection → View Day → three meal groups → adjacent recorded day with no mutation control.
+
+### Validation and decision
+
+- `just validate 300`: 228 hostless pass / 2 opt-in live skips; app + widget compile/install/launch passed.
+- `just test-app-unit 600`: 315 pass / 2 opt-in live skips.
+- Functional UI: 47/47 pass after focused accessibility-container correction.
+- Independent critical/high review: **APPROVE / APPROVE / APPROVE**.
+- Evidence: `screenshots/COMPETITOR-GAP-001/`; experiment: `experiments/COMPETITOR-GAP-001.md`.
+
+**ACCEPTED — ATTEMPT 01 / COMPLETE. No unchecked roadmap item remains.**

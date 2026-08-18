@@ -24,6 +24,15 @@ Representative whole-product closure set:
 
 Status: **ACCEPTED — COMPLETE**. Final review consensus **3/3 APPROVE**; validation **222 hostless / 2 skips, 309 app-hosted / 2 skips, 46/46 UI**. Full comparison: `FINAL-REPORT.md`.
 
+## COMPETITOR-GAP-001
+
+Post-closure historical Food Diary:
+
+- ![Historical Food Diary in light appearance](screenshots/COMPETITOR-GAP-001/attempt-01-diary-light.png) — localized recorded day, truthful total, meal-grouped immutable food snapshots, and previous/next recorded-day controls.
+- ![Historical Food Diary at Accessibility 3 in dark appearance](screenshots/COMPETITOR-GAP-001/attempt-01-diary-ax3-dark.png) — stacked navigation and values, intact long names, dark appearance, and scroll continuation.
+
+Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Focused domain and UI proof passed; whole-product gates reached **228 hostless / 2 skips, 315 app-hosted / 2 skips, 47/47 UI**; independent critical/high review **3/3 APPROVE**. Full record: `experiments/COMPETITOR-GAP-001.md`.
+
 ## NAV-001 / TRACKING-IA-001
 
 Baseline: all files under `screenshots/baseline/`

@@ -1851,6 +1851,61 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testHistoricalCalorieDiaryOpensSelectedDayAndNavigatesRecordedDays() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-design-review",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = [
+            "DESIGN_REVIEW_STATE": "normal",
+            "DESIGN_REVIEW_APPEARANCE": "light",
+            "DESIGN_REVIEW_DYNAMIC_TYPE": "normal"
+        ]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout))
+
+        let progressTab = app.tabBars.buttons["Progress"]
+        assertHittable(progressTab, identifier: "Progress tab", phase: "Diary launch")
+        progressTab.tap()
+
+        let calorieChart = app.descendants(matching: .any)
+            .matching(identifier: "progress-calorie-chart")
+            .firstMatch
+        assertExists(calorieChart, identifier: "progress-calorie-chart", phase: "Diary chart")
+        calorieChart.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.5)).tap()
+
+        let viewDay = app.buttons["progress-calorie-view-day"]
+        assertHittable(viewDay, identifier: "progress-calorie-view-day", phase: "Diary selection")
+        viewDay.tap()
+
+        assertExists(app.navigationBars["Food Diary"], identifier: "Food Diary", phase: "Diary detail")
+        let date = app.staticTexts["calorie-diary-date"]
+        let total = app.staticTexts["calorie-diary-total"]
+        let entryCount = app.staticTexts["calorie-diary-entry-count"]
+        assertExists(date, identifier: "calorie-diary-date", phase: "Diary detail")
+        assertExists(total, identifier: "calorie-diary-total", phase: "Diary detail")
+        assertLabel(entryCount, expected: "3 logged foods", phase: "Diary detail")
+        XCTAssertTrue(app.staticTexts["Breakfast"].exists)
+        XCTAssertTrue(app.staticTexts["Lunch"].exists)
+        XCTAssertTrue(app.staticTexts["Dinner"].exists)
+        XCTAssertFalse(app.buttons["save-meal"].exists, "Read-only historical diary exposed mutation control.")
+
+        let firstDate = date.label
+        let nextDay = app.buttons["calorie-diary-next-day"]
+        let previousDay = app.buttons["calorie-diary-previous-day"]
+        if nextDay.isEnabled {
+            nextDay.tap()
+        } else {
+            assertHittable(previousDay, identifier: "calorie-diary-previous-day", phase: "Diary navigation")
+            previousDay.tap()
+        }
+        XCTAssertNotEqual(date.label, firstDate, "Diary navigation did not change recorded day.")
+        assertLabel(entryCount, expected: "3 logged foods", phase: "Diary navigation")
+    }
+
+    @MainActor
     func testProgressChartsInspectNearestRecordedPoints() throws {
         let app = XCUIApplication()
         app.launchArguments = [

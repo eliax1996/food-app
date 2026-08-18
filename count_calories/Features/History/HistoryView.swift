@@ -39,6 +39,24 @@ struct HistoryView: View {
         dailyCalorieSummaries.count(where: { !$0.caloriesAreComplete })
     }
 
+    private var calorieDiaryDays: [CalorieDiaryDay] {
+        CalorieDiary.days(
+            from: entries.map {
+                CalorieDiaryRecord(
+                    id: $0.stableID,
+                    date: $0.date,
+                    mealType: $0.mealType,
+                    foodName: $0.foodName,
+                    calories: $0.calories,
+                    loggedAmount: $0.loggedAmount,
+                    portionCount: $0.portionQuantity,
+                    unitRawValue: $0.nutritionUnit.rawValue
+                )
+            },
+            calendar: calendar
+        )
+    }
+
     private var calorieProgress: CalorieProgress {
         ProgressHistory.calorieProgress(
             summaries: dailyCalorieSummaries,
@@ -117,7 +135,10 @@ struct HistoryView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                CalorieProgressChart(progress: calorieProgress)
+                CalorieProgressChart(
+                    progress: calorieProgress,
+                    diaryDays: calorieDiaryDays
+                )
             }
         }
     }
