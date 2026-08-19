@@ -51,4 +51,4 @@ Final exact-tree gates:
 
 ## Decision
 
-**ACCEPTED — COMPLETE.** Original autonomous redesign Definition of Done is met. Deferred competitor-gap opportunities remain separate future product work, not closure blockers.
+**ACCEPTED — COMPLETE.** Original autonomous redesign Definition of Done was met. COMPETITOR-GAP-001 and BACKLOG-CLOSURE-001 later resolved every retained candidate; no future work remains promised by this historical record.

@@ -1,6 +1,6 @@
 # Whole-app interaction-efficiency assessment
 
-**Evidence access:** retained sources accessed **2026-08-08, 2026-08-10, 2026-08-11, and 2026-08-12**, matching source assessments. **Implementation read:** current SwiftUI feature files and UI-test names. **Scope:** current dirty implementation, not promised contract. **Coverage:** **51 user-facing surfaces/states**.
+**Evidence access:** retained sources accessed **2026-08-08, 2026-08-10, 2026-08-11, and 2026-08-12**, matching source assessments. **Implementation read:** final SwiftUI feature files and UI-test names. **Scope:** accepted implementation and closed decision archive. **Coverage:** whole product plus BACKLOG-CLOSURE-001 follow-ups.
 
 ## Audit convention
 
@@ -32,7 +32,7 @@
 | Change | Before | Current final | Decision |
 |---|---:|---:|---|
 | Today scan | 2 | **1** toolbar tap | Implemented; scanner is direct primary shortcut. |
-| Recent food selection | 4 | **3** | Implemented; show max three recent buttons in Log food. |
+| Recent/frequent food selection | 4 | **3** | Implemented; direct editor shows recent buttons and empty search adds derived frequently logged foods without another index. |
 | Custom food, create-to-review | 6 | **4** | Implemented; toolbar menu → Custom Food → Save → Log food review. Keep explicit save. |
 | Normal scanner manual fallback | unavailable / detour | **1** action from scanner state | Implemented; `Enter barcode manually` opens Food tools. |
 | Meal delete | 1 | **2** | Intentional safety cost: swipe Delete → confirmation. |
@@ -42,7 +42,7 @@
 | Setup progress | misleading fixed progress | branch-aware step count | Implemented truth correction: Maintain skips Pace; review count updates. |
 | Progress exact point | unsupported | **1** tap or drag gesture | Implemented nearest recorded point; VoiceOver adjustable action cycles points. |
 | Adaptive revert | 1 | **2** | Intentional safety: Revert → exact-value confirmation. |
-| Bulk | N/A | review + explicit estimate acceptance + atomic `Log N Foods` | Implemented dirty slice; acceptance remains required before Log. |
+| Bulk | N/A | review + explicit estimate acceptance + atomic `Log N Foods` | Implemented and accepted; per-row acceptance remains intentionally required before Log. |
 
 ## Screen-by-screen audit
 
@@ -55,7 +55,7 @@
 | **Meal detail — empty** | Add food to selected meal; Today → meal row | Flat meal sections → row **1**, Add Food **1** | Floor: empty names meal and gives recovery; target: two actions to editor | Implemented native empty state; no invented meal. |
 | **Meal detail — populated** | Inspect/edit/delete meal row; Today → meal row | Flat list → detail **1**, tap edit **1** or swipe Delete + confirm **2** | Floor: deletion cannot full-swipe; target: one tap to edit | Implemented detail and destructive confirmation. MyFitnessPal/Cronometer retain diary editing evidence; exact row mechanics Unknown / not established. |
 | **Log food** | Add/edit one food; Today/meal Add | `OK`, inline limited search, keyboard-first correction → Add **1**, choose **1**, amount nudge **1**, Add/Save **1** | Floor: explicit Save, valid positive amount/servings; target: default food **2** total | Implemented full-height native Form, contextual scanner, exact fields, `−10/−1/+1/+10`, keyboard Done. Do not claim competitor +/- controls. |
-| **Choose food — local** | Pick saved/recent food; Log food → Choose | Inline five-result filter → Choose **1**, result **1** | Floor: full-row 44pt selection and selected checkmark; target: recent pick **1** from editor | Implemented dedicated native search/List. MacroFactor/MyFitnessPal evidence establishes direct food/serving context, not this exact path. |
+| **Choose food — local** | Pick saved/recent/frequent food; Log food → Choose | Inline five-result filter → Choose **1**, result **1** | Floor: full-row 44pt selection and selected checkmark; target: recent pick **1** from editor | Implemented dedicated native search/List; empty search orders recent then count/recency-ranked frequent then catalog. MacroFactor/MyFitnessPal evidence establishes direct food/serving context, not this exact path. |
 | **Choose food — remote** | Discover un-saved food; type ≥3 graphemes | No discovery → query, debounce, one remote selection **1** after result | Floor: local/cache remains; attribution; no duplicate search; target: select result once | Implemented cached Search-a-licious path, 750 ms debounce, explicit Load more. Retained Open Food Facts evidence, not nutrition-competitor behavior. |
 | **Choose food — loading / empty / offline / unavailable** | Recover without losing local path; Choose food search | Late/raw/duplicated failure → one visible loading state; one Retry or alternate query | Floor: one 44pt retry, saved foods stay visible, no raw transport text | Implemented typed state blocks. Rejected oversized empty `ContentUnavailableView`: keyboard cost. |
 | **Scanner — normal** | Scan one packaged item; Today toolbar or Log food | Today scan 2 → **1** | Floor: request camera only in context; manual fallback always present | Implemented VisionKit scan sheet. MacroFactor first-party AI article says barcode faster for one packaged product; no copied scanner UI. |
@@ -88,6 +88,7 @@
 | **Weight editor** | Record/correct value/date/time; Record or row | Profile default + keyboard only → open **1**, optional ± **1**, Save **1** | Floor: latest valid reading default, valid nonfuture timestamp, Save separate from keyboard Done | Implemented `−1/−0.1/+0.1/+1`, direct decimal entry, 2×2 AX layout. |
 | **Weight delete / undo** | Safely remove one raw reading; row swipe | Unspecified → Delete **1**, confirm **1**, Undo **1** optional | Floor: no full swipe; confirm before mutation; restore exact snapshot | Implemented intentional transaction cost and stacked undo. |
 | **Progress — Calories** | Read seven recorded-day trend; Progress tab | Raw bars/no target context → Progress **1**, exact point tap/drag **1** | Floor: historical goal unavailable stated, not fabricated; target: one gesture reveals exact day | Implemented nearest-point selection. VoiceOver adjustable action cycles dates. |
+| **Historical Food Diary** | Explain or correct selected recorded day; Progress point → View Day | Totals only → View Day **1**, item **1**, then explicit edit/copy/delete or Log Food **1** | Floor: legacy provenance remains limited; future/stale/duplicate writes fail closed; destructive delete confirms and offers undo | Implemented date-first known-snapshot add/edit/copy/delete/undo under atomic coordinator; generic mixed history rejected. |
 | **Progress — Weight** | Read fourteen raw readings; Progress → Weight segment | No exact inspection → segment **1**, exact point tap/drag **1** | Floor: analytics cannot mutate log; target: one gesture reveals raw time/value | Implemented nearest-point detail and VoiceOver adjustable action. |
 
 ### Settings, plan, adaptation, profile, reminders, data controls
@@ -95,7 +96,7 @@
 | Surface/state | Primary task; start | Before → final current actions | Floor / target | Implemented decision; competitor boundary |
 |---|---|---|---|---|
 | **Settings root** | Route to Plan, Goal check-ins, Profile, Reminders, local data; Settings tab | Flat mixed form → tab **1**, row **1** | Floor: summaries do not mutate; target: one row to focused task | Implemented native hierarchy. MacroFactor/MFP/Cronometer broad hierarchy supports separation; no copy. |
-| **Plan** | Inspect goal/source/basis/reference; Settings → Plan | Flat settings → Settings **1**, Plan **1** | Floor: Manual/Calculated/Adapted/Unknown truthful; references general only | Implemented current plan, check-ins, calculated basis, references, measured coverage. |
+| **Plan** | Inspect goal/source/basis/reference/optional personal targets; Settings → Plan | Flat settings → Settings **1**, Plan **1** | Floor: Manual/Calculated/Adapted/Unknown truthful; general references never become silent prescription | Implemented current plan, check-ins, calculated basis, references, measured coverage, and explicit Set/Edit/Use General References target flow. |
 | **Edit Plan** | Change manual goal/context; Plan → Edit | repeated 50-step taps → Edit **1**, keyboard direct entry, Save **1** | Floor: 1,000–5,000 validation, Save/Cancel transaction, no retroactive food edits | Implemented direct keyboard, Stepper remains bounded alternate. YAZIO/Lifesum support manual control, not exact entry. |
 | **Goal check-ins — off** | Enable evidence collection; Settings root → Goal check-ins | 2 → **1** root route | Floor: calculated/adapted source and explicit scope confirmation required | Implemented off explanation + Enable; Manual/Unknown route to setup instead. |
 | **Goal check-ins — collecting** | Learn exact missing evidence; check-ins | Opaque/no adaptation → enter **1**, optional yesterday mark **1** | Floor: 42 complete days, distributed weights, dates/counts visible; no estimate | Implemented exact requirements, earliest date, method disclosure. MacroFactor/Foodnoms establish evidence/proposal category only. |
@@ -136,22 +137,25 @@
 
 Use competitor evidence for problem framing only: calorie-first daily action, inspect-before-log, exact reminder timing, focused plan flow, record/history/analytics separation, and proposal-only adaptation. Count Calories uses native SwiftUI hierarchy, labels, data rules, thresholds, charts, and confirmations. Do not reproduce competitor chrome, branded scores/rings, chat transcripts, undocumented action counts, or claimed algorithm quality.
 
-## Deferred or rejected opportunities
+## Closed opportunity dispositions
 
-| Opportunity | Status | Rationale |
+| Opportunity | Final status | Rationale |
 |---|---|---|
-| Historical calorie CRUD / generic Calories-Water-Weight journal | Deferred | `PlateEntry` meal/timestamp/nutrition snapshots need a separate date-first diary contract. Mixed table would erase semantics. |
-| Personal macro targets | Deferred | Current Plan exposes transparent adult population references; personal prescription needs separate safety/data design. |
-| Reminder windows | Rejected first release | Retained MFP/YAZIO/Cronometer evidence supports exact times; no retained first-party evidence establishes windows as better. |
-| Scanner as replacement for manual entry | Rejected | Permission, hardware, and temporary failures require manual path. |
-| Bulk auto-log, chat UI, LLM nutrition | Rejected | Nutrition must come from selected records; estimate acceptance and atomic final Log remain explicit. |
-| Cloud model fallback / upload full description | Rejected | Current contract is on-device extraction; only derived search queries may travel. |
-| Remote search large empty panel | Rejected | Accepted experiment found 234pt panel hid remote controls under keyboard. |
-| Inline amount compact sheet / hold-repeat | Deferred/rejected | Current four-button native inline pattern meets repeat correction; retained competitor evidence does not establish alternatives. |
-| HealthKit, accounts, cross-device plan evidence | Deferred | No permission/sync contract in current accepted scope. |
+| Historical known-item mutations | Implemented | Separate date-first provenance/attestation/goal/duplicate/undo contract preserves semantics; generic mixed journal stays rejected. |
+| Personal macro/fiber targets | Implemented | Values are user-entered, local, complete-set validated, distinct from retained general references, and coverage-gated. |
+| Reminder windows | Permanently rejected from current scope | Retained MFP/YAZIO/Cronometer evidence supports exact times; no retained first-party evidence establishes windows as better. |
+| Scanner as replacement for manual entry | Permanently rejected | Permission, hardware, and temporary failures require manual path. |
+| Bulk auto-log, chat UI, LLM nutrition | Permanently rejected | Nutrition must come from selected records; estimate acceptance and atomic final Log remain explicit. |
+| Cloud model fallback / upload full description | Permanently rejected | Current contract is on-device extraction; only derived search queries may travel. |
+| Remote search large empty panel | Rejected design | Accepted experiment found 234pt panel hid remote controls under keyboard. |
+| Inline amount compact sheet / hold-repeat | Permanently rejected from current scope | Current four-button native inline pattern meets repeat correction; retained competitor evidence does not establish alternatives. |
+| HealthKit, accounts, cross-device plan evidence | Permanently rejected from current scope | No permission, identity, backend, conflict, or provenance contract; local/offline privacy remains product boundary. |
+| Streak/coaching, exercise credits, duplicate per-meal shortcuts, photo recognition | Permanently rejected from current scope | No evidence/trusted activity source, conflicts with calm hierarchy, or introduces accuracy/privacy cost without validated value. |
+
+No opportunity in this table is deferred. A new explicit user request may create a new contract; repository currently promises none.
 
 ## Evidence and implementation notes
 
 - Research, safety rules, API behavior, and source URLs retained in: `amount-entry-pattern-assessment.md`, `bulk-ai-food-logging-assessment.md`, `bulk-ai-food-logging-specification.md`, `nutrition-balance-assessment.md`, `refine-plan-reminder-assessment.md`, `calculated-plan-specification.md`, `adaptive-calorie-plan-specification.md`, `tracking-navigation-assessment.md`, `open-food-facts-api-assessment.md`, and `open-food-facts-search-assessment.md`.
 - Design decision history retained in `design-redesign/STATUS.md`, `design-redesign/PRODUCT-BACKLOG.md`, and all `design-redesign/experiments/*.md` read for this audit.
-- UI-test coverage names confirm current paths: default meal, bulk atomic/partial failure, amount controls, local/remote search, scanner recovery, barcode/custom nutrients, nutrition detail, Weight lifecycle, chart point inspection, calculated setup, focused reminders, root settings, food-log completion, and adaptive collecting/proposal/apply/decline/revert/unknown/manual states.
+- UI-test coverage names confirm current paths: default meal, bulk atomic/partial failure, amount controls, recent/frequent local and remote search, scanner recovery, barcode/custom nutrients, nutrition/personal targets, Weight lifecycle, chart point inspection, historical diary mutations, calculated setup, focused reminders, root settings, food-log completion, and adaptive collecting/proposal/apply/decline/revert/unknown/manual states.

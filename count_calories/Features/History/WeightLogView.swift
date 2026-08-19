@@ -366,28 +366,10 @@ struct WeightLogView: View {
     }
 
     private func rescheduleReminders() {
-        let meals = ((try? modelContext.fetch(FetchDescriptor<PlateEntry>())) ?? []).map {
-            MealReminderRecord(mealType: $0.mealType, date: $0.date)
-        }
-        let water = ((try? modelContext.fetch(FetchDescriptor<WaterDay>())) ?? []).map {
-            WaterReminderRecord(
-                date: $0.date,
-                glasses: $0.glasses,
-                lastRecordedAt: $0.lastRecordedAt
-            )
-        }
-        let weights = ((try? modelContext.fetch(FetchDescriptor<WeightEntry>())) ?? []).map {
-            WeightReminderRecord(date: $0.date)
-        }
-
-        Task {
-            await ReminderNotificationManager.shared.reschedule(
-                meals: meals,
-                water: water,
-                weights: weights,
-                preferences: .stored()
-            )
-        }
+        TodayExternalSurfaceCoordinator.synchronize(
+            modelContext: modelContext,
+            calendar: calendar
+        )
     }
 
     private func weightText(_ kilograms: Double) -> String {

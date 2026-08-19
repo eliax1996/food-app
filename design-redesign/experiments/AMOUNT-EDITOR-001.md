@@ -50,7 +50,7 @@ Accepted screenshots:
 - Aggregate: 90 pass / 2 opt-in skips.
 - `just check` passed.
 - Diagnostic UI test was added with stable identifiers and assertions for targets, values, calorie updates, unchanged servings, and no keyboard.
-- Final UI attempts were blocked before XCTest: Application launch did not return a process handle after one recover. `just simulator-run` passed, isolating blocker to Xcode test hosting. UI suite is not green.
+- Feature-local UI attempts were blocked before XCTest by Xcode process-handle failure. Later whole-product exact-tree UI suites passed this flow; archived host failure is not current missing work.
 
 ## Decision
 

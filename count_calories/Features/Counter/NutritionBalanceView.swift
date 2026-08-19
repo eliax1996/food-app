@@ -165,6 +165,9 @@ struct DailyNutritionView: View {
             if summary.hasEntries {
                 macroSection
                 fiberSection
+                if summary.personalTargets != nil {
+                    personalTargetsSection
+                }
                 guidanceSection
                 coverageSection
                 methodSection
@@ -276,6 +279,67 @@ struct DailyNutritionView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private var personalTargetsSection: some View {
+        Section {
+            if let targets = summary.personalTargets {
+                ForEach(Macronutrient.allCases, id: \.self) { nutrient in
+                    personalTargetRow(
+                        title: nutrient.rawValue,
+                        measured: summary.knownNutrients.grams(for: nutrient),
+                        target: targets.grams(for: nutrient),
+                        hasCompleteCoverage: summary.hasEntries
+                            && summary.knownCount(for: nutrient) == summary.entryCount,
+                        identifier: nutrient.rawValue.lowercased()
+                    )
+                }
+                personalTargetRow(
+                    title: "Fiber",
+                    measured: summary.knownNutrients.fiberGrams,
+                    target: targets.fiberGrams,
+                    hasCompleteCoverage: summary.hasCompleteFiberCoverage,
+                    identifier: "fiber"
+                )
+            }
+        } header: {
+            Text("Your targets")
+        } footer: {
+            Text("Targets are values you entered, not recommendations. General adult references remain available below.")
+        }
+    }
+
+    private func personalTargetRow(
+        title: String,
+        measured: Double?,
+        target: Double,
+        hasCompleteCoverage: Bool,
+        identifier: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            LabeledContent(title) {
+                Text(hasCompleteCoverage
+                    ? "\(gramsText(measured)) of \(gramsText(target))"
+                    : "Known \(gramsText(measured)) · Target \(gramsText(target))")
+                    .multilineTextAlignment(.trailing)
+                    .monospacedDigit()
+            }
+            if hasCompleteCoverage, let measured {
+                ProgressView(value: min(max(measured / target, 0), 1))
+                    .tint(.blue)
+                    .accessibilityHidden(true)
+            } else {
+                Text("Comparison paused until this nutrient is known for every logged food.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title) personal target")
+        .accessibilityValue(hasCompleteCoverage
+            ? "Measured \(gramsText(measured)) of target \(gramsText(target))"
+            : "Known \(gramsText(measured)), target \(gramsText(target)), comparison paused for incomplete data")
+        .accessibilityIdentifier("nutrition-personal-target-\(identifier)")
     }
 
     private var guidanceSection: some View {

@@ -1,5 +1,7 @@
 # Component design log
 
+Archive note: each component records conditions and “missing opportunities” at that historical moment. BACKLOG-CLOSURE-001 resolution at end controls current status; no heading below is an active task.
+
 ## [HOME-001] Today dashboard
 
 ### Purpose
@@ -98,7 +100,7 @@ Uses NavigationStack, Form, searchable list, segmented controls at normal sizes,
 
 ### Missing opportunities
 
-Favorites and meal templates could further reduce repeated work, but recents solve immediate local repetition without new persistence.
+Favorites and meal templates were considered, then rejected from current scope: recents plus derived frequent foods solve local repetition without another management model.
 
 ### Proposed direction
 
@@ -152,7 +154,7 @@ Uses List, Section, searchable navigation drawer, semantic checkmark, and Conten
 
 ### Missing opportunities
 
-Favorites and frequency ranking remain optional; current recency derivation needs no new model.
+Frequency ranking was implemented in BACKLOG-CLOSURE-001 from local history without a new model. Favorites remain rejected because no additional user value evidence offsets management cost.
 
 ### Proposed direction
 
@@ -208,7 +210,7 @@ Replaced full unavailable state with compact `Saved foods` empty row. Manual Xco
 
 - Measurement: 64 representative one-page five-hit queries = 65,841 bytes; 2,048 projected = 2,106,912 bytes (about 2.01 MiB). Count cap governs typical data; 32 MiB guards long/multipage outliers.
 - Focused suites: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate: 85 pass / 2 opt-in skips. Timed-out partial search responses are rejected rather than cached as terminal.
-- UI suite before final focus fix: 2 pass / 2 fail from lingering keyboard. Focus fix passed manual review. Later attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
+- Historical feature-local UI run before final focus fix had 2 pass / 2 fail, then Xcode-host attempts failed before XCTest. Later whole-product exact-tree UI suites passed; this archived host issue is not current missing work.
 
 ### Decision
 
@@ -235,13 +237,13 @@ Amount rules require finite exact values, preserve decimal remainders, normalize
 - Accessibility3 proof reached `90 g / 14 kcal`, serving `1`; menus were readable, total reachable, and no clipping appeared.
 - Screenshots: `../screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png`, `attempt-01-adjusted.png`, `attempt-01-milliliters.png`, `attempt-01-accessibility3.png`.
 - Focused amount tests: 5 pass. Aggregate: 90 pass / 2 opt-in skips. `just check` passed.
-- Diagnostic UI test was added. Final attempts were blocked before XCTest because Application launch did not return a process handle after one recover; `just simulator-run` passed. UI suite is not green.
+- Diagnostic UI test was added. Feature-local XCTest hosting was blocked at this milestone; later whole-product exact-tree UI suites passed the flow.
 
 ### Decision
 
 **ACCEPTED — ATTEMPT 01**
 
-Reason: Prototype A meets keyboard-free correction, exact-entry fallback, domain-boundary, unit, serving-separation, measured-target, and Accessibility3 evidence requirements. Completed next milestone: `HISTORY-001 + PROGRESS-001 + WEIGHT-001` attempt 02. Next work is separate user-requested navigation-split research.
+Reason: Prototype A meets keyboard-free correction, exact-entry fallback, domain-boundary, unit, serving-separation, measured-target, and Accessibility3 evidence requirements. `HISTORY-001 + PROGRESS-001 + WEIGHT-001` attempt 02 and later navigation-split research were completed.
 
 ## [HISTORY-001 / PROGRESS-001 / WEIGHT-001] Progress analytics
 
@@ -296,7 +298,7 @@ Attempt 02 fixes hierarchy, actual-day labeling, localized wheel/header renderin
 - Aggregate: 106 pass / 2 opt-in skips.
 - `just check` passed.
 - Diagnostic Progress weight UI test was added. Label/locale test defects were corrected. Fresh Banana diagnosis passed `100 g / 1 / 89 kcal` with keyboard hidden.
-- Final `just test-ui 300` timed out before XCTest and reset simulator. UI suite is not green; deterministic preview and hostless evidence are reported separately.
+- Historical feature-local `just test-ui 300` timed out before XCTest and reset simulator. Later whole-product exact-tree UI suites passed; deterministic preview/hostless evidence remains milestone-local context.
 
 ### Decision
 
@@ -304,9 +306,9 @@ Attempt 02 fixes hierarchy, actual-day labeling, localized wheel/header renderin
 
 Reason: target-aware calorie interpretation, data-appropriate weight trend, useful empty recording path, robust domain rules, and native locale-safe save flow are evidenced without overstating UI-test-host status.
 
-### Next work
+### Historical follow-up resolution
 
-Historical note: this milestone's next work was the user-requested navigation split. The later `eae1c92` three-tab/drill-down assessment was superseded by explicit discoverability feedback and dedicated-weight precedent; see revised TRACKING-IA-001 below.
+This milestone was followed by completed navigation-split work. The later `eae1c92` three-tab/drill-down assessment was superseded by explicit discoverability feedback and dedicated-weight precedent; see revised TRACKING-IA-001 below.
 
 ## [TRACKING-IA-001] Revised tracking navigation and Weight Log
 
@@ -378,9 +380,9 @@ Superseded three-tab functional history is retained as historical evidence only:
 
 **ACCEPTED — ATTEMPT 01 / COMPLETE**
 
-### Next component
+### Historical sequencing resolution
 
-`empty/error/loading states`, followed by global consistency, dark mode, Dynamic Type, and small-device checks.
+Completed later: empty/error/loading states, consistency, dark mode, Dynamic Type, small-device checks, and final closure.
 
 ## [FOOD-TOOLS-001] Barcode and custom food tools
 
@@ -410,7 +412,7 @@ Large Form sheet, semantic disabled color, grouped fields, Done toolbar action, 
 
 ### Missing opportunities
 
-Deterministic UI fixture for successful barcode lookup would remove live-network dependence if this integration needs repeated end-to-end proof.
+Resolved later: deterministic DEBUG barcode fixtures and functional success/failure UI coverage remove live-network dependence from normal gates.
 
 ### Proposed direction
 
@@ -455,7 +457,7 @@ Accepted attempt-01 files under `../screenshots/NUTRIENTS-001/` cover Today, com
 - `just test-ui 420`: 12/12 pass, including custom nutrient entry → immutable logged snapshot → daily balance.
 - Final critical/high visual judgment: 3/3 `APPROVE`.
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: REFINE-001, including queued NUTRITION-GOALS-001 theoretical calorie-goal-derived ranges versus measured actuals.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** REFINE-001 later completed NUTRITION-GOALS-001 theoretical ranges, and BACKLOG-CLOSURE-001 completed optional personal targets.
 
 ## [REFINE-001] Plan references, focused Settings, and configurable reminders
 
@@ -621,7 +623,7 @@ Fresh reassessment retained date-first, food/meal-specific history as category c
 
 ### Accepted implementation
 
-Selecting a recorded calorie day in Progress now exposes **View Day**. Native read-only Food Diary shows localized date, assessed total, entry count, meal groups in Breakfast/Lunch/Dinner/Snack order, and immutable logged name/calorie/paired g-or-ml amount/portion/time snapshots. Previous/next controls traverse recorded days only. Invalid legacy calories stay visible and mark total incomplete. Historical create/edit/delete/copy, water, weight, current-food recalculation, and fabricated historical goals remain out of scope.
+Selecting a recorded calorie day in Progress exposed initial **View Day** detail with localized date, assessed total, entry count, meal groups, immutable logged snapshots, and recorded-day navigation. Invalid legacy calories stayed visible and incomplete. Historical mutations were excluded from this milestone, then implemented under a separate BACKLOG-CLOSURE-001 contract; water, weight, current-food recalculation, and fabricated historical goals remain rejected.
 
 Normal light and AX3 dark previews verify hierarchy, long-name wrapping, stacked metadata, navigation, and scroll continuation. Focused domain tests cover local-calendar grouping, stable ordering, invalid calorie completeness, nonfinite dates, and recorded-day adjacency. Functional UI proves Progress selection → View Day → three meal groups → adjacent recorded day with no mutation control.
 
@@ -633,4 +635,18 @@ Normal light and AX3 dark previews verify hierarchy, long-name wrapping, stacked
 - Independent critical/high review: **APPROVE / APPROVE / APPROVE**.
 - Evidence: `screenshots/COMPETITOR-GAP-001/`; experiment: `experiments/COMPETITOR-GAP-001.md`.
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE. No unchecked roadmap item remains.**
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Initial diary gap closed; later backlog closure follows.
+
+## [BACKLOG-CLOSURE-001] Finite Markdown backlog closure
+
+### Accepted implementation
+
+- Food Diary known item snapshots support explicit add/edit/copy/delete/undo. Unknown legacy aggregates remain visible, deletable, and exactly restorable but cannot be falsely edited/copied. Full-snapshot attestation schema 2, retained-only historical goals, duplicate confirmation, future-date rejection, stale-command compare-and-set, and one atomic coordinator save preserve evidence truth.
+- Optional personal carbohydrate/protein/fat/fiber targets persist as validated local profile data. Plan retains general references, shows today context and macro energy, offers edit/clear, and Daily Nutrition compares only under complete relevant coverage.
+- Empty food search shows deterministic recent then derived frequent foods without a persistent index.
+- `DailyCaloriesAccessibilitySummary` unifies app/widget complete and incomplete calorie semantics.
+- `TodayExternalSurfaceCoordinator` owns persisted snapshot projection and widget/reminder/Live Activity synchronization after Today/diary mutations.
+
+Light and Accessibility 3 dark evidence is retained under `screenshots/BACKLOG-CLOSURE-001/`; functional and deterministic tests cover critical flows. Final gates: 243 hostless executed (241 pass / 2 skips), 351 app-hosted pass / 2 skips, 52/52 UI, and 3/3 neutral critical/high approval after all review findings were fixed. Unsupported candidate set—HealthKit/accounts/sync, streak/coaching, exercise credits, duplicate shortcuts, photo/cloud AI, reminder windows, scanner-only entry, and extra amount variants—is permanently rejected from current scope.
+
+**ACCEPTED — COMPLETE. Every project Markdown candidate is implemented or rejected; no queue remains.**

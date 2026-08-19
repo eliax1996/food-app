@@ -29,6 +29,18 @@ final class MealModelTests: XCTestCase {
         XCTAssertEqual(entry.portionQuantity, 2)
     }
 
+    func testMalformedHugeLegacyPortionDoesNotTrapCompatibilityQuantity() {
+        let entry = PlateEntry(
+            foodName: "Zero calorie legacy",
+            calories: 0,
+            weightGrams: 1,
+            quantity: Double.greatestFiniteMagnitude
+        )
+
+        XCTAssertEqual(entry.quantity, 1)
+        XCTAssertEqual(entry.portionQuantity, Double.greatestFiniteMagnitude)
+    }
+
     func testBarcodeLookupDoesNotOverwriteDifferentScannedProductWithSameName() {
         let existingScannedFood = Food(
             name: "Cola",

@@ -90,7 +90,7 @@ A deterministic measurement test encoded 64 representative one-page, five-hit qu
 - Focused suites: client 11, cache 6, service 15, coordinator 8. Cache focused run passed 6/6 after measurement coverage was added.
 - Current hostless aggregate: 85 pass and 2 opt-in skips. Client coverage requires `timed_out` and rejects partial timeout responses rather than caching them as terminal.
 - UI suite reached XCTest before the final focus fix: 2 passed and 2 failed because the search keyboard lingered. Focus fix was manually proven.
-- Later UI attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
+- Later feature-local UI attempts were blocked before XCTest by process-handle failures. Subsequent whole-product exact-tree UI suites passed remote search; archived host failure is not current missing work.
 
 ## Phase transition
 

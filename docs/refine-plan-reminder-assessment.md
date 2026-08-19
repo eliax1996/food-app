@@ -2,6 +2,8 @@
 
 Assessment date: 2026-08-10
 
+Archive note: “future” language below records sequencing at research time. REFINE Slices A–D and accepted follow-ups are implemented; this file contains no active proposal.
+
 ## Product question
 
 Count Calories currently asks people to edit age, target weight, a manual calorie goal, target date, and five reminder switches in one flat form. Meal times are hard-coded, notification permission can be denied while switches still look effective, and the calorie goal has no visible basis. REFINE-001 must add useful control without turning setup into a branded questionnaire or presenting population estimates as medical prescriptions.
@@ -73,7 +75,7 @@ Findings:
 - Weight recommendation is weekly under similar conditions because daily scale weight fluctuates.
 - Goal changes apply today-forward and preserve past goals.
 
-Opportunity: show date as estimate/forecast only after a rate is supportable; preserve historical goal context in future data model.
+Resolved opportunity: attempt 02 shows date only as supported estimate/forecast; attempt 03 preserves retained historical goal context.
 
 ### Lose It!
 
@@ -179,7 +181,7 @@ Findings:
 - Goal changes apply today-forward.
 - Calibrated Energy is inspectable, uses recent food/weight evidence, rejects partial days, smooths weight, opens no more than weekly, ignores small differences, caps one proposal, and never applies automatically.
 
-Opportunity: NUTRITION-GOALS-001 should recalculate transparent references immediately. Future adaptation needs explicit evidence/status/proposal/revert states and must not claim a black-box result.
+Resolved opportunity: NUTRITION-GOALS-001 recalculates transparent references; attempt 03 implements explicit evidence/status/proposal/revert states without black-box claims.
 
 ## Category decisions
 
@@ -226,8 +228,8 @@ Authoritative sources:
 Safety interpretation:
 
 - Mifflin–St Jeor is an estimate for adults, not a diagnosis or universal prescription.
-- Future calculator must ask every required input and explain equation scope. It cannot silently infer sex, height, activity, pregnancy/lactation, or clinical status.
-- Future target-date UI must reject infeasible rates rather than lowering calories to satisfy date.
+- Implemented calculator asks every required input and explains equation scope; it never silently infers equation constant, height, activity, pregnancy/lactation, or clinical status.
+- Implemented target-date UI rejects infeasible rates rather than lowering calories to satisfy date.
 - Hard lower bound cannot be below 1,000 kcal/day for supported adults. A higher individualized recommendation may be appropriate; this remains a specification question, not a value to guess.
 - Children, pregnancy/lactation, eating-disorder care, and medically prescribed diets remain outside automated recommendation scope.
 - Current slice performs no energy-needs calculation, so it introduces no new personal calorie recommendation.
@@ -339,4 +341,6 @@ REFINE-001 attempt 01 accepted Slices A/B on 2026-08-10. Existing goals remain M
 
 User-requested WEIGHT-ENTRY-001 follow-up is also accepted: latest valid measurement defaults, `−1/−0.1/+0.1/+1` controls, and native keyboard Done across every numeric pad. Attempt-01 gates were 155 hostless pass / 2 live skips, 184 app-hosted pass / 2 live skips, exact-tree simulator validation passed, and functional UI 14/14.
 
-REFINE attempt 02 now adds optional calculated setup, Manual/Calculated source, transparent breakdown, override/restore, and direct reminder/Plan entry. Current integrated gates: 178 hostless pass / 2 skips, 210 app-hosted pass / 2 skips, exact-tree validation passed, and functional UI 22/22.
+REFINE attempt 02 added optional calculated setup, Manual/Calculated source, transparent breakdown, override/restore, and direct reminder/Plan entry. Its integrated gates were 178 hostless pass / 2 skips, 210 app-hosted pass / 2 skips, exact-tree validation passed, and functional UI 22/22.
+
+REFINE attempt 03 completed evidence-gated adaptive check-ins, proposal/apply/decline/disable/revert, retained goal history, and fail-closed provenance. BACKLOG-CLOSURE-001 later completed optional personal nutrition targets while retaining general references. Unsupported reminder windows and HealthKit/account sync are explicitly rejected from current scope. No assessment item remains open.

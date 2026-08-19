@@ -95,7 +95,8 @@ struct CalorieCounterView: View {
             records: todaysEntries.map {
                 LoggedNutrition(calories: $0.calories, nutrients: $0.nutrients)
             },
-            calorieGoal: dailyCalorieGoal
+            calorieGoal: dailyCalorieGoal,
+            personalTargets: profiles.first?.personalNutritionTargets
         )
     }
 
@@ -132,18 +133,36 @@ struct CalorieCounterView: View {
         CalorieCalculator.assessedTotal(todaysEntries(for: mealType).map(\.calories))
     }
 
-    private var recentFoods: [Food] {
-        var seenNames = Set<String>()
-        return entries.compactMap { entry in
-            guard seenNames.insert(entry.foodName.lowercased()).inserted else {
+    private var foodUsageEvents: [FoodUsageEvent] {
+        entries.compactMap { entry in
+            guard entry.loggedSnapshotKind == .item,
+                  entry.date.timeIntervalSinceReferenceDate.isFinite,
+                  entry.date <= .now else {
                 return nil
             }
-            return foods.first {
-                $0.name.localizedCaseInsensitiveCompare(entry.foodName) == .orderedSame
-            }
+            return FoodUsageEvent(foodName: entry.foodName, date: entry.date)
         }
-        .prefix(5)
-        .map { $0 }
+    }
+
+    private var recentFoodNames: [String] {
+        FoodUsageRanking.recentNames(from: foodUsageEvents)
+    }
+
+    private var recentFoods: [Food] {
+        savedFoods(named: recentFoodNames)
+    }
+
+    private var frequentFoods: [Food] {
+        savedFoods(named: FoodUsageRanking.frequentNames(
+            from: foodUsageEvents,
+            excluding: recentFoodNames
+        ))
+    }
+
+    private func savedFoods(named names: [String]) -> [Food] {
+        FoodUsageRanking.unambiguousNames(names, among: foods.map(\.name)).compactMap { name in
+            foods.first { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }
+        }
     }
 
     private var selectedCalories: Int? {
@@ -322,25 +341,33 @@ struct CalorieCounterView: View {
                 Text(liveActivityMessage ?? "Unknown error")
             }
             .sheet(isPresented: $showingAddMeal, onDismiss: mealEditorDidDismiss) {
-                MealEditorView(
-                    foods: foods,
-                    recentFoods: recentFoods,
-                    isEditing: editingEntry != nil,
-                    selectedMeal: $selectedMeal,
-                    selectedFood: $selectedFood,
-                    searchText: $searchText,
-                    amount: $weightGrams,
-                    portionCount: $quantity,
-                    calories: selectedCalories,
-                    remoteSearch: remoteSearchCoordinator,
-                    onSelectRemoteFood: selectRemoteFood,
-                    onCancel: {
-                        showingAddMeal = false
-                    },
-                    onScanBarcode: scanBarcodeFromMealEditor,
-                    onSave: savePlate
-                )
-                .environment(\.dynamicTypeSize, dynamicTypeSize)
+                if let editingEntry {
+                    HistoricalFoodEditView(record: editingEntry.calorieDiaryRecord) { _ in
+                        mirrorTodayToWidgetStore()
+                    }
+                    .environment(\.dynamicTypeSize, dynamicTypeSize)
+                } else {
+                    MealEditorView(
+                        foods: foods,
+                        recentFoods: recentFoods,
+                        frequentFoods: frequentFoods,
+                        isEditing: false,
+                        selectedMeal: $selectedMeal,
+                        selectedFood: $selectedFood,
+                        searchText: $searchText,
+                        amount: $weightGrams,
+                        portionCount: $quantity,
+                        calories: selectedCalories,
+                        remoteSearch: remoteSearchCoordinator,
+                        onSelectRemoteFood: selectRemoteFood,
+                        onCancel: {
+                            showingAddMeal = false
+                        },
+                        onScanBarcode: scanBarcodeFromMealEditor,
+                        onSave: savePlate
+                    )
+                    .environment(\.dynamicTypeSize, dynamicTypeSize)
+                }
             }
             .sheet(item: $bulkMealController, onDismiss: bulkMealDidDismiss) { controller in
                 BulkMealLoggingView(
@@ -440,7 +467,11 @@ struct CalorieCounterView: View {
 
     private var foodLogStatus: FoodLogStatus {
         guard let completion = todaysFoodLogCompletion else { return .inProgress }
-        return completion.isStale ? .needsReview : .complete
+        return completion.isStale
+            || completion.evidenceSchemaVersion != PlanEvidenceMutationCoordinator.evidenceSchemaVersion
+            || completion.plateSnapshot == nil
+            ? .needsReview
+            : .complete
     }
 
     private var foodLogStatusRow: some View {
@@ -591,7 +622,25 @@ struct CalorieCounterView: View {
         if currentWaterDay.glasses > 0 && currentWaterDay.lastRecordedAt == nil {
             currentWaterDay.lastRecordedAt = .now
         }
-        _ = saveChanges()
+        if saveChanges(), let mutationCoordinator {
+            mutationCoordinator.synchronizeCalendar(calendar)
+            do {
+                _ = try mutationCoordinator.migrateLegacyPlateProvenanceIfNeeded()
+            } catch {
+                AppLogger.persistence.error(
+                    "Failed to migrate legacy food provenance: \(error.localizedDescription, privacy: .public)"
+                )
+                errorMessage = "Some older food entries could not be prepared for safe editing. They remain unchanged and can still be deleted."
+            }
+            do {
+                _ = try mutationCoordinator.refreshFoodLogStaleness()
+            } catch {
+                AppLogger.persistence.error(
+                    "Failed to refresh food-log evidence: \(error.localizedDescription, privacy: .public)"
+                )
+                errorMessage = "Food-log evidence could not be refreshed. Existing food remains unchanged; review before reconfirming."
+            }
+        }
         synchronizeWaterFromWidgetStore()
         mirrorTodayToWidgetStore()
     }
@@ -692,12 +741,11 @@ struct CalorieCounterView: View {
     }
 
     private func prepareMealSheetForEdit(_ entry: PlateEntry) {
+        guard entry.loggedSnapshotKind == .item else {
+            errorMessage = "This legacy entry cannot be safely edited as an individual food. You can delete it from the meal or Food Diary."
+            return
+        }
         editingEntry = entry
-        selectedMeal = MealType(rawValue: entry.mealType ?? "") ?? .snack
-        selectedFood = foods.first { $0.name == entry.foodName } ?? selectedFood ?? foods.first
-        searchText = ""
-        quantity = entry.portionQuantity
-        weightGrams = entry.weightGrams
         showingAddMeal = true
     }
 
@@ -708,34 +756,25 @@ struct CalorieCounterView: View {
         }
 
         do {
+            guard editingEntry == nil else {
+                throw PlanEvidenceMutationError.compareAndSetFailed
+            }
             guard let coordinator = mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
             }
             coordinator.synchronizeCalendar(calendar)
-            if let editingEntry {
-                try coordinator.updatePlate(
-                    stableID: editingEntry.stableID,
-                    foodName: selectedFood.name,
-                    calories: selectedCalories,
-                    weightGrams: weightGrams,
-                    quantity: quantity,
-                    servingUnitRawValue: selectedFood.nutritionUnit.rawValue,
-                    nutrients: selectedNutrients,
-                    mealType: selectedMeal.rawValue,
-                    date: editingEntry.date
-                )
-            } else {
-                let entry = PlateEntry(
-                    foodName: selectedFood.name,
-                    calories: selectedCalories,
-                    weightGrams: weightGrams,
-                    quantity: quantity,
-                    servingUnit: selectedFood.nutritionUnit,
-                    nutrients: selectedNutrients,
-                    mealType: selectedMeal.rawValue
-                )
-                try coordinator.insertPlate(entry)
-            }
+            let entry = PlateEntry(
+                foodName: selectedFood.name,
+                calories: selectedCalories,
+                weightGrams: weightGrams,
+                quantity: quantity,
+                servingUnit: selectedFood.nutritionUnit,
+                nutrients: selectedNutrients,
+                mealType: selectedMeal.rawValue,
+                loggedCalorieDensity: Double(selectedFood.calories)
+                    / selectedFood.servingGrams
+            )
+            try coordinator.insertPlate(entry)
             mirrorTodayToWidgetStore()
             showingAddMeal = false
         } catch {
@@ -745,13 +784,16 @@ struct CalorieCounterView: View {
         }
     }
 
-    private func deletePlate(_ entry: PlateEntry) {
+    private func deletePlate(_ entry: PlateEntry, expectedModifiedAt: Date) {
         do {
             guard let coordinator = mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
             }
             coordinator.synchronizeCalendar(calendar)
-            try coordinator.deletePlate(stableID: entry.stableID)
+            try coordinator.deletePlate(
+                stableID: entry.stableID,
+                expectedModifiedAt: expectedModifiedAt
+            )
             mirrorTodayToWidgetStore()
         } catch {
             modelContext.rollback()
@@ -1136,30 +1178,14 @@ struct CalorieCounterView: View {
         preservePendingWidgetWater: Bool = true
     ) {
         guard !isDesignReview else { return }
-
-        let calories = todaysCalories
-        let waterGlasses = todaysWater?.glasses ?? 0
-
-        WidgetDailySummaryStore.save(
-            calories: calories,
-            caloriesAreComplete: todaysCalorieTotal.isComplete,
-            waterGlasses: waterGlasses,
-            lastWaterRecordedAt: todaysWater?.lastRecordedAt,
-            calorieGoal: dailyCalorieGoal,
+        let synchronization = TodayExternalSurfaceCoordinator.synchronize(
+            modelContext: modelContext,
+            calendar: calendar,
             waterGoal: waterGoal,
             preservePendingWidgetWater: preservePendingWidgetWater
         )
-        rescheduleReminders()
-
-        let synchronization = CaloriesLiveActivityManager.synchronize(
-            calories: calories,
-            caloriesAreComplete: todaysCalorieTotal.isComplete,
-            waterGlasses: waterGlasses,
-            calorieGoal: dailyCalorieGoal,
-            waterGoal: waterGoal
-        )
         Task {
-            await synchronization.value
+            await synchronization?.value
             isLiveActivityActive = CaloriesLiveActivityManager.isActive
         }
     }
@@ -1188,33 +1214,6 @@ struct CalorieCounterView: View {
         Task {
             await CaloriesLiveActivityManager.stop()
             isLiveActivityActive = CaloriesLiveActivityManager.isActive
-        }
-    }
-
-    private func rescheduleReminders() {
-        let persistedEntries = (try? modelContext.fetch(FetchDescriptor<PlateEntry>())) ?? entries
-        let persistedWaterDays = (try? modelContext.fetch(FetchDescriptor<WaterDay>())) ?? waterDays
-        let persistedWeights = (try? modelContext.fetch(FetchDescriptor<WeightEntry>())) ?? []
-        let mealRecords = persistedEntries.map {
-            MealReminderRecord(mealType: $0.mealType, date: $0.date)
-        }
-        let waterRecords = persistedWaterDays.map {
-            WaterReminderRecord(
-                date: $0.date,
-                glasses: $0.glasses,
-                lastRecordedAt: $0.lastRecordedAt
-            )
-        }
-
-        let weightRecords = persistedWeights.map { WeightReminderRecord(date: $0.date) }
-
-        Task {
-            await ReminderNotificationManager.shared.reschedule(
-                meals: mealRecords,
-                water: waterRecords,
-                weights: weightRecords,
-                preferences: .stored()
-            )
         }
     }
 

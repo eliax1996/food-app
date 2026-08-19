@@ -2,7 +2,7 @@
 
 **Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
 **Decision/access date:** 2026-08-08
-**Implementation:** Implemented in worktree and complete. Attempt 01 is accepted.
+**Implementation:** Implemented and complete. Attempt 01 is accepted. Later diary work is resolved separately; “future” language below is historical sequencing, not active backlog.
 
 ## Decision history and revised decision
 
@@ -103,11 +103,11 @@ Remove current-weight recording from Settings. Weight recording has one home: We
 
 ## Calories history boundary
 
-Historical calorie CRUD is deferred from TRACKING-IA-001.
+Historical calorie CRUD was excluded from TRACKING-IA-001 and later resolved under separate date-first diary contracts.
 
 **Repo-verified constraint (R):** `PlateEntry` stores food-name, calorie, amount, quantity/portion, serving-unit, meal type, and date snapshots. Existing calorie history groups those records by calendar day and sums calories; preview data also seeds aggregate-style historical entries. A generic historical editor would need explicit rules for preserving the `PlateEntry` snapshot when its source `Food` changes, and for keeping preview/aggregate data coherent. That integrity and preview-aggregate issue is not resolved by navigation alone.
 
-**Decision (D):** Do not add calorie historical edit/delete to Weight Log, Progress, or a mixed log. Future calorie history is a separate day diary with date context, meal sections, food-specific row editing, and food-specific delete/copy semantics. It must never be a generic table mixing Calories, Water, and Weight.
+**Decision (D):** Do not add calorie historical edit/delete to Weight Log, Progress, or a mixed log. Later work implemented separate date-first diary with meal context and contracted food-specific actions. It never became a generic Calories/Water/Weight table.
 
 This boundary preserves current food-entry behavior while preventing an unsafe, semantically ambiguous journal from becoming a navigation destination.
 
@@ -127,7 +127,7 @@ Weight and Progress remain distinct within that order: Weight records raw measur
 
 Rejected because `Log` duplicates Today for current-day food work while inviting a generic historical journal. A mixed journal is unsafe: calorie rows are meal/time and snapshot-rich, weight rows are sparse measurements with backdatable date/time, and water has different aggregation/deletion rules. Shared persistence does not justify shared primary UI.
 
-Future calories history can be a separate day diary. It must not become this generic table.
+Later calorie history became separate day diary and did not become this generic table.
 
 ## Research synthesis
 
@@ -170,7 +170,7 @@ Observed repository files:
 | IA-10 | Deletion requires explicit confirmation and provides stacked undo; accidental swipe/gesture cannot silently delete. |
 | IA-11 | `View full trends` selects `Progress` with `Weight` selected. Progress owns fuller fourteen-reading analytics and has no weight create/edit/delete controls. |
 | IA-12 | Settings retains target weight, age, calorie goal, target date, and reminders; removes current-weight recording field and save path. |
-| IA-13 | No calorie historical CRUD is added in this scope. Future calorie history is a separate meal/day diary, never a generic mixed Calories/Water/Weight table. |
+| IA-13 | No calorie historical CRUD was added in this scope. Later work completed separate meal/day diary and known-item actions, never generic mixed history. |
 | IA-14 | Native controls support Dynamic Type, VoiceOver labels/actions, localized date/time, sufficient touch targets, dark mode, and semantic non-color-only state. |
 
 ## Tests and success criteria
@@ -228,7 +228,7 @@ All gates below are closed by final validation. TRACKING-IA-001 is accepted and 
 - **2026-08-08 — V/R:** Attempt-01 visual evidence was captured under `screenshots/TRACKING-IA-001/`; explicit UI target reached **6/6 pass** for four tabs, prompt-to-chart, two same-day readings, backdated regrouping, edit, delete cancel/confirm/undo, Settings, and direct `View full trends` to Progress / Weight.
 - **2026-08-08 — R:** `just validate 300` passed; hostless validation reported **125 passed / 2 opt-in live skips**; simulator build, install, and launch passed. App-hosted persistence tests passed after duplicate-profile/future-row correctness fixes and again in an integrated run.
 - **2026-08-08 — R:** One later standalone `just test-app-unit 300` timed out before XCTest. This is external Xcode 27 host instability, not a red product gate.
-- **2026-08-08 — D:** Final IA is `Today | Weight | Progress | Settings`; Weight owns basic seven-reading raw-chart context and raw CRUD; Progress owns fuller fourteen-reading analytics with no CRUD; Settings has no current-weight field; calorie CRUD and generic mixed history remain out of scope.
+- **2026-08-08 — D:** Final IA is `Today | Weight | Progress | Settings`; Weight owns basic seven-reading raw-chart context and raw CRUD; Progress owns fuller fourteen-reading analytics with no weight CRUD; Settings has no current-weight field. Generic mixed history remains rejected. COMPETITOR-GAP-001 and BACKLOG-CLOSURE-001 later implemented separate date-first calorie diary detail and known-snapshot mutations.
 - **2026-08-08 — D:** TRACKING-IA-001 marked **ACCEPTED — ATTEMPT 01 / COMPLETE**.
 
 ## Source index — exact URLs

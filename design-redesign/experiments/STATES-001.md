@@ -8,7 +8,7 @@
 
 Keep useful local tracking available when remote services, permissions, or persistence fail. Every state should explain what happened, preserve unaffected work, and expose one clear native recovery action.
 
-Notification authorization and reminder-save semantics moved into deferred `REFINE-001`, where they can be designed with the requested reminder-window and Settings hierarchy instead of patched twice.
+Notification authorization and reminder-save semantics moved into subsequent `REFINE-001`, where they were implemented with exact times and Settings hierarchy instead of patched twice. Reminder windows were later rejected for insufficient evidence.
 
 ## Baseline
 
@@ -189,6 +189,6 @@ Barcode loading remains deterministic preview/screenshot evidence rather than a 
 - `just simulator-run 180`: **passed** before final live screenshot capture.
 - Xcode MCP live capture: functional and visual pass; its session vanished after evidence return, so cleanup reported the known external invalid-session error. Retained screenshot and hierarchy were already complete.
 
-## Deferred work
+## Historical follow-up resolution
 
-Notification denial, scheduling failure, reminder customization, and Settings save semantics remain required under `REFINE-001`. This is intentional sequencing, not silent acceptance of current reminder behavior.
+REFINE-001 completed notification denial, scheduling failure, reminder customization, and explicit Settings save semantics. No STATES-001 follow-up remains open.

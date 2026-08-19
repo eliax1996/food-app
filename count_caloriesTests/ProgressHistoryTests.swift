@@ -75,6 +75,37 @@ final class ProgressHistoryTests: XCTestCase {
         XCTAssertEqual(progress.goalDifference ?? .nan, 200.0 / 3.0, accuracy: 0.000_001)
     }
 
+    func testHistoricalGoalResolverRejectsInvalidHistoryAndUsesLatestSequence() {
+        let selectedDay = date(day: 3)
+        let goal = ProgressHistory.calorieGoal(
+            for: selectedDay,
+            revisions: [
+                revision(day: 1, sequence: 1, calories: 1_700),
+                revision(day: 3, sequence: 2, calories: 1_800),
+                revision(day: 3, sequence: 3, calories: 1_900),
+                CalorieGoalRevisionPoint(
+                    effectiveDate: Date(timeIntervalSinceReferenceDate: .infinity),
+                    sequence: 99,
+                    calories: 5_000
+                ),
+                revision(day: 2, sequence: 100, calories: 0)
+            ],
+            calendar: calendar
+        )
+
+        XCTAssertEqual(goal, 1_900)
+        XCTAssertNil(ProgressHistory.calorieGoal(
+            for: date(day: 0),
+            revisions: [revision(day: 1, sequence: 1, calories: 1_700)],
+            calendar: calendar
+        ))
+        XCTAssertNil(ProgressHistory.calorieGoal(
+            for: Date(timeIntervalSinceReferenceDate: .nan),
+            revisions: [revision(day: 1, sequence: 1, calories: 1_700)],
+            calendar: calendar
+        ))
+    }
+
     func testCaloriesAreSortedAndLimitedToMostRecentSevenDays() {
         let progress = ProgressHistory.calorieProgress(
             summaries: (1...9).reversed().map { summary(day: $0, calories: $0 * 100) },

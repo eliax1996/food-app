@@ -58,7 +58,7 @@ Retains target weight, age, daily calorie goal, target date, and reminders. No c
 
 ### Calorie boundary
 
-No calorie CRUD is included. Future calorie history must be a separate date-first day diary with meal-grouped food rows. No generic Calories/Water/Weight table is introduced.
+No calorie CRUD was included in TRACKING-IA-001. COMPETITOR-GAP-001 and BACKLOG-CLOSURE-001 later implemented separate date-first diary detail and contracted known-snapshot mutations. Generic Calories/Water/Weight table remains rejected.
 
 ## Research sources
 
@@ -137,6 +137,6 @@ Rejected evidence retained:
 - App-hosted persistence tests passed after final duplicate-profile/future-row correctness fixes and passed again in an integrated run.
 - One later standalone `just test-app-unit 300` timed out before XCTest. This is external Xcode 27 host instability, not a red product gate.
 
-## Next component
+## Historical sequencing resolution
 
-`empty/error/loading states`, followed by global consistency, dark mode, Dynamic Type, and small-device checks.
+STATES-001, CONSISTENCY-001, ROBUSTNESS-001, and FINAL-001 later completed empty/error/loading, global consistency, dark mode, Dynamic Type, and small-device checks. No follow-up remains.

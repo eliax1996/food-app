@@ -5,11 +5,13 @@ import os
 private enum PlanSettingsPresentation: Identifiable {
     case manualEditor
     case calculatedSetup(CaloriePlanSetupRecord)
+    case personalNutritionTargets
 
     var id: String {
         switch self {
         case .manualEditor: "manual-editor"
         case .calculatedSetup: "calculated-setup"
+        case .personalNutritionTargets: "personal-nutrition-targets"
         }
     }
 }
@@ -23,6 +25,7 @@ struct PlanSettingsView: View {
     let profile: UserProfile
 
     @State private var presentation: PlanSettingsPresentation?
+    @State private var confirmingClearPersonalTargets = false
     @State private var errorMessage: String?
 
     private var referencePlan: NutritionReferencePlan? {
@@ -54,7 +57,8 @@ struct PlanSettingsView: View {
             records: todaysEntries.map {
                 LoggedNutrition(calories: $0.calories, nutrients: $0.nutrients)
             },
-            calorieGoal: profile.dailyCalorieGoal
+            calorieGoal: profile.dailyCalorieGoal,
+            personalTargets: profile.personalNutritionTargets
         )
     }
 
@@ -67,6 +71,7 @@ struct PlanSettingsView: View {
             }
             planActionsSection
             referenceSection
+            personalTargetsSection
             measuredSection
                 .id("plan-measured-section")
             methodSection
@@ -94,7 +99,15 @@ struct PlanSettingsView: View {
                 ) {
                     self.presentation = nil
                 }
+            case .personalNutritionTargets:
+                PersonalNutritionTargetsEditor(profile: profile)
             }
+        }
+        .alert("Use general references?", isPresented: $confirmingClearPersonalTargets) {
+            Button("Use General References", role: .destructive, action: clearPersonalTargets)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes your entered nutrition targets. General adult references stay visible. Logged food and calorie goals do not change.")
         }
         .alert("Could not update plan", isPresented: Binding(
             get: { errorMessage != nil },
@@ -268,6 +281,91 @@ struct PlanSettingsView: View {
     }
 
     @ViewBuilder
+    private var personalTargetsSection: some View {
+        Section {
+            if let targets = profile.personalNutritionTargets {
+                ForEach(Macronutrient.allCases, id: \.self) { nutrient in
+                    VStack(alignment: .leading, spacing: 4) {
+                        LabeledContent(nutrient.rawValue) {
+                            Text(gramsText(targets.grams(for: nutrient)))
+                                .fontWeight(.medium)
+                                .monospacedDigit()
+                        }
+                        Text(personalTargetTodayText(
+                            measured: todaysNutrition.knownNutrients.grams(for: nutrient),
+                            target: targets.grams(for: nutrient),
+                            hasCompleteCoverage: todaysNutrition.hasEntries
+                                && todaysNutrition.knownCount(for: nutrient) == todaysNutrition.entryCount
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("plan-personal-target-\(nutrient.rawValue.lowercased())")
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    LabeledContent("Fiber") {
+                        Text(gramsText(targets.fiberGrams))
+                            .fontWeight(.medium)
+                            .monospacedDigit()
+                    }
+                    Text(personalTargetTodayText(
+                        measured: todaysNutrition.knownNutrients.fiberGrams,
+                        target: targets.fiberGrams,
+                        hasCompleteCoverage: todaysNutrition.hasCompleteFiberCoverage
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("plan-personal-target-fiber")
+
+                LabeledContent("Macro energy") {
+                    Text("\(targets.macroEnergyCalories.formatted(.number.precision(.fractionLength(0)))) kcal")
+                        .monospacedDigit()
+                }
+                .accessibilityIdentifier("plan-personal-target-energy")
+
+                Button("Edit Targets") {
+                    presentation = .personalNutritionTargets
+                }
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("plan-edit-personal-targets")
+
+                Button("Use General References", role: .destructive) {
+                    confirmingClearPersonalTargets = true
+                }
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("plan-clear-personal-targets")
+            } else {
+                Text("Add exact daily gram targets only when you already have values you want to track. Count Calories does not prescribe them.")
+                    .foregroundStyle(.secondary)
+                Button("Set Personal Targets") {
+                    presentation = .personalNutritionTargets
+                }
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("plan-set-personal-targets")
+            }
+        } header: {
+            Text("Your nutrition targets")
+        } footer: {
+            Text("Targets are values you entered, not recommendations. General adult references remain visible above; food-label calories remain authoritative for your calorie budget.")
+        }
+    }
+
+    private func personalTargetTodayText(
+        measured: Double?,
+        target: Double,
+        hasCompleteCoverage: Bool
+    ) -> String {
+        if hasCompleteCoverage {
+            return "Today \(gramsText(measured)) of \(gramsText(target))"
+        }
+        return "Known today \(gramsText(measured)) · target \(gramsText(target)) · comparison paused for incomplete data"
+    }
+
+    @ViewBuilder
     private var measuredSection: some View {
         Section {
             if todaysNutrition.hasEntries, let referencePlan {
@@ -351,6 +449,21 @@ struct PlanSettingsView: View {
             )
         }
         presentation = .calculatedSetup(record)
+    }
+
+    private func clearPersonalTargets() {
+        do {
+            guard let mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            try mutationCoordinator.setPersonalNutritionTargets(nil)
+        } catch {
+            modelContext.rollback()
+            AppLogger.persistence.error(
+                "Failed to clear personal nutrition targets: \(error.localizedDescription, privacy: .public)"
+            )
+            errorMessage = "Personal nutrition targets could not be cleared. Nothing changed."
+        }
     }
 
     private func restoreCalculatedGoal() {

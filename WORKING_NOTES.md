@@ -15,22 +15,22 @@ Durable scope and live phase tracker: `design-redesign/COMPLETION-PLAN.md`.
 - Dedicated Weight Log
 - Root `Today | Weight | Progress | Settings`
 
-Latest accepted milestone: COMPETITOR-GAP-001 read-only historical Food Diary, following FINAL-001 whole-product closure. Final report: `design-redesign/FINAL-REPORT.md`.
+Latest accepted milestone: BACKLOG-CLOSURE-001, following COMPETITOR-GAP-001 historical Food Diary and FINAL-001 whole-product closure. Final report: `design-redesign/FINAL-REPORT.md`.
 
 ## Current component
 
-No active component. `STATES-001`, `NUTRIENTS-001`, NUTRITION-GOALS-001, REFINE Slices A–D, WEIGHT-ENTRY-001, SETTINGS-DIRECT-EDIT-001, BULK-AI-FOOD-001, AUXILIARY-001, CONSISTENCY-001, ROBUSTNESS-001, FINAL-001, and COMPETITOR-GAP-001 are accepted and complete.
+No active component. All redesign milestones through FINAL-001, COMPETITOR-GAP-001, and BACKLOG-CLOSURE-001 are accepted and complete.
 
-Historical diary mutation/copy, personal macro targets, and HealthKit/sync remain separate future proposals.
+Historical diary mutations, personal nutrition targets, frequent-food ranking, shared calorie accessibility semantics, and Today external-surface extraction are implemented. HealthKit/accounts/sync, streak/coaching, exercise credits, duplicate shortcuts, photo/cloud AI, reminder windows, and extra amount variants are explicitly rejected from current scope. No deferred queue remains.
 
 ## Final validation
 
-- hostless: 228 tests / 2 opt-in live skips
-- app-hosted: 315 passed / 2 opt-in live skips
-- functional UI: 47/47 passed
-- post-closure independent critical/high review: 3/3 APPROVE
+- hostless: 243 executed — 241 passed / 2 opt-in live skips
+- app-hosted: 351 passed / 2 opt-in live skips
+- functional UI: 52/52 passed
+- final backlog-closure independent critical/high review: 3/3 APPROVE
 - app + widget compile, simulator install/launch, and `git diff --check`: passed
 
 ## Immediate action
 
-None. Original redesign and queued competitor-gap iteration closed; await next explicit product request.
+None. Markdown backlog is closed; await a new explicit product request.

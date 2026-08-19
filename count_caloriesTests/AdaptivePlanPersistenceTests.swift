@@ -168,8 +168,13 @@ final class AdaptivePlanPersistenceTests: XCTestCase {
         let evidenceBeforeMetadataEdit = try XCTUnwrap(
             ModelContext(fixture.container).fetch(FetchDescriptor<UserProfile>()).first
         ).evidenceRevision
+        let currentToday = try XCTUnwrap(
+            ModelContext(fixture.container).fetch(FetchDescriptor<PlateEntry>())
+                .first { $0.stableID == todayPlate.stableID }
+        )
         try fixture.coordinator.updatePlate(
             stableID: todayPlate.stableID,
+            expectedModifiedAt: currentToday.modifiedAt,
             foodName: "Renamed Today",
             calories: todayPlate.calories,
             weightGrams: 2,
@@ -179,14 +184,19 @@ final class AdaptivePlanPersistenceTests: XCTestCase {
             mealType: MealType.lunch.rawValue,
             date: todayPlate.date
         )
-        XCTAssertFalse(todayCompletion.isStale, "Name, amount, nutrient, or meal edits preserving calories and date must not stale energy evidence.")
+        XCTAssertTrue(todayCompletion.isStale, "Any logged snapshot edit must require food-log reconfirmation.")
         XCTAssertEqual(
             try XCTUnwrap(ModelContext(fixture.container).fetch(FetchDescriptor<UserProfile>()).first).evidenceRevision,
-            evidenceBeforeMetadataEdit
+            evidenceBeforeMetadataEdit + 1
         )
+        _ = try fixture.coordinator.reconfirmFoodLog(for: today)
 
+        let currentTodayAfterEdit = try XCTUnwrap(
+            ModelContext(fixture.container).fetch(FetchDescriptor<PlateEntry>())
+                .first { $0.stableID == todayPlate.stableID }
+        )
         try fixture.coordinator.updatePlateEvidence(
-            todayPlate,
+            currentTodayAfterEdit,
             calories: 125,
             date: yesterday.addingTimeInterval(10 * 3_600)
         )
@@ -855,7 +865,8 @@ final class AdaptivePlanPersistenceTests: XCTestCase {
             PlateEntry.self,
             WeightEntry.self,
             UserProfile.self,
-            FoodLogCompletion.self
+            FoodLogCompletion.self,
+            HistoricalPlateDeletionOperation.self
         ])
         let container = try ModelContainer(
             for: schema,

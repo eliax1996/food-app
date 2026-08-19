@@ -47,4 +47,4 @@ Normal light view shows date, total, two meal groups, row snapshots, and recorde
 
 ## Decision
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** This completes queued competitor-gap iteration. Historical add/edit/delete/copy remains a separate future contract, not implied by read-only diary.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** This completed initial queued competitor-gap iteration. BACKLOG-CLOSURE-001 later supplied and implemented separate historical add/edit/copy/delete/undo and personal-target contracts; this historical v1 record is not an open task.

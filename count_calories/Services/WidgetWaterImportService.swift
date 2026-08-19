@@ -8,7 +8,8 @@ enum WidgetWaterImportService {
     static func synchronize(
         in container: ModelContainer,
         calendar: Calendar = .current,
-        now: Date = .now
+        now: Date = .now,
+        synchronizeExternalSurfaces: ((ModelContext, Calendar) -> Void)? = nil
     ) throws {
         let context = container.mainContext
         guard
@@ -41,6 +42,14 @@ enum WidgetWaterImportService {
             ?? (addedWater ? now : day.lastRecordedAt)
         try context.save()
         WidgetDailySummaryStore.acknowledgeWaterRevision(summary.resolvedRevision)
+        if let synchronizeExternalSurfaces {
+            synchronizeExternalSurfaces(context, calendar)
+        } else {
+            TodayExternalSurfaceCoordinator.synchronize(
+                modelContext: context,
+                calendar: calendar
+            )
+        }
     }
 }
 

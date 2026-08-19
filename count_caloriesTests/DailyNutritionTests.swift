@@ -6,6 +6,35 @@ import XCTest
 #endif
 
 final class DailyNutritionTests: XCTestCase {
+    func testSummaryRetainsUserEnteredTargetsWithoutChangingCoverageTruth() throws {
+        let targets = try XCTUnwrap(PersonalNutritionTargets(
+            carbohydratesGrams: 220,
+            proteinGrams: 120,
+            fatGrams: 60,
+            fiberGrams: 28
+        ))
+        let summary = DailyNutrition.summary(
+            records: [
+                LoggedNutrition(
+                    calories: 500,
+                    nutrients: FoodNutrients(
+                        carbohydratesGrams: 50,
+                        proteinGrams: 30,
+                        fatGrams: 20,
+                        fiberGrams: nil
+                    )
+                )
+            ],
+            calorieGoal: 1_700,
+            personalTargets: targets
+        )
+
+        XCTAssertEqual(summary.personalTargets, targets)
+        XCTAssertTrue(summary.hasCompleteMacroCoverage)
+        XCTAssertFalse(summary.hasCompleteFiberCoverage)
+        XCTAssertNil(summary.knownNutrients.fiberGrams)
+    }
+
     func testEmptyDayHasNoCoverageSplitOrGuidance() {
         let summary = DailyNutrition.summary(records: [], calorieGoal: 1_700)
 

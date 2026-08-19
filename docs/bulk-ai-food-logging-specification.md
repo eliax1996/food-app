@@ -1,6 +1,6 @@
 # BULK-AI-FOOD-001 — typed and dictated bulk food logging specification
 
-**Status:** APPROVED FOR IMPLEMENTATION
+**Status:** IMPLEMENTED / ACCEPTED — ATTEMPT 01
 **Date:** 2026-08-12
 **Research:** `bulk-ai-food-logging-assessment.md`
 **Scope:** iPhone/iPad app; iOS 17 fallback, iOS 26 Foundation Models/Speech enhancement
@@ -627,3 +627,7 @@ BULK-AI-FOOD-001 can be accepted only when:
 - explicit privacy copy distinguishes local description processing from Open Food Facts query transport;
 - direct Log food/barcode/custom paths regressions remain green;
 - final visual and accessibility evidence is accepted.
+
+## 17. Implementation result
+
+All exit criteria were met in BULK-AI-FOOD-001 attempt 01: typed/on-device dictated extraction, verified editable rows, manual/custom/unavailable recovery, bounded local learning and draft persistence, durable precommit state, atomic idempotent insertion, privacy controls, deterministic tests, and accepted light/dark/AX3 evidence. This specification is a completed contract, not pending work.

@@ -2,7 +2,7 @@
 
 Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check items only after code, evidence, tests, and durable docs agree.
 
-## Active — REFINE-001
+## Complete — REFINE-001
 
 ### Research and specification
 
@@ -78,3 +78,13 @@ Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check item
 ## Post-closure product work
 
 - [x] COMPETITOR-GAP-001 — reassessed current category evidence and added read-only date-first historical Food Diary from selected Progress days, with immutable snapshots, recorded-day navigation, truthfulness tests, visual evidence, and 3/3 approval.
+- [x] BACKLOG-CLOSURE-001 — wrote historical mutation and personal-target contracts before code.
+- [x] Added atomic known-snapshot historical add/edit/copy/delete/undo, duplicate/future/stale-command guards, full attestation staleness, retained-only historical goals, and functional UI proof.
+- [x] Added validated local personal carbohydrate/protein/fat/fiber targets, Plan and Daily Nutrition presentation, clear reset, persistence/failure tests, and functional UI proof.
+- [x] Added derived frequent-food ranking, shared app/widget calorie accessibility semantics, and extracted Today external-surface synchronization with deterministic coverage.
+- [x] Permanently rejected unsupported HealthKit/account sync, streak/coaching, exercise credits, duplicate shortcuts, photo/cloud AI, reminder windows, and extra amount-control variants.
+- [x] Reconciled every project Markdown file so no active/deferred task remains.
+
+## Queue
+
+Empty. Every checklist item is complete; new work requires a new explicit request.

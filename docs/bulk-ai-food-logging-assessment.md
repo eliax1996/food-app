@@ -206,3 +206,7 @@ Describe (type/dictate)
 ```
 
 Detailed contract: `bulk-ai-food-logging-specification.md`.
+
+## Resolution
+
+BULK-AI-FOOD-001 attempt 01 implemented and accepted this staged flow, privacy boundary, bounded learning/draft stores, manual fallback, and atomic persistence. Photo recognition, cloud-model fallback, automatic logging, chat UI, and LLM-authored nutrition are permanently rejected from current scope. No assessment item remains open.

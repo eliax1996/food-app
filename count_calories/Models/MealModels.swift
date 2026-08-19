@@ -1,6 +1,77 @@
 import Foundation
 import SwiftData
 
+nonisolated enum LoggedSnapshotKind: String, Sendable {
+    case item
+}
+
+nonisolated struct PlateEntryMutationSnapshot: Equatable, Sendable {
+    let stableID: UUID
+    let foodName: String
+    let calories: Int
+    let loggedAmount: Double
+    let portionCount: Double
+    let legacyQuantity: Int
+    let storedPortionCount: Double?
+    let servingUnitRawValue: String?
+    let rawCarbohydratesGrams: Double?
+    let rawProteinGrams: Double?
+    let rawFatGrams: Double?
+    let rawFiberGrams: Double?
+    let mealType: String?
+    let date: Date
+    let createdAt: Date
+    let modifiedAt: Date
+    let loggedSnapshotKindRawValue: String?
+    let loggedCalorieDensity: Double?
+    let deletionOperationID: UUID?
+
+    var isKnownItem: Bool {
+        loggedSnapshotKindRawValue == LoggedSnapshotKind.item.rawValue
+    }
+
+    var nutrients: FoodNutrients {
+        FoodNutrients(
+            carbohydratesGrams: rawCarbohydratesGrams,
+            proteinGrams: rawProteinGrams,
+            fatGrams: rawFatGrams,
+            fiberGrams: rawFiberGrams
+        )
+    }
+
+    var hasValidRawNutrients: Bool {
+        [rawCarbohydratesGrams, rawProteinGrams, rawFatGrams, rawFiberGrams]
+            .allSatisfy { value in
+                guard let value else { return true }
+                return value.isFinite && value >= 0
+            }
+    }
+
+    func withDeletionOperationID(_ operationID: UUID) -> PlateEntryMutationSnapshot {
+        PlateEntryMutationSnapshot(
+            stableID: stableID,
+            foodName: foodName,
+            calories: calories,
+            loggedAmount: loggedAmount,
+            portionCount: portionCount,
+            legacyQuantity: legacyQuantity,
+            storedPortionCount: storedPortionCount,
+            servingUnitRawValue: servingUnitRawValue,
+            rawCarbohydratesGrams: rawCarbohydratesGrams,
+            rawProteinGrams: rawProteinGrams,
+            rawFatGrams: rawFatGrams,
+            rawFiberGrams: rawFiberGrams,
+            mealType: mealType,
+            date: date,
+            createdAt: createdAt,
+            modifiedAt: modifiedAt,
+            loggedSnapshotKindRawValue: loggedSnapshotKindRawValue,
+            loggedCalorieDensity: loggedCalorieDensity,
+            deletionOperationID: operationID
+        )
+    }
+}
+
 @Model
 final class Food {
     // Compatibility default lets SwiftData open foods saved before bulk logging.
@@ -40,6 +111,36 @@ final class Food {
 
 @Model
 final class PlateEntry {
+    private static func compatibilityQuantity(from value: Double) -> Int {
+        guard value.isFinite,
+              let rounded = Int(exactly: value.rounded()) else {
+            return 1
+        }
+        return max(1, rounded)
+    }
+
+    private static func calorieDensity(
+        calories: Int,
+        amount: Double,
+        portions: Double
+    ) -> Double? {
+        guard FoodCaloriePolicy.isValid(calories),
+              amount.isFinite,
+              amount > 0,
+              FoodAmountAdjustment.isValidPortionCount(portions) else {
+            return nil
+        }
+        let quantity = amount * portions
+        guard quantity.isFinite, quantity > 0 else { return nil }
+        let density = Double(calories) / quantity
+        return density.isFinite && density >= 0 ? density : nil
+    }
+
+    private static func validatedCalorieDensity(_ density: Double?) -> Double? {
+        guard let density, density.isFinite, density >= 0 else { return nil }
+        return density
+    }
+
     // Compatibility defaults let SwiftData open pre-Slice-D rows. Coordinator validates
     // every identity before adaptation and never rewrites a nonzero ID.
     private(set) var stableID: UUID = UUID()
@@ -58,6 +159,10 @@ final class PlateEntry {
     var proteinGrams: Double?
     var fatGrams: Double?
     var fiberGrams: Double?
+    // Nil preserves unknown provenance. One-time migration classifies only rows matching one saved food.
+    private(set) var loggedSnapshotKindRawValue: String?
+    // Preserves rounded calorie density across repeated historical amount edits.
+    private(set) var loggedCalorieDensity: Double?
 
     init(
         foodName: String,
@@ -70,7 +175,9 @@ final class PlateEntry {
         date: Date = .now,
         stableID: UUID = UUID(),
         createdAt: Date = .now,
-        modifiedAt: Date? = nil
+        modifiedAt: Date? = nil,
+        loggedSnapshotKind: LoggedSnapshotKind? = .item,
+        loggedCalorieDensity: Double? = nil
     ) {
         self.stableID = stableID
         identityValidatedForAdaptation = stableID != .zero
@@ -79,7 +186,7 @@ final class PlateEntry {
         self.foodName = foodName
         self.calories = calories
         self.weightGrams = weightGrams
-        self.quantity = max(1, Int(quantity.rounded()))
+        self.quantity = Self.compatibilityQuantity(from: quantity)
         portionCount = quantity
         servingUnitRawValue = servingUnit.rawValue
         self.mealType = mealType
@@ -88,6 +195,9 @@ final class PlateEntry {
         proteinGrams = nutrients.proteinGrams
         fatGrams = nutrients.fatGrams
         fiberGrams = nutrients.fiberGrams
+        loggedSnapshotKindRawValue = loggedSnapshotKind?.rawValue
+        self.loggedCalorieDensity = Self.validatedCalorieDensity(loggedCalorieDensity)
+            ?? Self.calorieDensity(calories: calories, amount: weightGrams, portions: quantity)
     }
 }
 
@@ -185,12 +295,13 @@ extension PlateEntry {
         mealType: String?,
         date: Date,
         modifiedAt: Date,
+        loggedCalorieDensity: Double?,
         access: PlanEvidenceMutationAccess
     ) {
         self.foodName = foodName
         self.calories = calories
         self.weightGrams = weightGrams
-        self.quantity = max(1, Int(quantity.rounded()))
+        self.quantity = Self.compatibilityQuantity(from: quantity)
         portionCount = quantity
         self.servingUnitRawValue = servingUnitRawValue
         carbohydratesGrams = nutrients.carbohydratesGrams
@@ -200,6 +311,48 @@ extension PlateEntry {
         self.mealType = mealType
         self.date = date
         self.modifiedAt = modifiedAt
+        loggedSnapshotKindRawValue = LoggedSnapshotKind.item.rawValue
+        self.loggedCalorieDensity = Self.validatedCalorieDensity(loggedCalorieDensity)
+            ?? Self.calorieDensity(calories: calories, amount: weightGrams, portions: quantity)
+    }
+
+    func advanceModificationDate(_ date: Date, access: PlanEvidenceMutationAccess) {
+        modifiedAt = date
+    }
+
+    func classifyAsItemSnapshotIfUnknown(access: PlanEvidenceMutationAccess) {
+        guard loggedSnapshotKindRawValue == nil else { return }
+        loggedSnapshotKindRawValue = LoggedSnapshotKind.item.rawValue
+        if loggedCalorieDensity == nil {
+            loggedCalorieDensity = Self.calorieDensity(
+                calories: calories,
+                amount: loggedAmount,
+                portions: portionQuantity
+            )
+        }
+    }
+
+    func restoreLoggedSnapshot(
+        _ snapshot: PlateEntryMutationSnapshot,
+        access: PlanEvidenceMutationAccess
+    ) {
+        foodName = snapshot.foodName
+        calories = snapshot.calories
+        weightGrams = snapshot.loggedAmount
+        quantity = snapshot.legacyQuantity
+        portionCount = snapshot.storedPortionCount
+        servingUnitRawValue = snapshot.servingUnitRawValue
+        carbohydratesGrams = snapshot.rawCarbohydratesGrams
+        proteinGrams = snapshot.rawProteinGrams
+        fatGrams = snapshot.rawFatGrams
+        fiberGrams = snapshot.rawFiberGrams
+        mealType = snapshot.mealType
+        date = snapshot.date
+        createdAt = snapshot.createdAt
+        modifiedAt = snapshot.modifiedAt
+        loggedSnapshotKindRawValue = snapshot.loggedSnapshotKindRawValue
+        loggedCalorieDensity = snapshot.loggedCalorieDensity
+        identityValidatedForAdaptation = stableID != .zero
     }
 
     // Legacy property name predates volume servings. Magnitude is expressed in nutritionUnit.
@@ -221,6 +374,63 @@ extension PlateEntry {
             proteinGrams: proteinGrams,
             fatGrams: fatGrams,
             fiberGrams: fiberGrams
+        )
+    }
+
+    var loggedSnapshotKind: LoggedSnapshotKind? {
+        loggedSnapshotKindRawValue.flatMap(LoggedSnapshotKind.init(rawValue:))
+    }
+
+    var resolvedLoggedCalorieDensity: Double? {
+        Self.validatedCalorieDensity(loggedCalorieDensity)
+            ?? Self.calorieDensity(
+                calories: calories,
+                amount: loggedAmount,
+                portions: portionQuantity
+            )
+    }
+
+    var calorieDiaryRecord: CalorieDiaryRecord {
+        CalorieDiaryRecord(
+            id: stableID,
+            date: date,
+            mealType: mealType,
+            foodName: foodName,
+            calories: calories,
+            loggedAmount: loggedAmount,
+            portionCount: portionQuantity,
+            unitRawValue: servingUnitRawValue,
+            carbohydratesGrams: carbohydratesGrams,
+            proteinGrams: proteinGrams,
+            fatGrams: fatGrams,
+            fiberGrams: fiberGrams,
+            modifiedAt: modifiedAt,
+            loggedSnapshotKindRawValue: loggedSnapshotKindRawValue,
+            loggedCalorieDensity: resolvedLoggedCalorieDensity
+        )
+    }
+
+    var mutationSnapshot: PlateEntryMutationSnapshot {
+        PlateEntryMutationSnapshot(
+            stableID: stableID,
+            foodName: foodName,
+            calories: calories,
+            loggedAmount: loggedAmount,
+            portionCount: portionQuantity,
+            legacyQuantity: quantity,
+            storedPortionCount: portionCount,
+            servingUnitRawValue: servingUnitRawValue,
+            rawCarbohydratesGrams: carbohydratesGrams,
+            rawProteinGrams: proteinGrams,
+            rawFatGrams: fatGrams,
+            rawFiberGrams: fiberGrams,
+            mealType: mealType,
+            date: date,
+            createdAt: createdAt,
+            modifiedAt: modifiedAt,
+            loggedSnapshotKindRawValue: loggedSnapshotKindRawValue,
+            loggedCalorieDensity: loggedCalorieDensity,
+            deletionOperationID: nil
         )
     }
 

@@ -1,6 +1,23 @@
 import ActivityKit
 import Foundation
 
+nonisolated enum DailyCaloriesAccessibilitySummary {
+    static func value(
+        calories: Int,
+        calorieGoal: Int,
+        caloriesAreComplete: Bool
+    ) -> String {
+        let safeCalories = max(0, calories)
+        let safeGoal = max(1, calorieGoal)
+        guard caloriesAreComplete else {
+            return "Known food entries total \(safeCalories) calories. Daily budget status unavailable because one or more logged foods has invalid calorie data."
+        }
+        let difference = abs(safeGoal - safeCalories)
+        let status = safeCalories > safeGoal ? "calories over goal" : "calories remaining"
+        return "\(safeCalories) calories eaten, \(difference) \(status), daily goal \(safeGoal) calories"
+    }
+}
+
 nonisolated struct CaloriesActivityAttributes: ActivityAttributes {
     nonisolated struct ContentState: Codable, Hashable {
         var calories: Int

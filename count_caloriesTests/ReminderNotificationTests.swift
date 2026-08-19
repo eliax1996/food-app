@@ -449,15 +449,20 @@ final class ReminderNotificationTests: XCTestCase {
             reloadWidget: false
         )
 
+        var synchronizedGlasses: Int?
         try WidgetWaterImportService.synchronize(
             in: container,
             calendar: Calendar(identifier: .gregorian),
-            now: today
+            now: today,
+            synchronizeExternalSurfaces: { context, _ in
+                synchronizedGlasses = try? context.fetch(FetchDescriptor<WaterDay>()).first?.glasses
+            }
         )
 
         let saved = try XCTUnwrap(context.fetch(FetchDescriptor<WaterDay>()).first)
         XCTAssertEqual(saved.glasses, 4)
         XCTAssertEqual(saved.lastRecordedAt, today)
+        XCTAssertEqual(synchronizedGlasses, 4)
         XCTAssertEqual(WidgetDailySummaryStore.pendingWaterRevision(), 0)
     }
 

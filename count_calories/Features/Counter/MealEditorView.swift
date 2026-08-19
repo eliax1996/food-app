@@ -13,6 +13,7 @@ struct MealEditorView: View {
 
     let foods: [Food]
     let recentFoods: [Food]
+    let frequentFoods: [Food]
     let isEditing: Bool
     @Binding var selectedMeal: MealType
     @Binding var selectedFood: Food?
@@ -66,8 +67,7 @@ struct MealEditorView: View {
         selectedFood != nil
             && calories != nil
             && FoodAmountAdjustment.isValid(amount)
-            && portionCount.isFinite
-            && portionCount > 0
+            && FoodAmountAdjustment.isValidPortionCount(portionCount)
     }
 
     private func amountUnitName(for value: Double) -> String {
@@ -197,6 +197,7 @@ struct MealEditorView: View {
                         FoodSearchView(
                             foods: foods,
                             recentFoods: recentFoods,
+                            frequentFoods: frequentFoods,
                             selectedFood: $selectedFood,
                             searchText: $searchText,
                             amount: $amount,
@@ -395,6 +396,7 @@ private struct FoodSearchView: View {
 
     let foods: [Food]
     let recentFoods: [Food]
+    let frequentFoods: [Food]
     @Binding var selectedFood: Food?
     @Binding var searchText: String
     @Binding var amount: Double
@@ -427,6 +429,13 @@ private struct FoodSearchView: View {
         }
     }
 
+    private var uniqueFrequentFoods: [Food] {
+        var seenNames = Set(uniqueRecentFoods.map { $0.name.lowercased() })
+        return frequentFoods.filter { food in
+            seenNames.insert(food.name.lowercased()).inserted
+        }
+    }
+
     private var canSearchRemote: Bool {
         normalizedSearch.count >= 3
     }
@@ -438,6 +447,17 @@ private struct FoodSearchView: View {
                     ForEach(uniqueRecentFoods.prefix(5)) { food in
                         foodButton(food)
                     }
+                }
+            }
+
+            if trimmedSearch.isEmpty, !uniqueFrequentFoods.isEmpty {
+                Section {
+                    ForEach(uniqueFrequentFoods.prefix(5)) { food in
+                        foodButton(food, identifier: "frequent-food-\(food.name)")
+                    }
+                } header: {
+                    Text("Frequently logged")
+                        .accessibilityIdentifier("frequent-foods-heading")
                 }
             }
 
@@ -541,7 +561,7 @@ private struct FoodSearchView: View {
         }
     }
 
-    private func foodButton(_ food: Food) -> some View {
+    private func foodButton(_ food: Food, identifier: String? = nil) -> some View {
         Button {
             selectedFood = food
             amount = food.servingGrams
@@ -555,7 +575,7 @@ private struct FoodSearchView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("food-result-\(food.name)")
+        .accessibilityIdentifier(identifier ?? "food-result-\(food.name)")
     }
 
     private func finishSelection() {
@@ -630,6 +650,7 @@ private struct MealEditorPreview: View {
         MealEditorView(
             foods: foods,
             recentFoods: Array(foods.prefix(2)),
+            frequentFoods: Array(foods.dropFirst(2)),
             isEditing: false,
             selectedMeal: $selectedMeal,
             selectedFood: $selectedFood,

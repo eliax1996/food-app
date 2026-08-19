@@ -135,7 +135,7 @@ struct CalorieProgressChart: View {
 
                     if let diaryDay = selectedDiaryDay {
                         NavigationLink {
-                            CalorieDiaryView(days: diaryDays, initialDate: diaryDay.date)
+                            CalorieDiaryView(initialDate: diaryDay.date)
                         } label: {
                             Label("View Day", systemImage: "list.bullet.rectangle")
                                 .frame(minHeight: 44)

@@ -28,10 +28,9 @@ nonisolated public enum CalorieCalculator {
             isValidCalories(caloriesPerServing),
             servingAmount.isFinite,
             consumedAmount.isFinite,
-            portionCount.isFinite,
+            FoodAmountAdjustment.isValidPortionCount(portionCount),
             servingAmount > 0,
-            consumedAmount > 0,
-            portionCount > 0
+            consumedAmount > 0
         else {
             return nil
         }

@@ -7,7 +7,7 @@
 
 Audit existing WidgetKit summary widget and ActivityKit Live Activity against accepted Today hierarchy, truthful persistence, accessibility, and native interaction behavior. This slice does not add lock-screen accessory widgets, watchOS, remote push updates, or historical charts.
 
-## Current implementation
+## Pre-AUXILIARY implementation (historical)
 
 - Widget extension supports `.systemSmall` and `.systemMedium`.
 - Both sizes show consumed calories, water glasses, **Add food**, and water decrement/increment controls.
@@ -72,3 +72,7 @@ Make it explicitly user-controlled from Today:
 7. Lock Screen, compact, minimal, and expanded Live Activity layouts show meaningful goal-aware status.
 8. Live Activity contains no display-only mutation controls.
 9. Build, deterministic model tests, app-hosted tests, functional UI, and source review remain green.
+
+## Resolution
+
+AUXILIARY-001 implemented every criterion: medium-only goal-aware widget, durable bounded water handoff, explicit Live Activity start/stop, goal-aware Lock Screen/Dynamic Island, and no display-only mutation. BACKLOG-CLOSURE-001 additionally unified app/widget calorie accessibility copy and extracted Today external-surface synchronization. Historical observations above describe superseded code; no widget or Live Activity task remains open.

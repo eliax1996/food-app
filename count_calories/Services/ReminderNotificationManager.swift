@@ -73,14 +73,14 @@ final class ReminderNotificationManager {
     }
 
     @discardableResult
-    func reschedule(
+    func enqueueReschedule(
         meals: [MealReminderRecord],
         water: [WaterReminderRecord],
         weights: [WeightReminderRecord] = [],
         preferences: ReminderPreferences,
         now: Date = .now,
         calendar: Calendar = .current
-    ) async -> ReminderSchedulingResult {
+    ) -> Task<ReminderSchedulingResult, Never> {
         _ = preferences // Callers pass current intent; durable stored intent wins after coalescing.
         schedulingGeneration += 1
         let generation = schedulingGeneration
@@ -89,7 +89,7 @@ final class ReminderNotificationManager {
             _ = await predecessor?.value
             guard let self else { return ReminderSchedulingResult.failed }
             guard generation == self.schedulingGeneration else { return .superseded }
-            return await self.performReschedule(
+            let result = await self.performReschedule(
                 meals: meals,
                 water: water,
                 weights: weights,
@@ -97,13 +97,32 @@ final class ReminderNotificationManager {
                 calendar: calendar,
                 generation: generation
             )
+            if generation == self.schedulingGeneration {
+                self.schedulingTask = nil
+            }
+            return result
         }
         schedulingTask = operation
-        let result = await operation.value
-        if generation == schedulingGeneration {
-            schedulingTask = nil
-        }
-        return result
+        return operation
+    }
+
+    @discardableResult
+    func reschedule(
+        meals: [MealReminderRecord],
+        water: [WaterReminderRecord],
+        weights: [WeightReminderRecord] = [],
+        preferences: ReminderPreferences,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) async -> ReminderSchedulingResult {
+        await enqueueReschedule(
+            meals: meals,
+            water: water,
+            weights: weights,
+            preferences: preferences,
+            now: now,
+            calendar: calendar
+        ).value
     }
 
     private func performReschedule(

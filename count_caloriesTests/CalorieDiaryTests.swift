@@ -26,7 +26,7 @@ final class CalorieDiaryTests: XCTestCase {
         XCTAssertEqual(days[0].date, calendar.startOfDay(for: newest))
         XCTAssertEqual(days[0].calorieTotal.calories, 800)
         XCTAssertEqual(days[0].mealGroups.map(\.mealType), ["Breakfast", "Dinner"])
-        XCTAssertEqual(days[1].mealGroups.map(\.mealType), ["Lunch", "Snack"])
+        XCTAssertEqual(days[1].mealGroups.map(\.mealType), ["Lunch", "Unknown meal"])
         XCTAssertEqual(days[1].mealGroups.last?.records.first?.foodName, "Legacy")
         XCTAssertEqual(days.flatMap(\.mealGroups).flatMap(\.records).count, records.count)
     }
@@ -74,6 +74,91 @@ final class CalorieDiaryTests: XCTestCase {
         let oldest = CalorieDiary.adjacentDays(to: calendar.startOfDay(for: dates[0]), in: days)
         XCTAssertNil(oldest.previous)
         XCTAssertEqual(oldest.next?.date, middle)
+    }
+
+    func testHistoricalMutationScalesImmutableCaloriesAndRejectsInvalidInputs() throws {
+        let scaled = try XCTUnwrap(HistoricalFoodMutation.scaledSnapshot(
+            originalCalories: 150,
+            originalAmount: 100,
+            originalPortions: 1,
+            newAmount: 125,
+            newPortions: 2
+        ))
+        XCTAssertEqual(scaled.multiplier, 2.5, accuracy: 0.000_001)
+        XCTAssertEqual(scaled.calories, 375)
+
+        XCTAssertNil(HistoricalFoodMutation.scaledSnapshot(
+            originalCalories: 150,
+            originalAmount: 0,
+            originalPortions: 1,
+            newAmount: 100,
+            newPortions: 1
+        ))
+        XCTAssertNil(HistoricalFoodMutation.scaledSnapshot(
+            originalCalories: 5_000,
+            originalAmount: 1,
+            originalPortions: 1,
+            newAmount: 2,
+            newPortions: 1
+        ))
+        XCTAssertNil(HistoricalFoodMutation.scaledSnapshot(
+            originalCalories: 0,
+            originalAmount: 1,
+            originalPortions: 1,
+            newAmount: 1,
+            newPortions: Double.greatestFiniteMagnitude
+        ))
+        XCTAssertFalse(HistoricalFoodMutation.isValidTimestamp(
+            Date(timeIntervalSinceReferenceDate: .infinity),
+            now: Date(timeIntervalSinceReferenceDate: 100)
+        ))
+        XCTAssertFalse(HistoricalFoodMutation.isValidTimestamp(
+            Date(timeIntervalSinceReferenceDate: 101),
+            now: Date(timeIntervalSinceReferenceDate: 100)
+        ))
+    }
+
+    func testDiaryMutationEligibilityRequiresKnownProvenanceAndSupportedStoredUnit() throws {
+        let date = try XCTUnwrap(utcCalendar().date(from: DateComponents(year: 2026, month: 8, day: 13)))
+        let known = CalorieDiaryRecord(
+            id: UUID(),
+            date: date,
+            mealType: "Snack",
+            foodName: "Known",
+            calories: 100,
+            loggedAmount: 250,
+            portionCount: 1,
+            unitRawValue: "ml",
+            modifiedAt: date,
+            loggedSnapshotKindRawValue: "item"
+        )
+        let legacy = CalorieDiaryRecord(
+            id: UUID(),
+            date: date,
+            mealType: "Snack",
+            foodName: "Legacy aggregate",
+            calories: 100,
+            loggedAmount: 250,
+            portionCount: 1,
+            unitRawValue: "ml"
+        )
+        let unknownUnit = CalorieDiaryRecord(
+            id: UUID(),
+            date: date,
+            mealType: "Snack",
+            foodName: "Unknown unit",
+            calories: 100,
+            loggedAmount: 250,
+            portionCount: 1,
+            unitRawValue: "oz",
+            modifiedAt: date,
+            loggedSnapshotKindRawValue: "item"
+        )
+
+        XCTAssertTrue(known.canEditOrCopy)
+        XCTAssertFalse(legacy.canEditOrCopy)
+        XCTAssertFalse(unknownUnit.canEditOrCopy)
+        XCTAssertEqual(unknownUnit.unitRawValue, "g", "Display compatibility still normalizes unknown units.")
     }
 
     func testDiaryPreservesPairedVolumeAmountAndNormalizesUnknownUnit() throws {

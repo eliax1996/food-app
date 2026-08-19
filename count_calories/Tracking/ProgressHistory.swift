@@ -90,16 +90,15 @@ nonisolated enum ProgressHistory {
             return CalorieProgress(summaries: [], averageCalories: nil, goalDifference: nil)
         }
 
-        let validRevisions = goalRevisions.filter {
-            $0.effectiveDate.timeIntervalSinceReferenceDate.isFinite && $0.calories > 0
-        }
         let goalContexts = recordedSummaries.map { summary in
-            let day = calendar.startOfDay(for: summary.date)
-            let goal = validRevisions
-                .filter { calendar.startOfDay(for: $0.effectiveDate) <= day }
-                .max { $0.sequence < $1.sequence }?
-                .calories
-            return DailyCalorieGoalContext(date: summary.date, calories: goal)
+            DailyCalorieGoalContext(
+                date: summary.date,
+                calories: calorieGoal(
+                    for: summary.date,
+                    revisions: goalRevisions,
+                    calendar: calendar
+                )
+            )
         }
         let differences = zip(recordedSummaries, goalContexts).compactMap { summary, context in
             context.calories.map { Double(summary.calories - $0) }
@@ -118,6 +117,26 @@ nonisolated enum ProgressHistory {
             comparableGoalDays: differences.count,
             missingGoalDays: recordedSummaries.count - differences.count
         )
+    }
+
+    static func calorieGoal(
+        for date: Date,
+        revisions: [CalorieGoalRevisionPoint],
+        calendar: Calendar = .current
+    ) -> Int? {
+        guard date.timeIntervalSinceReferenceDate.isFinite else { return nil }
+        let day = calendar.startOfDay(for: date)
+        return revisions
+            .filter {
+                $0.effectiveDate.timeIntervalSinceReferenceDate.isFinite
+                    && $0.calories > 0
+                    && calendar.startOfDay(for: $0.effectiveDate) <= day
+            }
+            .max { left, right in
+                if left.sequence != right.sequence { return left.sequence < right.sequence }
+                return left.effectiveDate < right.effectiveDate
+            }?
+            .calories
     }
 
     static func weightProgress(

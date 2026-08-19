@@ -22,16 +22,16 @@ Retained first-party evidence establishes date-first food diaries and food-speci
 
 Sources were retained/currently reassessed through 2026-08-18. They prove published capabilities, not undocumented action counts, goal-history semantics, or identical copy behavior.
 
-## Product decision
+## Initial product decision — v1 complete
 
-Implement **read-only Historical Day Diary v1** as smallest safe, high-value gap closure:
+COMPETITOR-GAP-001 implemented **read-only Historical Day Diary v1** as smallest safe, high-value gap closure:
 
 ```text
 Progress / Calories → select recorded bar → View Day
 → dated diary with total + meal-grouped immutable logged snapshots
 ```
 
-Why read-only first:
+Why v1 was read-only first:
 
 - `PlateEntry` already owns immutable logged food name, calories, amount, portion count, unit, nutrient facts, meal type, and timestamp.
 - Current historical fixtures can contain aggregate legacy rows such as `Recorded meals`; read-only rendering remains truthful while editing would imply unavailable item-level provenance.
@@ -49,7 +49,7 @@ Hostless projection types:
 Rules:
 
 1. Never reload nutrition from current `Food`; render `PlateEntry` snapshots only.
-2. Unknown/legacy meal type falls back to Snack, matching Today compatibility behavior.
+2. Unknown/unsupported legacy meal type renders in explicit **Unknown meal** group; it is never fabricated as Snack.
 3. Invalid legacy calories stay visible as incomplete; known total is labeled incomplete and no budget claim appears.
 4. Multiple records remain distinct, including same timestamp.
 5. Navigation moves only among recorded days. It does not invent empty intervening days.
@@ -76,14 +76,15 @@ Rules:
 - Complete/incomplete legacy-calorie state.
 - Deterministic domain tests and functional UI journey.
 
-### Excluded
+### Excluded from v1
 
-- Historical add/edit/delete/copy.
+- Historical add/edit/delete/copy (implemented later under `historical-food-diary-mutation-specification.md`).
 - Water or weight rows.
 - Generic mixed journal.
 - Current-goal retroactive comparison.
 - Recalculation from current food records.
-- Personal macro targets, HealthKit, accounts, or sync.
+- Personal macro targets (implemented later under `personal-nutrition-targets-specification.md`).
+- HealthKit, accounts, or sync (explicitly rejected from current product scope; no permission, identity, backend, or conflict contract).
 
 ## Acceptance
 
@@ -95,3 +96,7 @@ Rules:
 - No diary control mutates data.
 - Progress weight surface and root navigation remain unchanged.
 - Normal, dark/Accessibility, hostless, app-hosted, and UI gates pass.
+
+## Follow-up resolution
+
+BACKLOG-CLOSURE-001 supplied separate contracts before expanding v1. Known item snapshots now support add, edit, copy, delete, and undo with explicit destination, duplicate confirmation, full-snapshot attestation staleness, retained-only historical goals, future-date rejection, and atomic persistence. Unknown legacy aggregates remain visible and delete/undo-capable but cannot be misrepresented as editable item snapshots. Mixed food/water/weight history remains permanently rejected. No diary work described by this assessment remains open.

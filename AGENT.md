@@ -207,7 +207,7 @@ Follow a testing pyramid:
 
 A subagent that creates or modifies a UI test owns the complete green loop, not only test source generation:
 
-1. Run every created/changed test immediately. Use `just test-ui-one Class/method 300` while authoring one flow, then `just test-ui 900` near completion; the current 22-test functional suite takes about nine minutes. Retain an overall bound and the 60-second per-test maximum.
+1. Run every created/changed test immediately. Use `just test-ui-one Class/method 300` while authoring one flow, then a generously bounded `just test-ui` near completion; full functional suite can take many minutes. Retain an overall bound and the 60-second per-test maximum.
 2. Add enough deterministic diagnostics to locate the failing step: stable accessibility identifiers, descriptive assertion messages, `XCTContext.runActivity` phases, relevant result attachments/screenshots, and concise app `Logger` events at integration boundaries. Never log sensitive food/profile input or add render-loop noise.
 3. On failure, inspect `just test-results`, XCTest output, hierarchy/screenshots, and app logs. Classify product defect, test defect, or Xcode test-host infrastructure before editing.
 4. Fix the responsible code/test and rerun the created tests. Continue this diagnose–fix–run loop within the task until they pass; do not return immediately after the first red run or weaken assertions to manufacture green.
@@ -230,6 +230,12 @@ Tracking coverage should protect serving/portion calorie scaling, invalid amount
 Progress analytics coverage should protect most-recent-seven recorded calorie days, recorded-day `Double` averages and profile-goal relation, most-recent-fourteen valid weight readings with timestamp ties retained, invalid-value filtering, and adaptive nonzero chart domains.
 
 Amount-entry coverage should protect finite exact deltas, the `0.01` minimum and floating-boundary tolerance, decimal preservation, gram/ml labels, immediate calorie scaling, unchanged servings, and shared save validity.
+
+Historical Food Diary coverage should protect local-calendar grouping, immutable paired g/ml snapshots, known-versus-legacy provenance, full-snapshot attestation staleness, retained-only historical goals, future-date rejection, duplicate confirmation, stale-command compare-and-set, nutrient scaling, atomic add/edit/copy/delete/restore, exact undo, and no generic mixed history.
+
+Personal nutrition-target coverage should protect complete-set finite bounds, validating decode, file-backed profile migration/reload, corrupt-data fallback, atomic save/clear rollback, unchanged calorie/plan/evidence state, retained general references, complete-coverage comparisons, and explicit Save/Cancel/keyboard Done/reset behavior.
+
+Recent/frequent food coverage should protect valid local-history filtering, case-insensitive uniqueness, count-then-recency ranking, deterministic ties, recent exclusion, and no persistent ranking index. App/widget daily-calorie accessibility wording must share one complete/incomplete semantic helper. External-surface snapshot tests should protect persisted Today calories/completeness, water/goals, and complete reminder evidence before side effects.
 
 Weight-entry coverage should protect latest-valid-nonfuture measurement defaults, profile/70 kg fallback order, one-decimal `−1/−0.1/+0.1/+1` adjustments, invalid-result suppression, unchanged date/time, two-action open/Save flow, and keyboard Done that dismisses without saving. Every app-owned numeric or decimal pad must expose native keyboard Done.
 

@@ -33,6 +33,20 @@ Post-closure historical Food Diary:
 
 Status: **ACCEPTED — ATTEMPT 01 / COMPLETE**. Focused domain and UI proof passed; whole-product gates reached **228 hostless / 2 skips, 315 app-hosted / 2 skips, 47/47 UI**; independent critical/high review **3/3 APPROVE**. Full record: `experiments/COMPETITOR-GAP-001.md`.
 
+## BACKLOG-CLOSURE-001
+
+Finite backlog-closure evidence:
+
+- ![Personal nutrition targets in Plan](screenshots/BACKLOG-CLOSURE-001/plan-personal-targets-top-light.png) — general adult references remain above exact user-entered targets; all four target rows, macro energy, edit, and explicit general-reference reset are visible.
+- ![Personal target comparison in Daily Nutrition](screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-top-light.png) — complete measured carbohydrate/protein/fat/fiber values compare with entered targets while general guidance remains separate.
+- ![Personal target coverage context](screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-light.png) — target continuation, general adult guidance, and explicit food-fact coverage remain visible.
+- ![Historical Food Diary item actions](screenshots/BACKLOG-CLOSURE-001/diary-actions-light.png) — persisted snapshot nutrients plus explicit Edit Logged Food, Copy Food, and confirmed Delete Entry actions.
+- ![Personal target actions at Accessibility 3 dark](screenshots/BACKLOG-CLOSURE-001/plan-personal-targets-ax3-dark.png) — target context and edit/reset actions remain readable and reachable.
+- ![Daily target comparison at Accessibility 3 dark](screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-ax3-dark.png) — native target rows reflow and continue by scroll without clipping.
+- ![Historical diary actions at Accessibility 3 dark](screenshots/BACKLOG-CLOSURE-001/diary-actions-ax3-dark.png) — all mutation actions remain readable, distinct, and reachable.
+
+Status: **ACCEPTED — COMPLETE**. Device walkthroughs used current accessibility hierarchies and found no persistent overlap, clipping, or unreachable action. Functional UI protects direct empty/incomplete diary access, diary mutation, Today snapshot-safe editing, target save/clear, and frequent-food selection; domain/app-hosted tests protect raw exact undo/tombstones, provenance/identity migration, reversible density, ranking, shared accessibility, synchronization ordering, persistence, staleness, rollback, and strict parsing. Final gates: 243 hostless executed (241 pass / 2 skips), 351 app-hosted pass / 2 skips, 52/52 UI; independent critical/high review **3/3 APPROVE**. Full result: `experiments/BACKLOG-CLOSURE-001.md`.
+
 ## NAV-001 / TRACKING-IA-001
 
 Baseline: all files under `screenshots/baseline/`

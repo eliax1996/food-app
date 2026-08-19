@@ -60,9 +60,11 @@ struct DailyProgressHeader: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Daily calories")
-        .accessibilityValue(caloriesAreComplete
-            ? "\(calories) eaten, \(statusValue) \(statusLabel), daily goal \(calorieGoal)"
-            : "Known food entries total \(calories) calories. Daily budget status unavailable because one or more logged foods has invalid calorie data.")
+        .accessibilityValue(DailyCaloriesAccessibilitySummary.value(
+            calories: calories,
+            calorieGoal: calorieGoal,
+            caloriesAreComplete: caloriesAreComplete
+        ))
         .accessibilityIdentifier("daily-calorie-total")
     }
 
@@ -239,9 +241,14 @@ struct MealDetailView: View {
     let entries: [PlateEntry]
     let onAdd: () -> Void
     let onEdit: (PlateEntry) -> Void
-    let onDelete: (PlateEntry) -> Void
+    let onDelete: (PlateEntry, Date) -> Void
 
-    @State private var pendingDeletion: PlateEntry?
+    private struct PendingDeletion {
+        let entry: PlateEntry
+        let expectedModifiedAt: Date
+    }
+
+    @State private var pendingDeletion: PendingDeletion?
 
     var body: some View {
         List {
@@ -257,25 +264,48 @@ struct MealDetailView: View {
                 }
             } else {
                 ForEach(entries) { entry in
-                    Button {
-                        onEdit(entry)
-                    } label: {
-                        MealEntryRow(entry: entry)
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            pendingDeletion = entry
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-
+                    if entry.loggedSnapshotKind == .item {
                         Button {
                             onEdit(entry)
                         } label: {
-                            Label("Edit", systemImage: "pencil")
+                            MealEntryRow(entry: entry)
                         }
-                        .tint(.blue)
+                        .buttonStyle(.plain)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                pendingDeletion = PendingDeletion(
+                                    entry: entry,
+                                    expectedModifiedAt: entry.modifiedAt
+                                )
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+
+                            Button {
+                                onEdit(entry)
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.blue)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 6) {
+                            MealEntryRow(entry: entry, allowsEditing: false)
+                            Label("Legacy entry · editing unavailable", systemImage: "exclamationmark.triangle")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                pendingDeletion = PendingDeletion(
+                                    entry: entry,
+                                    expectedModifiedAt: entry.modifiedAt
+                                )
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                        .accessibilityIdentifier("meal-legacy-entry-\(entry.stableID.uuidString)")
                     }
                 }
             }
@@ -289,7 +319,7 @@ struct MealDetailView: View {
             }
         }
         .alert(
-            "Delete \(pendingDeletion?.foodName ?? "food")?",
+            "Delete \(pendingDeletion?.entry.foodName ?? "food")?",
             isPresented: Binding(
                 get: { pendingDeletion != nil },
                 set: { if !$0 { pendingDeletion = nil } }
@@ -298,7 +328,7 @@ struct MealDetailView: View {
             Button("Delete", role: .destructive) {
                 guard let pendingDeletion else { return }
                 self.pendingDeletion = nil
-                onDelete(pendingDeletion)
+                onDelete(pendingDeletion.entry, pendingDeletion.expectedModifiedAt)
             }
             .accessibilityIdentifier("confirm-delete-meal")
             Button("Cancel", role: .cancel) {
@@ -336,6 +366,7 @@ struct FoodSelectionRow: View {
 
 struct MealEntryRow: View {
     let entry: PlateEntry
+    var allowsEditing = true
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -361,7 +392,9 @@ struct MealEntryRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(entry.foodName)
         .accessibilityValue("\(servingDescription), \(entry.calories) calories")
-        .accessibilityHint("Swipe for edit or delete actions")
+        .accessibilityHint(allowsEditing
+            ? "Tap to edit, or swipe for edit and delete actions"
+            : "Legacy entry. Swipe for delete action; editing is unavailable.")
         .accessibilityIdentifier("meal-entry-\(entry.foodName)")
     }
 

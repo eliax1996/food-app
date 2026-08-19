@@ -136,6 +136,12 @@ final class CalorieTrackingTests: XCTestCase {
             consumedAmount: 100,
             portionCount: .infinity
         ))
+        XCTAssertNil(CalorieCalculator.calculatedCalories(
+            caloriesPerServing: 0,
+            servingAmount: 1,
+            consumedAmount: 1,
+            portionCount: Double.greatestFiniteMagnitude
+        ))
     }
 
     func testSuggestedMealUsesExpectedTimeWindows() {

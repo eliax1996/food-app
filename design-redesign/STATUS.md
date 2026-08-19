@@ -25,11 +25,12 @@ Complete: build, launch, primary flow, 9 screenshots, architecture audit, curren
 - CONSISTENCY-001: accepted attempt 01. Food-action language and water bounds are reconciled; whole-app navigation, hierarchy, states, and destructive semantics passed 3/3 critical/high review.
 - ROBUSTNESS-001: accepted attempt 01. Light/dark, normal/AX3, small/large, long/extreme/empty/dense matrix is retained; Today water/status and Settings summaries adapt cleanly at accessibility sizes.
 - FINAL-001: accepted complete. Final primary journeys, 14 representative captures, exact +15 kcal Almond Milk proof, persistence/nutrition/reminder hardening, 3/3 independent approval, and all final gates are retained.
-- COMPETITOR-GAP-001: accepted attempt 01. Selected Progress calorie days now open read-only, date-first Food Diary detail with meal-grouped immutable snapshots, truthful incomplete totals, and recorded-day navigation.
+- COMPETITOR-GAP-001: accepted attempt 01. Selected Progress calorie days open date-first Food Diary detail with meal-grouped immutable snapshots, truthful incomplete totals, and recorded-day navigation.
+- BACKLOG-CLOSURE-001: historical known-snapshot add/edit/copy/delete/undo, personal nutrition targets, derived frequent foods, shared app/widget calorie accessibility semantics, and extracted Today external-surface synchronization are implemented and accepted. Every remaining Markdown candidate received an implemented or permanently rejected disposition.
 
 ## Current component
 
-None. FINAL-001 closed original redesign. COMPETITOR-GAP-001 then closed queued date-first historical Food Diary gap with normal/AX3-dark evidence, deterministic domain/UI proof, 3/3 independent critical/high approval, and green exact-tree gates.
+None. FINAL-001 closed original redesign; COMPETITOR-GAP-001 added date-first diary detail; BACKLOG-CLOSURE-001 resolved every remaining documented candidate and stale status claim.
 
 Current root remains:
 
@@ -39,7 +40,7 @@ Today | Weight | Progress | Settings
 
 ## Next components
 
-No unchecked roadmap component. Historical diary mutation/copy, personal macro targets, and HealthKit/sync remain separate future proposals requiring explicit contracts.
+None. Repository contains no active or deferred implementation queue. New work requires a new explicit product request.
 
 ## Accepted design principles
 
@@ -59,7 +60,7 @@ No unchecked roadmap component. Historical diary mutation/copy, personal macro t
 - Weight deletion requires confirmation and stacked undo.
 - `View full trends` selects Progress / Weight. Progress owns fuller fourteen-reading analytics and has no weight CRUD.
 - Settings removes current-weight recording but retains target weight, age, calorie goal, target date, and reminders.
-- No historical calorie CRUD and no generic Calories/Water/Weight table; selected Progress days open separate read-only, date-first, meal-grouped Food Diary detail.
+- No generic Calories/Water/Weight table. Progress always exposes separate date-first Food Diary, including empty/incomplete-only histories; selected complete points retain View Day. Known item snapshots support explicit atomic add/edit/copy/delete/undo, while unknown legacy aggregates remain mutation-limited.
 - Preserve all existing functionality and offline behavior.
 - Move custom-food/barcode tools out of dashboard hierarchy, not remove them.
 - Use DEBUG-only in-memory design-review states.
@@ -69,43 +70,44 @@ No unchecked roadmap component. Historical diary mutation/copy, personal macro t
 
 - MUST HAVE: meal-grouped daily log — implemented.
 - MUST HAVE: remote API food search with persistent query/page LRU and explicit load-more semantics — implemented and accepted as FOOD-REMOTE-SEARCH-001 attempt 02.
-- HIGH VALUE: keyboard-free ±10/±1 amount editor — implemented and accepted; recent/frequent foods — recents implemented; target-aware calorie trend — implemented and accepted in Progress analytics.
+- HIGH VALUE: keyboard-free ±10/±1 amount editor, recent plus derived frequent foods, and target-aware calorie trend — implemented and accepted.
 - HIGH VALUE: revised TRACKING-IA-001 Weight root/log and Progress handoff — **accepted attempt 01 / complete**.
 - HIGH VALUE: NUTRIENTS-001 daily macro/fiber summary and transparent nutrition-balance guidance — implemented and accepted attempt 01.
 - HIGH VALUE: NUTRITION-GOALS-001 theoretical adult macro/fiber reference values derived from calorie goal versus real measured intake — implemented and accepted with REFINE attempt 01.
 - HIGH VALUE: latest-measure weight defaults, coarse/fine adjustments, and explicit numeric-keyboard Done — implemented and accepted as WEIGHT-ENTRY-001 attempt 01.
 - HIGH VALUE: explainable optional calorie setup with transparent Manual/Calculated source and reversible restore — implemented and accepted as REFINE attempt 02.
 - HIGH VALUE: direct reminder summary and Plan setup entry — implemented and accepted as SETTINGS-DIRECT-EDIT-001 attempt 01.
-- HIGH VALUE: date-first historical Food Diary detail — implemented and accepted as COMPETITOR-GAP-001 attempt 01.
+- HIGH VALUE: date-first historical Food Diary detail plus contracted known-snapshot mutations — implemented and accepted.
+- HIGH VALUE: optional user-entered personal carbohydrate/protein/fat/fiber targets with general-reference reset — implemented and accepted.
 
-Detailed active backlog: `PRODUCT-BACKLOG.md`.
+Decision archive: `PRODUCT-BACKLOG.md`.
 
-## Deferred opportunities
+## Closed candidate dispositions
 
-- Reassess one global Log food action versus per-meal shortcuts only with fresh usage/category evidence.
-- Slice D resolved and accepted: 42 explicit complete days, distributed weights, 28/35/42 agreement, weekly fresh evidence, ±100-kcal proposals, and exact revert.
-- Whether deferred personal macro targets should be editable in addition to transparent adult population reference defaults.
-- Future cross-device consistency.
-- Historical diary add/edit/delete/copy only after snapshot, attestation, goal-history, destination, duplicate, confirmation, and undo rules are specified.
+- Per-meal dashboard shortcut duplication: rejected; global Log food plus meal-detail Log food already preserve fast entry and hierarchy.
+- HealthKit, accounts, and cross-device sync: rejected; no permission, identity, backend, or conflict-resolution contract exists, and local/offline privacy is product scope.
+- Streak/adherence coaching and exercise-calorie credits: rejected; no evidence supports engagement pressure or a trustworthy activity source.
+- Photo/cloud meal recognition, reminder windows, scanner-only entry, LLM-authored nutrition, and extra amount-control variants: rejected by retained accuracy, privacy, fallback, or interaction evidence.
+- These are decisions, not deferred tasks. A new user request may create a new contract; repository currently promises none.
 
 ## Technical debt discovered
 
-- Dashboard owns food library, scanner, persistence, widget, activity, reminders, and presentation state.
-- No reusable semantic accessibility summary for daily status.
+- Resolved in BACKLOG-CLOSURE-001: Today mutation surfaces use `TodayExternalSurfaceCoordinator` for widget/reminder/Live Activity synchronization.
+- Resolved in BACKLOG-CLOSURE-001: app and widget use `DailyCaloriesAccessibilitySummary` for one truthful daily-status semantic contract.
 - Numeric keyboard activation emits source-less iOS 27 SwiftUI `Invalid frame dimension (negative or non-finite).` runtime diagnostics in Food Tools and related UI tests; every flow passes with no visible defect or source frame.
 - Weight raw same-day/backdated persistence is implemented; duplicate-profile and future-row correctness fixes are covered by passing app-hosted persistence runs.
 
 ## Validation snapshot
 
-- Current exact-tree `just validate 300`: **passed** — 228 hostless tests / 2 opt-in live skips; app + widget compile, install, and launch passed.
-- Current app-hosted `just test-app-unit 600`: **315 passed / 2 opt-in live skips**.
-- Current functional `TEST_CASE_TIMEOUT=60 just test-ui 1800`: **47/47 passed**.
+- Current exact-tree `just validate 600`: **passed** — 243 hostless executed (241 passed / 2 opt-in live skips); app + widget compile, install, and launch passed.
+- Current app-hosted `just test-app-unit 900`: **351 passed / 2 opt-in live skips**.
+- Current functional `TEST_CASE_TIMEOUT=60 just test-ui 2400`: **52/52 passed**.
 - `git diff --check`: **passed**.
 - Live Open Food Facts checks remain intentionally opt-in.
 
 ## Visual evidence
 
-Final representative set is under `screenshots/final/`; accepted post-closure diary evidence is under `screenshots/COMPETITOR-GAP-001/`. Both are indexed in `SCREENSHOTS.md`; closure comparison and evidence map live in `FINAL-REPORT.md`.
+Final representative set is under `screenshots/final/`; initial diary evidence is under `screenshots/COMPETITOR-GAP-001/`; backlog-closure target/mutation evidence is under `screenshots/BACKLOG-CLOSURE-001/`. All are indexed in `SCREENSHOTS.md`; closure comparison and evidence map live in `FINAL-REPORT.md`.
 
 Accepted TRACKING-IA-001 visual files are only these attempt-01 files under `screenshots/TRACKING-IA-001/`:
 

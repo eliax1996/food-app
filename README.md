@@ -1,6 +1,6 @@
 # Count Calories
 
-Native SwiftUI calorie tracker for daily food, water, weight, goals, reminders, barcode and cached remote nutrition lookup, typed/on-device dictated bulk meal review, date-first historical Food Diary detail, widgets, Live Activities, and keyboard-free ±10/±1 amount adjustment.
+Native SwiftUI calorie tracker for daily and historical food logging, water, weight, explainable goals, optional personal macro/fiber targets, reminders, recent/frequent local shortcuts, barcode and cached remote nutrition lookup, typed/on-device dictated bulk meal review, widgets, Live Activities, and keyboard-free ±10/±1 amount adjustment.
 
 ## Development
 
@@ -36,7 +36,7 @@ Use Xcode MCP once to explore or visually inspect a flow. If the same flow must 
 
 ## Product redesign
 
-Original autonomous redesign is **COMPLETE**. Final report, baseline comparison, screenshots, independent review, and exact validation: [`design-redesign/FINAL-REPORT.md`](design-redesign/FINAL-REPORT.md).
+Original autonomous redesign and finite Markdown-backlog closure are **COMPLETE**. Final report, baseline comparison, screenshots, independent review, candidate dispositions, and exact validation: [`design-redesign/FINAL-REPORT.md`](design-redesign/FINAL-REPORT.md).
 
 Final root is:
 
@@ -46,16 +46,16 @@ Today | Weight | Progress | Settings
 
 - **Today:** current-day calorie, food, and water actions.
 - **Weight / Weight Log:** raw measurement CRUD, independent date/time backdating, same-day preservation, confirmation plus undo, summary, and basic seven-reading raw chart. One reading shows useful prompt; two or more show chart context.
-- **Progress:** fuller fourteen-reading weight analytics and interpretation; selected calorie days open read-only meal-grouped Food Diary detail with recorded-day navigation. No weight or historical-food CRUD. `View full trends` routes directly to Progress / Weight.
-- **Settings:** target weight, age, daily calorie goal, target date, and reminders; no current-weight field or save path.
-- No historical calorie CRUD or generic Calories/Water/Weight table. Historical food detail stays separate, date-first, meal-grouped, and read-only.
+- **Progress:** fuller fourteen-reading weight analytics and interpretation; direct Food Diary works with empty/incomplete history, while selected complete days retain contextual View Day. Known food snapshots support add/edit/copy/delete/undo and recorded-day navigation. No weight CRUD. `View full trends` routes directly to Progress / Weight.
+- **Settings:** target weight, age, daily calorie goal, target date, optional user-entered macro/fiber targets, and reminders; no current-weight field or save path.
+- No generic Calories/Water/Weight table. Historical food stays separate and date-first; unknown legacy aggregates remain visible but cannot be falsely edited/copied as item snapshots.
 
 Final results:
 
-- `just validate 300`: **228 hostless tests / 2 opt-in live skips**; app + widget compile, simulator install, and launch passed.
-- `just test-app-unit 600`: **315 passed / 2 opt-in live skips**.
-- `TEST_CASE_TIMEOUT=60 just test-ui 1800`: **47/47 passed**.
-- Original closure and post-closure diary critical/high reviews: **APPROVE / APPROVE / APPROVE**.
+- `just validate 600`: **243 hostless executed (241 passed / 2 opt-in live skips)**; app + widget compile, simulator install, and launch passed.
+- `just test-app-unit 900`: **351 passed / 2 opt-in live skips**.
+- `TEST_CASE_TIMEOUT=60 just test-ui 2400`: **52/52 passed**.
+- Original closure, diary, and final backlog-closure critical/high reviews each converged at **APPROVE / APPROVE / APPROVE**.
 
 ## Redesign evidence
 

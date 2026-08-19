@@ -59,7 +59,9 @@ struct CountCaloriesApp: App {
             BulkFoodBatchOperation.self,
             WaterDay.self,
             WeightEntry.self,
-            UserProfile.self
+            UserProfile.self,
+            AppMigrationState.self,
+            HistoricalPlateDeletionOperation.self
         ])
         _persistence = StateObject(wrappedValue: AppPersistence {
             let configuration = ModelConfiguration(
@@ -252,6 +254,29 @@ private struct UITestingRoot: View {
             || arguments.contains("-ui-testing-calculated-review")
         if !calculatedSetupIsVisible {
             context.insert(UserProfile())
+            if arguments.contains("-ui-testing-frequency") {
+                let recentNames = ["Apple", "Banana", "Orange", "Strawberries", "Blueberries"]
+                for (index, name) in recentNames.enumerated() {
+                    context.insert(PlateEntry(
+                        foodName: name,
+                        calories: 50,
+                        weightGrams: 100,
+                        quantity: 1,
+                        mealType: MealType.snack.rawValue,
+                        date: Date.now.addingTimeInterval(TimeInterval(-index * 60))
+                    ))
+                }
+                for index in 0..<3 {
+                    context.insert(PlateEntry(
+                        foodName: "Almond Milk",
+                        calories: 15,
+                        weightGrams: 100,
+                        quantity: 1,
+                        mealType: MealType.breakfast.rawValue,
+                        date: Date.now.addingTimeInterval(TimeInterval(-(index + 10) * 60))
+                    ))
+                }
+            }
             try context.save()
         }
     }
@@ -283,6 +308,12 @@ private struct UITestingRoot: View {
         }
         for profile in try context.fetch(FetchDescriptor<UserProfile>()) {
             context.delete(profile)
+        }
+        for state in try context.fetch(FetchDescriptor<AppMigrationState>()) {
+            context.delete(state)
+        }
+        for operation in try context.fetch(FetchDescriptor<HistoricalPlateDeletionOperation>()) {
+            context.delete(operation)
         }
         try context.save()
 

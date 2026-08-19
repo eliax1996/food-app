@@ -46,7 +46,7 @@ MacroFactor exposes recent foods and direct plus actions; Lifesum surfaces often
 
 ### Proposed UX
 
-When meal search is empty, show recent unique foods relevant to selected meal, then full alphabetical results.
+When meal search is empty, show recent unique foods, derived frequently logged foods that are not already recent, then full alphabetical results.
 
 ### Why it belongs in this product
 
@@ -58,11 +58,11 @@ One or two fewer interactions for common foods.
 
 ### Required backend/data support
 
-Optional future frequency index; initial version can derive from local history.
+None. Recency and frequency are derived deterministically from local `PlateEntry` history; no persistent index is needed.
 
 ### Prototype status
 
-Implemented and accepted in FOOD-SEARCH-001. Recent unique local foods appear before alphabetical browse when search is empty.
+Implemented and accepted across FOOD-SEARCH-001 and BACKLOG-CLOSURE-001. Recent unique local foods and count/recency-ranked frequent foods appear before alphabetical browse when search is empty. Only known, nonfuture item snapshots contribute; ambiguous duplicate saved names fail closed. Ranking has deterministic tests and functional UI proof.
 
 **Classification: HIGH VALUE**
 
@@ -160,11 +160,11 @@ Faster explanation of historical calorie totals and stronger trust in Progress.
 
 ### Required backend/data support
 
-None for read-only v1. Historical add/edit/delete/copy requires separate contracts and remains deferred.
+Implemented follow-up support adds snapshot provenance, full-snapshot attestation schema 2, atomic coordinator mutations, retained historical goals, duplicate confirmation, and exact delete undo. Contract: `../docs/historical-food-diary-mutation-specification.md`.
 
 ### Prototype status
 
-Implemented and accepted in COMPETITOR-GAP-001 attempt 01 with light/AX3-dark evidence, deterministic tests, 47/47 full UI, and 3/3 critical/high approval.
+Read-only v1 was accepted in COMPETITOR-GAP-001. BACKLOG-CLOSURE-001 then implemented known-snapshot add/edit/copy/delete/undo while preserving legacy limitations and date-first structure.
 
 **Classification: HIGH VALUE**
 
@@ -198,7 +198,7 @@ Vision model, confidence UX, privacy policy, telemetry, correction pipeline.
 
 ### Prototype status
 
-Rejected for this redesign.
+Permanently rejected for current product. No trustworthy local accuracy/privacy/correction contract supports it.
 
 **Classification: NOT RECOMMENDED**
 
@@ -216,7 +216,7 @@ Foodnoms displays a streak; many products add coaching and gamification.
 
 ### Proposed UX
 
-No dashboard streak until retention/user evidence shows value. Consider quiet weekly consistency insight later.
+Do not add streaks or adherence coaching. Current calm, non-shaming product should not invent engagement pressure without user or retention evidence.
 
 ### Why it belongs in this product
 
@@ -232,6 +232,6 @@ Local history sufficient for prototype.
 
 ### Prototype status
 
-Deferred.
+Permanently rejected from current backlog. New implementation would require a new explicit product request and evidence; it is not missing work.
 
-**Classification: NICE TO HAVE**
+**Classification: NOT RECOMMENDED**

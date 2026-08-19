@@ -21,6 +21,69 @@ nonisolated struct PlateEvidenceSnapshot: Codable, Equatable, Sendable {
     let stableID: UUID
     let dateBitPattern: UInt64
     let calories: Int
+    // Optional fields decode schema-1 energy-only attestations. Schema version still fails them closed.
+    let foodName: String?
+    let loggedAmountBitPattern: UInt64?
+    let portionCountBitPattern: UInt64?
+    let servingUnitRawValue: String?
+    let mealType: String?
+    let carbohydratesBitPattern: UInt64?
+    let proteinBitPattern: UInt64?
+    let fatBitPattern: UInt64?
+    let fiberBitPattern: UInt64?
+    let loggedSnapshotKindRawValue: String?
+    let loggedCalorieDensityBitPattern: UInt64?
+
+    init(
+        stableID: UUID,
+        dateBitPattern: UInt64,
+        calories: Int,
+        foodName: String? = nil,
+        loggedAmountBitPattern: UInt64? = nil,
+        portionCountBitPattern: UInt64? = nil,
+        servingUnitRawValue: String? = nil,
+        mealType: String? = nil,
+        carbohydratesBitPattern: UInt64? = nil,
+        proteinBitPattern: UInt64? = nil,
+        fatBitPattern: UInt64? = nil,
+        fiberBitPattern: UInt64? = nil,
+        loggedSnapshotKindRawValue: String? = nil,
+        loggedCalorieDensityBitPattern: UInt64? = nil
+    ) {
+        self.stableID = stableID
+        self.dateBitPattern = dateBitPattern
+        self.calories = calories
+        self.foodName = foodName
+        self.loggedAmountBitPattern = loggedAmountBitPattern
+        self.portionCountBitPattern = portionCountBitPattern
+        self.servingUnitRawValue = servingUnitRawValue
+        self.mealType = mealType
+        self.carbohydratesBitPattern = carbohydratesBitPattern
+        self.proteinBitPattern = proteinBitPattern
+        self.fatBitPattern = fatBitPattern
+        self.fiberBitPattern = fiberBitPattern
+        self.loggedSnapshotKindRawValue = loggedSnapshotKindRawValue
+        self.loggedCalorieDensityBitPattern = loggedCalorieDensityBitPattern
+    }
+
+    init(plate: PlateEntry) {
+        self.init(
+            stableID: plate.stableID,
+            dateBitPattern: plate.date.timeIntervalSinceReferenceDate.bitPattern,
+            calories: plate.calories,
+            foodName: plate.foodName,
+            loggedAmountBitPattern: plate.loggedAmount.bitPattern,
+            portionCountBitPattern: plate.portionQuantity.bitPattern,
+            servingUnitRawValue: plate.servingUnitRawValue,
+            mealType: plate.mealType,
+            carbohydratesBitPattern: plate.carbohydratesGrams?.bitPattern,
+            proteinBitPattern: plate.proteinGrams?.bitPattern,
+            fatBitPattern: plate.fatGrams?.bitPattern,
+            fiberBitPattern: plate.fiberGrams?.bitPattern,
+            loggedSnapshotKindRawValue: plate.loggedSnapshotKindRawValue,
+            loggedCalorieDensityBitPattern: plate.loggedCalorieDensity?.bitPattern
+        )
+    }
 }
 
 nonisolated struct WeightEvidenceSnapshot: Codable, Equatable, Sendable {
@@ -186,7 +249,7 @@ final class FoodLogCompletion {
     private(set) var attestedCalories: Int = 0
     private(set) var isStale: Bool = false
     private(set) var canonicalPlateSnapshotData: Data = Data()
-    private(set) var evidenceSchemaVersion: Int = 1
+    private(set) var evidenceSchemaVersion: Int = 2
     private(set) var canonicalSnapshotRevision: Int64 = 1
 
     init(
@@ -199,7 +262,7 @@ final class FoodLogCompletion {
         attestedCalories: Int,
         isStale: Bool = false,
         canonicalPlateSnapshotData: Data,
-        evidenceSchemaVersion: Int = 1,
+        evidenceSchemaVersion: Int = 2,
         canonicalSnapshotRevision: Int64 = 1
     ) {
         self.stableID = stableID

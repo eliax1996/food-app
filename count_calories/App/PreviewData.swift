@@ -12,6 +12,7 @@ enum DesignReviewState: String, CaseIterable {
     case nutritionPartial
     case nutritionImbalanced
     case customNutrition
+    case personalTargets
     case adaptiveCollecting
     case adaptiveProposal
     case adaptiveApplied
@@ -34,7 +35,9 @@ enum PreviewData {
             BulkFoodBatchOperation.self,
             WaterDay.self,
             WeightEntry.self,
-            UserProfile.self
+            UserProfile.self,
+            AppMigrationState.self,
+            HistoricalPlateDeletionOperation.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 
@@ -167,12 +170,25 @@ enum PreviewData {
         ]
         foods.forEach(context.insert)
 
+        let personalTargetsData: Data?
+        if state == .personalTargets {
+            let targets = PersonalNutritionTargets(
+                carbohydratesGrams: 220,
+                proteinGrams: 120,
+                fatGrams: 60,
+                fiberGrams: 28
+            )!
+            personalTargetsData = try JSONEncoder().encode(targets)
+        } else {
+            personalTargetsData = nil
+        }
         context.insert(UserProfile(
             currentWeight: 70.2,
             targetWeight: 68,
             age: 30,
             dailyCalorieGoal: 1_700,
-            targetDate: calendar.date(byAdding: .day, value: 90, to: today) ?? .now
+            targetDate: calendar.date(byAdding: .day, value: 90, to: today) ?? .now,
+            personalNutritionTargetsData: personalTargetsData
         ))
 
         guard state != .empty else {
@@ -395,11 +411,7 @@ enum PreviewData {
                 attestedAt: day,
                 attestedCalories: plate.calories,
                 canonicalPlateSnapshotData: try AdaptivePlanPersistenceCoding.encodePlateSnapshot([
-                    PlateEvidenceSnapshot(
-                        stableID: plate.stableID,
-                        dateBitPattern: plate.date.timeIntervalSinceReferenceDate.bitPattern,
-                        calories: plate.calories
-                    )
+                    PlateEvidenceSnapshot(plate: plate)
                 ])
             ))
             context.insert(WeightEntry(

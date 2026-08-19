@@ -37,6 +37,16 @@ final class FoodAmountAdjustmentTests: XCTestCase {
         XCTAssertFalse(FoodAmountAdjustment.isValid(-1))
     }
 
+    func testPortionCountRequiresPositiveFiniteIntRepresentableCompatibilityValue() {
+        XCTAssertTrue(FoodAmountAdjustment.isValidPortionCount(0.25))
+        XCTAssertTrue(FoodAmountAdjustment.isValidPortionCount(2.5))
+        XCTAssertFalse(FoodAmountAdjustment.isValidPortionCount(0))
+        XCTAssertFalse(FoodAmountAdjustment.isValidPortionCount(-1))
+        XCTAssertFalse(FoodAmountAdjustment.isValidPortionCount(.nan))
+        XCTAssertFalse(FoodAmountAdjustment.isValidPortionCount(.infinity))
+        XCTAssertFalse(FoodAmountAdjustment.isValidPortionCount(Double.greatestFiniteMagnitude))
+    }
+
     func testNonfiniteInputsAndOverflowReturnInvalidResults() {
         XCTAssertFalse(FoodAmountAdjustment.isValid(.nan))
         XCTAssertFalse(FoodAmountAdjustment.isValid(.infinity))

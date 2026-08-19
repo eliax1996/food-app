@@ -70,6 +70,8 @@ final class UserProfile {
     // Defaults preserve existing profiles as manual without fabricating calculation inputs.
     private(set) var planGoalSourceRawValue: String = PlanGoalSource.manual.rawValue
     private(set) var calculatedPlanData: Data?
+    // Nil means population references remain active with no fabricated personal prescription.
+    private(set) var personalNutritionTargetsData: Data?
     // Nil means no Slice-D opt-in or migration history has been fabricated.
     private(set) var adaptivePlanData: Data?
     private(set) var currentPlanRevisionID: UUID?
@@ -91,6 +93,7 @@ final class UserProfile {
         planGoalSource: PlanGoalSource = .manual,
         rawPlanGoalSource: String? = nil,
         calculatedPlanData: Data? = nil,
+        personalNutritionTargetsData: Data? = nil,
         adaptivePlanData: Data? = nil,
         currentPlanRevisionID: UUID? = nil,
         currentPlanRevisionSequence: Int64 = 0,
@@ -104,6 +107,7 @@ final class UserProfile {
         self.targetDate = targetDate
         planGoalSourceRawValue = rawPlanGoalSource ?? planGoalSource.rawValue
         self.calculatedPlanData = calculatedPlanData
+        self.personalNutritionTargetsData = personalNutritionTargetsData
         self.adaptivePlanData = adaptivePlanData
         self.currentPlanRevisionID = currentPlanRevisionID
         self.currentPlanRevisionSequence = currentPlanRevisionSequence
@@ -179,6 +183,13 @@ final class UserProfile {
         nextWeightSequence = sequence
     }
 
+    func replacePersonalNutritionTargetsData(
+        _ data: Data?,
+        access: PlanEvidenceMutationAccess
+    ) {
+        personalNutritionTargetsData = data
+    }
+
     func replaceAdaptivePlanData(_ data: Data?, access: PlanEvidenceMutationAccess) {
         adaptivePlanData = data
     }
@@ -194,5 +205,13 @@ final class UserProfile {
 
     func replaceEvidenceRevision(_ revision: Int64, access: PlanEvidenceMutationAccess) {
         evidenceRevision = revision
+    }
+
+    var personalNutritionTargets: PersonalNutritionTargets? {
+        guard let personalNutritionTargetsData else { return nil }
+        return try? JSONDecoder().decode(
+            PersonalNutritionTargets.self,
+            from: personalNutritionTargetsData
+        )
     }
 }

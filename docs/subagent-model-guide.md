@@ -151,7 +151,7 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 ### 2026-08-08 — Terra `high`: FOOD-REMOTE-SEARCH-001 broad implementation slices
 
 - Shape: broad multi-file search-client, cache, service, coordinator, and UI integration work.
-- Outcome: handled broad slices effectively, but parent caught speculative nested schema assumptions, missing page-size/TTL/snapshot details, and an Xcode UI-host blocker. Focused follow-up iterations corrected schema and policy gaps; final UI-host attempts remained infrastructure-blocked before XCTest.
+- Outcome: handled broad slices effectively, but parent caught speculative nested schema assumptions, missing page-size/TTL/snapshot details, and an Xcode UI-host blocker. Focused follow-up corrected schema/policy; later whole-product exact-tree UI suites passed the affected behavior.
 - Instruction-following: parent review was required to narrow architecture and separate product behavior from UI-host failure.
 - Strength: covered broad architecture quickly.
 - Weakness: broad pass left important contract details and host diagnosis unresolved.
@@ -200,7 +200,7 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 
 - Shape: bounded amount-adjustment implementation, focused rules, diagnostic UI coverage, and strict MCP visual flow.
 - Outcome: Luna `max` handled bounded arithmetic/UI/tests with exact `just` commands; product compiled/unit green; host blocker properly isolated.
-- Validation: focused amount tests 5 pass; aggregate 90 pass / 2 opt-in skips; `just check` passed. Final attempts were blocked before XCTest because Application launch did not return a process handle after one recover; `just simulator-run` passed. UI suite is not green.
+- Validation: focused amount tests 5 pass; aggregate 90 pass / 2 opt-in skips; `just check` passed. Feature-local XCTest hosting was blocked, but later whole-product exact-tree UI suites passed amount behavior.
 - Instruction-following: strict Luna MCP flow delivered useful measured evidence, though parent cleanup found interaction session already invalid/closed.
 - Strength: efficient bounded implementation and useful normal, milliliter, and Accessibility3 evidence without overstating XCTest status.
 - Weakness: Xcode test hosting remained unavailable after bounded recovery; parent had to separate runtime launch success from UI-suite proof.
@@ -221,7 +221,7 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 
 - Shape: focused correction after Terra broad slice: summary hierarchy, compact actual-day labels, locale-consistent wheel/header behavior, label/locale test defects, and bounded UI diagnosis.
 - Outcome: attempt 02 accepted for `HISTORY-001` / `PROGRESS-001` / `WEIGHT-001` with deterministic iPhone 17 Pro preview evidence. Fresh Banana diagnosis passed `100 g / 1 / 89 kcal` with keyboard hidden.
-- Validation: `ProgressHistoryTests` 16 pass; aggregate 106 pass / 2 opt-in skips; `just check` passed. Final `just test-ui 300` timed out before XCTest and reset simulator; UI suite remains not green.
+- Validation: `ProgressHistoryTests` 16 pass; aggregate 106 pass / 2 opt-in skips; `just check` passed. Feature-local XCTest hosting timed out; later whole-product exact-tree UI suites passed Progress behavior.
 - Instruction-following: preserved accepted/rejected screenshot distinction, corrected test defects instead of weakening assertions, and reported XCTest-host timeout separately from product evidence.
 - Strength: efficient at precise visual correction and focused diagnosis after broad integration supplied concrete failures.
 - Weakness: could not obtain final XCTest proof because simulator test hosting timed out; manual/preview evidence and automated domain results remained separable.

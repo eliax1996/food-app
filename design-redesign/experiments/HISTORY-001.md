@@ -74,8 +74,8 @@ Attempt 02 corrected summary hierarchy, compact actual-day labels, locale/header
 - Diagnostic Progress weight UI test added.
 - Label/locale test defects corrected.
 - Fresh Banana diagnosis passed `100 g / 1 / 89 kcal` with keyboard hidden.
-- Final `just test-ui 300` timed out before XCTest and reset simulator. UI suite is not green.
+- Feature-local `just test-ui 300` timed out before XCTest and reset simulator. Later whole-product exact-tree UI suites passed Progress flows; archived host failure is not current missing work.
 
-## Next work
+## Historical follow-up resolution
 
-Separate user-requested feature: research possible navigation split among calorie tracker, weight recording, and analytics. Do not pre-decide or design that split in this milestone.
+TRACKING-IA-001 later completed the researched navigation split as `Today | Weight | Progress | Settings`; no follow-up remains.

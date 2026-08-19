@@ -77,16 +77,18 @@ Today | Weight | Progress | Settings
 
 Weight owns Weight Log raw CRUD plus compact seven-reading context. Progress owns fuller fourteen-reading analytics and no CRUD. Settings has no current-weight field. No calorie CRUD or generic Calories/Water/Weight table is added.
 
-## Opportunities for this app
+## Implemented opportunities
 
 1. Reframe Counter as **Today**, with remaining calories as dominant answer.
 2. Group entries by meal and show each meal subtotal.
 3. Replace persistent New Food/barcode forms with Food Tools adjacent to logging.
-4. Make meal search primary inside a large native sheet; show recent choices when empty.
+4. Make meal search primary inside a large native sheet; show recent and derived frequent choices when empty.
 5. Add target rule and summary to calorie history.
 6. Use line marks for weight trend instead of calorie-style histogram.
 7. Keep Weight discoverable as a dedicated raw log while Progress explains fuller trends.
-8. Add macros only after honest local persistence and incomplete-data handling exist.
+8. Add macros only after honest local persistence and incomplete-data handling exist; keep optional user-entered targets distinct from general references.
+
+All eight opportunities are implemented. Later diary mutation and personal-target contracts used retained first-party diary evidence and nutrition-safety boundaries. Unsupported HealthKit/account sync, streak/coaching, exercise credits, duplicate shortcuts, photo/cloud AI, reminder windows, and extra amount variants are explicitly rejected from current scope; this research file contains no open candidate.
 
 ## Independent review evidence
 

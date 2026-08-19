@@ -54,7 +54,7 @@ Positive results remain fresh for 30 days; empty-terminal knowledge remains fres
 - 64 representative one-page five-hit queries encoded to 65,841 bytes. Projected 2,048-query storage is 2,106,912 bytes (about 2.01 MiB); count cap governs typical data while 32 MiB guards long/multipage outliers.
 - Focused tests: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate is 85 pass / 2 opt-in skips, including required `timed_out` decoding and partial-timeout rejection.
 - Manual Xcode flow passed Remote Oat Drink at 250 ml and 100 kcal, dismissed keyboard, increased daily total by exactly 100 kcal after save, and persisted the selected food as a local row.
-- UI suite had 2 pass / 2 fail before the final focus fix because the search keyboard lingered. Focus fix was manually proven. Later attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
+- Historical feature-local UI run had 2 pass / 2 fail before focus fix, followed by Xcode-host failures before XCTest. Later whole-product exact-tree UI suites passed remote search; no search regression remains open.
 
 ## Official sources
 

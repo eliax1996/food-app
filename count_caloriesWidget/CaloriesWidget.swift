@@ -154,9 +154,11 @@ struct CaloriesWidgetEntryView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Daily calories")
-        .accessibilityValue(entry.summary.hasCompleteCalories
-            ? "\(entry.summary.calories) eaten, \(calorieStatus.value) \(calorieStatus.label), daily goal \(entry.summary.resolvedCalorieGoal)"
-            : "Calorie total incomplete. Open Count Calories to review logged data.")
+        .accessibilityValue(DailyCaloriesAccessibilitySummary.value(
+            calories: entry.summary.calories,
+            calorieGoal: entry.summary.resolvedCalorieGoal,
+            caloriesAreComplete: entry.summary.hasCompleteCalories
+        ))
     }
 
     private var waterSummary: some View {

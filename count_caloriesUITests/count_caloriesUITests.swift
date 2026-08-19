@@ -63,6 +63,52 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testTodayMealEditUsesPersistedSnapshotEditor() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing"]
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Snapshot edit launch: app did not reach foreground; state=\(app.state)."
+        )
+
+        app.buttons["add-meal"].tap()
+        let save = app.buttons["save-meal"]
+        assertHittable(save, identifier: "save-meal", phase: "Snapshot edit")
+        save.tap()
+
+        let populatedMeal = app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH %@ AND value CONTAINS[c] %@",
+                "meal-summary-",
+                "Almond Milk"
+            ))
+            .firstMatch
+        assertHittable(populatedMeal, identifier: "populated meal summary", phase: "Snapshot edit")
+        populatedMeal.tap()
+
+        let loggedFood = app.descendants(matching: .any)
+            .matching(identifier: "meal-entry-Almond Milk")
+            .firstMatch
+        assertHittable(loggedFood, identifier: "meal-entry-Almond Milk", phase: "Snapshot edit")
+        loggedFood.tap()
+
+        assertExists(
+            app.descendants(matching: .any)
+                .matching(identifier: "historical-food-edit-editor")
+                .firstMatch,
+            identifier: "historical-food-edit-editor",
+            phase: "Snapshot edit"
+        )
+        assertExists(app.buttons["historical-food-edit-save"], identifier: "historical-food-edit-save", phase: "Snapshot edit")
+        assertAbsent(
+            app.descendants(matching: .any).matching(identifier: "meal-editor").firstMatch,
+            identifier: "meal-editor",
+            phase: "Snapshot edit"
+        )
+    }
+
+    @MainActor
     func testBulkMealFixtureReviewsAndLogsAtomically() throws {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -642,6 +688,38 @@ final class CountCaloriesUITests: XCTestCase {
             assertExactValue(servingField, expected: initialServingValue, phase: "−1")
             assertKeyboardDismissed(app, phase: "−1")
         }
+    }
+
+    @MainActor
+    func testFrequentlyLoggedFoodsAreDerivedFromHistoryAndRemainSelectable() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing", "-ui-testing-frequency"]
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Frequent foods launch: app did not reach foreground; state=\(app.state)."
+        )
+
+        let addMeal = app.buttons["add-meal"]
+        assertHittable(addMeal, identifier: "add-meal", phase: "Frequent foods")
+        addMeal.tap()
+        let chooseFood = app.buttons["choose-food"]
+        assertHittable(chooseFood, identifier: "choose-food", phase: "Frequent foods")
+        chooseFood.tap()
+
+        let heading = app.descendants(matching: .any)
+            .matching(identifier: "frequent-foods-heading")
+            .firstMatch
+        let frequentAlmondMilk = app.buttons["frequent-food-Almond Milk"]
+        assertExists(heading, identifier: "frequent-foods-heading", phase: "Frequent foods")
+        assertHittable(
+            frequentAlmondMilk,
+            identifier: "frequent-food-Almond Milk",
+            phase: "Frequent foods"
+        )
+        frequentAlmondMilk.tap()
+        let selectedFood = app.staticTexts["selected-food-name"]
+        assertLabel(selectedFood, expected: "Almond Milk", phase: "Frequent foods")
     }
 
     @MainActor
@@ -1851,7 +1929,26 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
-    func testHistoricalCalorieDiaryOpensSelectedDayAndNavigatesRecordedDays() throws {
+    func testFoodDiaryIsReachableBeforeAnyCompleteTrendDay() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing"]
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Empty diary launch: app did not reach foreground; state=\(app.state)."
+        )
+
+        app.tabBars.buttons["Progress"].tap()
+        let diaryRoute = app.buttons["progress-food-diary"]
+        assertHittable(diaryRoute, identifier: "progress-food-diary", phase: "Empty diary")
+        diaryRoute.tap()
+        assertExists(app.navigationBars["Food Diary"], identifier: "Food Diary", phase: "Empty diary")
+        assertExists(app.descendants(matching: .any).matching(identifier: "calorie-diary-empty").firstMatch, identifier: "calorie-diary-empty", phase: "Empty diary")
+        assertHittable(app.buttons["calorie-diary-add-food"], identifier: "calorie-diary-add-food", phase: "Empty diary")
+    }
+
+    @MainActor
+    func testHistoricalCalorieDiaryAddsEditsAndNavigates() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "-design-review",
@@ -1864,7 +1961,10 @@ final class CountCaloriesUITests: XCTestCase {
             "DESIGN_REVIEW_DYNAMIC_TYPE": "normal"
         ]
         app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout))
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Diary launch: app did not reach foreground; state=\(app.state)."
+        )
 
         let progressTab = app.tabBars.buttons["Progress"]
         assertHittable(progressTab, identifier: "Progress tab", phase: "Diary launch")
@@ -1877,6 +1977,7 @@ final class CountCaloriesUITests: XCTestCase {
         calorieChart.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.5)).tap()
 
         let viewDay = app.buttons["progress-calorie-view-day"]
+        for _ in 0..<4 where !viewDay.isHittable { app.swipeUp() }
         assertHittable(viewDay, identifier: "progress-calorie-view-day", phase: "Diary selection")
         viewDay.tap()
 
@@ -1887,10 +1988,59 @@ final class CountCaloriesUITests: XCTestCase {
         assertExists(date, identifier: "calorie-diary-date", phase: "Diary detail")
         assertExists(total, identifier: "calorie-diary-total", phase: "Diary detail")
         assertLabel(entryCount, expected: "3 logged foods", phase: "Diary detail")
-        XCTAssertTrue(app.staticTexts["Breakfast"].exists)
-        XCTAssertTrue(app.staticTexts["Lunch"].exists)
-        XCTAssertTrue(app.staticTexts["Dinner"].exists)
-        XCTAssertFalse(app.buttons["save-meal"].exists, "Read-only historical diary exposed mutation control.")
+        for meal in ["Breakfast", "Lunch", "Dinner"] {
+            let heading = app.staticTexts[meal]
+            for _ in 0..<5 where !heading.exists { app.swipeUp() }
+            assertExists(heading, identifier: "\(meal) meal heading", phase: "Diary detail")
+        }
+        let originalTotal = Int(total.label.filter(\.isNumber))
+        XCTAssertNotNil(originalTotal, "Diary detail: total was not numeric; \(diagnostic(for: total))")
+
+        XCTContext.runActivity(named: "Add and edit an immutable historical snapshot") { _ in
+            let add = app.buttons["calorie-diary-add-food"]
+            for _ in 0..<6 where !add.isHittable { app.swipeDown() }
+            assertHittable(add, identifier: "calorie-diary-add-food", phase: "Diary add")
+            add.tap()
+            assertExists(
+                app.descendants(matching: .any).matching(identifier: "historical-food-add-editor").firstMatch,
+                identifier: "historical-food-add-editor",
+                phase: "Diary add"
+            )
+            let addSave = app.buttons["historical-food-add-save"]
+            assertHittable(addSave, identifier: "historical-food-add-save", phase: "Diary add")
+            addSave.tap()
+            assertLabel(entryCount, expected: "4 logged foods", phase: "Diary add")
+
+            let addedFood = app.staticTexts["Almond Milk"].firstMatch
+            for _ in 0..<6 where !addedFood.isHittable { app.swipeUp() }
+            assertHittable(addedFood, identifier: "Almond Milk diary row", phase: "Diary edit")
+            addedFood.tap()
+            assertExists(
+                app.descendants(matching: .any).matching(identifier: "calorie-diary-entry-detail").firstMatch,
+                identifier: "calorie-diary-entry-detail",
+                phase: "Diary edit"
+            )
+            let edit = app.buttons["calorie-diary-edit-food"]
+            assertHittable(edit, identifier: "calorie-diary-edit-food", phase: "Diary edit")
+            edit.tap()
+            let increaseTen = app.buttons["historical-food-increase-10"]
+            assertHittable(increaseTen, identifier: "historical-food-increase-10", phase: "Diary edit")
+            increaseTen.tap()
+            let editSave = app.buttons["historical-food-edit-save"]
+            assertHittable(editSave, identifier: "historical-food-edit-save", phase: "Diary edit")
+            editSave.tap()
+
+            let back = app.navigationBars["Almond Milk"].buttons.firstMatch
+            assertHittable(back, identifier: "Food Diary back button", phase: "Diary edit")
+            back.tap()
+            for _ in 0..<5 where !total.exists { app.swipeDown() }
+            assertLabel(entryCount, expected: "4 logged foods", phase: "Diary edit")
+            XCTAssertEqual(
+                Int(total.label.filter(\.isNumber)),
+                originalTotal.map { $0 + 17 },
+                "Diary edit: 100 g / 15 kcal Almond Milk changed to 110 g / 17 kcal; \(diagnostic(for: total))"
+            )
+        }
 
         let firstDate = date.label
         let nextDay = app.buttons["calorie-diary-next-day"]
@@ -1903,6 +2053,160 @@ final class CountCaloriesUITests: XCTestCase {
         }
         XCTAssertNotEqual(date.label, firstDate, "Diary navigation did not change recorded day.")
         assertLabel(entryCount, expected: "3 logged foods", phase: "Diary navigation")
+    }
+
+    @MainActor
+    func testHistoricalCalorieDiaryCopiesDeletesAndUndoes() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-design-review",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        app.launchEnvironment = [
+            "DESIGN_REVIEW_STATE": "normal",
+            "DESIGN_REVIEW_APPEARANCE": "light",
+            "DESIGN_REVIEW_DYNAMIC_TYPE": "normal"
+        ]
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Diary mutation launch: app did not reach foreground; state=\(app.state)."
+        )
+
+        let progressTab = app.tabBars.buttons["Progress"]
+        assertHittable(progressTab, identifier: "Progress tab", phase: "Diary mutation")
+        progressTab.tap()
+        let calorieChart = app.descendants(matching: .any)
+            .matching(identifier: "progress-calorie-chart")
+            .firstMatch
+        assertExists(calorieChart, identifier: "progress-calorie-chart", phase: "Diary mutation")
+        calorieChart.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.5)).tap()
+        let viewDay = app.buttons["progress-calorie-view-day"]
+        for _ in 0..<4 where !viewDay.isHittable { app.swipeUp() }
+        assertHittable(viewDay, identifier: "progress-calorie-view-day", phase: "Diary mutation")
+        viewDay.tap()
+
+        let entryCount = app.staticTexts["calorie-diary-entry-count"]
+        assertLabel(entryCount, expected: "3 logged foods", phase: "Diary mutation")
+        let oatmeal = app.staticTexts["Oatmeal with Blueberries"].firstMatch
+        for _ in 0..<5 where !oatmeal.isHittable { app.swipeUp() }
+        assertHittable(oatmeal, identifier: "Oatmeal diary row", phase: "Diary mutation")
+        oatmeal.tap()
+        assertExists(
+            app.descendants(matching: .any).matching(identifier: "calorie-diary-entry-detail").firstMatch,
+            identifier: "calorie-diary-entry-detail",
+            phase: "Diary mutation"
+        )
+
+        let copy = app.buttons["calorie-diary-copy-food"]
+        for _ in 0..<5 where !copy.isHittable { app.swipeUp() }
+        assertHittable(copy, identifier: "calorie-diary-copy-food", phase: "Diary copy")
+        copy.tap()
+        let copySave = app.buttons["historical-food-copy-save"]
+        assertHittable(copySave, identifier: "historical-food-copy-save", phase: "Diary copy")
+        copySave.tap()
+        assertExists(
+            app.descendants(matching: .any).matching(identifier: "calorie-diary-copy-success").firstMatch,
+            identifier: "calorie-diary-copy-success",
+            phase: "Diary copy"
+        )
+        let undoCopy = app.buttons["calorie-diary-undo-copy"]
+        for _ in 0..<4 where !undoCopy.isHittable { app.swipeUp() }
+        assertHittable(undoCopy, identifier: "calorie-diary-undo-copy", phase: "Diary copy")
+        undoCopy.tap()
+
+        let delete = app.buttons["calorie-diary-delete-food"]
+        for _ in 0..<4 where !delete.isHittable { app.swipeUp() }
+        assertHittable(delete, identifier: "calorie-diary-delete-food", phase: "Diary delete")
+        delete.tap()
+        let confirmDelete = app.alerts.buttons["Delete Entry"]
+        assertHittable(confirmDelete, identifier: "Delete Entry confirmation", phase: "Diary delete")
+        confirmDelete.tap()
+        assertLabel(entryCount, expected: "2 logged foods", phase: "Diary delete")
+        let undoDelete = app.buttons["calorie-diary-undo-delete"]
+        assertHittable(undoDelete, identifier: "calorie-diary-undo-delete", phase: "Diary delete")
+        undoDelete.tap()
+        assertLabel(entryCount, expected: "3 logged foods", phase: "Diary delete")
+    }
+
+    @MainActor
+    func testPersonalNutritionTargetsSavePersistAndRestoreGeneralReferences() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        app.launch()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: uiTimeout),
+            "Personal targets launch: app did not reach foreground; state=\(app.state)."
+        )
+
+        app.tabBars.buttons["Settings"].tap()
+        let planLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-plan-link")
+            .firstMatch
+        assertHittable(planLink, identifier: "settings-plan-link", phase: "Personal targets")
+        planLink.tap()
+        let setTargets = app.buttons["plan-set-personal-targets"]
+        for _ in 0..<8 where !setTargets.isHittable { app.swipeUp() }
+        assertHittable(setTargets, identifier: "plan-set-personal-targets", phase: "Personal targets")
+        setTargets.tap()
+
+        let editor = app.descendants(matching: .any)
+            .matching(identifier: "personal-nutrition-targets-editor")
+            .firstMatch
+        assertExists(editor, identifier: "personal-nutrition-targets-editor", phase: "Personal targets editor")
+        let values = [
+            (app.textFields["personal-target-carbohydrates"], "220"),
+            (app.textFields["personal-target-protein"], "120"),
+            (app.textFields["personal-target-fat"], "60"),
+            (app.textFields["personal-target-fiber"], "28")
+        ]
+        for (field, value) in values {
+            for _ in 0..<3 where !field.isHittable { app.swipeUp() }
+            assertHittable(field, identifier: field.identifier, phase: "Personal targets editor")
+            field.tap()
+            field.typeText(value)
+        }
+        let energy = app.descendants(matching: .any)
+            .matching(identifier: "personal-target-macro-energy")
+            .firstMatch
+        assertExists(energy, identifier: "personal-target-macro-energy", phase: "Personal targets editor")
+        XCTAssertTrue(
+            energy.label.contains("1,900 kcal") || accessibilityValue(of: energy).contains("1,900 kcal"),
+            "Personal targets editor: macro energy mismatch; \(diagnostic(for: energy))"
+        )
+        let keyboardDone = app.buttons["personal-target-keyboard-done"]
+        assertHittable(keyboardDone, identifier: "personal-target-keyboard-done", phase: "Personal targets editor")
+        keyboardDone.tap()
+        let save = app.buttons["personal-target-save"]
+        assertHittable(save, identifier: "personal-target-save", phase: "Personal targets editor")
+        save.tap()
+        assertAbsent(editor, identifier: "personal-nutrition-targets-editor", phase: "Personal targets save")
+
+        let proteinTarget = app.descendants(matching: .any)
+            .matching(identifier: "plan-personal-target-protein")
+            .firstMatch
+        for _ in 0..<5 where !proteinTarget.exists { app.swipeUp() }
+        assertExists(proteinTarget, identifier: "plan-personal-target-protein", phase: "Personal targets save")
+        XCTAssertTrue(
+            proteinTarget.label.contains("120 g") || accessibilityValue(of: proteinTarget).contains("120 g"),
+            "Personal targets save: protein target did not persist; \(diagnostic(for: proteinTarget))"
+        )
+
+        let clear = app.buttons["plan-clear-personal-targets"]
+        for _ in 0..<4 where !clear.isHittable { app.swipeUp() }
+        assertHittable(clear, identifier: "plan-clear-personal-targets", phase: "Personal targets clear")
+        clear.tap()
+        let confirm = app.alerts.buttons["Use General References"]
+        assertHittable(confirm, identifier: "Use General References confirmation", phase: "Personal targets clear")
+        confirm.tap()
+        let setAgain = app.buttons["plan-set-personal-targets"]
+        assertExists(setAgain, identifier: "plan-set-personal-targets", phase: "Personal targets clear")
+        assertAbsent(proteinTarget, identifier: "plan-personal-target-protein", phase: "Personal targets clear")
     }
 
     @MainActor
@@ -2331,7 +2635,7 @@ final class CountCaloriesUITests: XCTestCase {
         eaten: Int,
         phase: String
     ) {
-        let expected = "\(eaten.formatted()) eaten, \((1700 - eaten).formatted()) kcal remaining, daily goal \(1700.formatted())"
+        let expected = "\(eaten) calories eaten, \(1700 - eaten) calories remaining, daily goal 1700 calories"
         assertExactValue(element, expected: expected, phase: phase)
     }
 

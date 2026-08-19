@@ -36,6 +36,10 @@ nonisolated enum PlanEvidenceMutationError: Error, Equatable {
     case invalidCompletionDay
     case invalidCalories
     case invalidBulkBatch
+    case invalidHistoricalMutation
+    case invalidPersonalNutritionTargets
+    case historicalMutationUnavailable
+    case duplicateHistoricalEntry
     case duplicateCompletion
     case revisionOverflow
     case evidenceOverflow
@@ -64,8 +68,9 @@ nonisolated enum PlanEvidenceEvaluationResult {
 
 @MainActor
 final class PlanEvidenceMutationCoordinator {
-    static let evidenceSchemaVersion = 1
+    static let evidenceSchemaVersion = 2
     private static let maximumBulkOperationHistory = 256
+    private static let maximumHistoricalDeletionHistory = 256
 
     enum SavePhase: Equatable {
         case identityBackfill
@@ -446,6 +451,20 @@ final class PlanEvidenceMutationCoordinator {
         return restored
     }
 
+    func setPersonalNutritionTargets(_ targets: PersonalNutritionTargets?) throws {
+        try beginOperation()
+        do {
+            let profile = try requiredProfile()
+            let data = try targets.map { try JSONEncoder().encode($0) }
+            guard profile.personalNutritionTargetsData != data else { return }
+            profile.replacePersonalNutritionTargetsData(data, access: access)
+            try save(.mutation)
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
     func changeProfileContext(age: Int) throws {
         let operationDate = now()
         try mutateState { profile, state in
@@ -560,6 +579,90 @@ final class PlanEvidenceMutationCoordinator {
     }
 
     @discardableResult
+    func migrateLegacyPlateProvenanceIfNeeded() throws -> Int {
+        let operationDate = now()
+        try beginOperation()
+        do {
+            let profiles = try modelContext.fetch(FetchDescriptor<UserProfile>())
+            guard profiles.count <= 1 else {
+                throw PlanEvidenceMutationError.multipleProfiles
+            }
+            let profile = profiles.first
+            let migrationStates = try modelContext.fetch(FetchDescriptor<AppMigrationState>())
+                .filter { $0.key == "application" }
+            guard migrationStates.count <= 1 else {
+                throw PlanEvidenceMutationError.identityVerificationFailed
+            }
+            let migrationState: AppMigrationState
+            if let existing = migrationStates.first {
+                migrationState = existing
+            } else {
+                migrationState = AppMigrationState()
+                modelContext.insert(migrationState)
+            }
+            let shouldClassifyProvenance = migrationState.plateProvenanceVersion < 1
+            let foods = try modelContext.fetch(FetchDescriptor<Food>())
+            let entries = try modelContext.fetch(FetchDescriptor<PlateEntry>())
+            guard shouldClassifyProvenance || entries.contains(where: { $0.stableID == .zero }) else {
+                return 0
+            }
+            let existingIDs = entries.map(\.stableID).filter { $0 != .zero }
+            guard Set(existingIDs).count == existingIDs.count else {
+                throw PlanEvidenceMutationError.identityVerificationFailed
+            }
+            var usedIDs = Set(existingIDs)
+            var migratedDates: [Date] = []
+            for entry in entries where entry.stableID == .zero {
+                entry.validateOrBackfillIdentity(
+                    with: try freshID(excluding: &usedIDs),
+                    at: operationDate,
+                    access: access
+                )
+                migratedDates.append(entry.date)
+            }
+            let verifiedIDs = entries.map(\.stableID)
+            guard verifiedIDs.allSatisfy({ $0 != .zero }),
+                  Set(verifiedIDs).count == verifiedIDs.count else {
+                throw PlanEvidenceMutationError.identityVerificationFailed
+            }
+
+            var migratedCount = 0
+            if shouldClassifyProvenance {
+                for entry in entries where entry.loggedSnapshotKind == nil {
+                    let matchingFoods = foods.filter {
+                        $0.name.localizedCaseInsensitiveCompare(entry.foodName) == .orderedSame
+                    }
+                    guard matchingFoods.count == 1,
+                          entry.stableID != .zero,
+                          FoodCaloriePolicy.isValid(entry.calories),
+                          FoodAmountAdjustment.isValid(entry.loggedAmount),
+                          FoodAmountAdjustment.isValidPortionCount(entry.portionQuantity),
+                          NutritionUnit(rawValue: entry.servingUnitRawValue ?? "") != nil,
+                          MealType(rawValue: entry.mealType ?? "") != nil,
+                          entry.date.timeIntervalSinceReferenceDate.isFinite else {
+                        continue
+                    }
+                    entry.classifyAsItemSnapshotIfUnknown(access: access)
+                    migratedDates.append(entry.date)
+                    migratedCount += 1
+                }
+                migrationState.replacePlateProvenanceVersion(1, access: access)
+            }
+            if !migratedDates.isEmpty {
+                try staleCompletions(containing: migratedDates)
+                if let profile {
+                    try bumpEvidence(profile, reason: "plate-provenance-migrated", at: operationDate)
+                }
+            }
+            try save(.mutation)
+            return migratedCount
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    @discardableResult
     func refreshFoodLogStaleness() throws -> Int {
         let operationDate = now()
         try beginOperation()
@@ -582,7 +685,8 @@ final class PlanEvidenceMutationCoordinator {
         let operationDate = now()
         try beginOperation()
         guard CalorieCalculator.isValidCalories(entry.calories),
-              entry.date.timeIntervalSinceReferenceDate.isFinite else {
+              FoodAmountAdjustment.isValidPortionCount(entry.portionQuantity),
+              HistoricalFoodMutation.isValidTimestamp(entry.date, now: operationDate) else {
             throw PlanEvidenceMutationError.invalidCalories
         }
         do {
@@ -601,6 +705,319 @@ final class PlanEvidenceMutationCoordinator {
             try staleCompletions(containing: [entry.date])
             try bumpAllProfiles(reason: "food-added", at: operationDate)
             try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    @discardableResult
+    func createHistoricalPlate(
+        foodStableID: UUID,
+        amount: Double,
+        portionCount: Double,
+        mealType: String,
+        date: Date,
+        allowDuplicate: Bool = false
+    ) throws -> PlateEntryMutationSnapshot {
+        let operationDate = now()
+        try beginOperation()
+        guard HistoricalFoodMutation.isValidTimestamp(date, now: operationDate),
+              FoodAmountAdjustment.isValid(amount),
+              FoodAmountAdjustment.isValidPortionCount(portionCount),
+              MealType(rawValue: mealType) != nil else {
+            throw PlanEvidenceMutationError.invalidHistoricalMutation
+        }
+        do {
+            let food = try requiredFood(stableID: foodStableID)
+            guard isValidHistoricalFoodName(food.name),
+                  let calories = CalorieCalculator.calculatedCalories(
+                    caloriesPerServing: food.calories,
+                    servingAmount: food.servingGrams,
+                    consumedAmount: amount,
+                    portionCount: portionCount
+                  ) else {
+                throw PlanEvidenceMutationError.invalidHistoricalMutation
+            }
+            let nutrients = food.consumedNutrients(
+                consumedAmount: amount,
+                portionCount: portionCount
+            )
+            let unit = food.nutritionUnit
+            if !allowDuplicate, try hasEquivalentPlate(
+                foodName: food.name,
+                calories: calories,
+                amount: amount,
+                portionCount: portionCount,
+                servingUnitRawValue: unit.rawValue,
+                nutrients: nutrients,
+                mealType: mealType,
+                date: date,
+                loggedCalorieDensity: Double(food.calories) / food.servingGrams
+            ) {
+                throw PlanEvidenceMutationError.duplicateHistoricalEntry
+            }
+            var usedIDs = Set(try modelContext.fetch(FetchDescriptor<PlateEntry>()).map(\.stableID))
+            let stableID = try freshID(excluding: &usedIDs)
+            let entry = PlateEntry(
+                foodName: food.name,
+                calories: calories,
+                weightGrams: amount,
+                quantity: portionCount,
+                servingUnit: unit,
+                nutrients: nutrients,
+                mealType: mealType,
+                date: date,
+                stableID: stableID,
+                createdAt: operationDate,
+                modifiedAt: operationDate,
+                loggedSnapshotKind: .item,
+                loggedCalorieDensity: Double(food.calories) / food.servingGrams
+            )
+            modelContext.insert(entry)
+            try staleCompletions(containing: [date])
+            try bumpAllProfiles(reason: "historical-food-added", at: operationDate)
+            try save(.mutation)
+            return entry.mutationSnapshot
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    @discardableResult
+    func updateHistoricalPlate(
+        stableID: UUID,
+        expectedModifiedAt: Date,
+        amount: Double,
+        portionCount: Double,
+        mealType: String,
+        date: Date
+    ) throws -> PlateEntryMutationSnapshot {
+        let operationDate = now()
+        try beginOperation()
+        guard HistoricalFoodMutation.isValidTimestamp(date, now: operationDate),
+              FoodAmountAdjustment.isValid(amount),
+              FoodAmountAdjustment.isValidPortionCount(portionCount),
+              MealType(rawValue: mealType) != nil else {
+            throw PlanEvidenceMutationError.invalidHistoricalMutation
+        }
+        do {
+            let entry = try requiredPlate(stableID: stableID)
+            guard entry.loggedSnapshotKind == .item,
+                  entry.mutationSnapshot.hasValidRawNutrients,
+                  entry.modifiedAt.timeIntervalSinceReferenceDate.bitPattern == expectedModifiedAt.timeIntervalSinceReferenceDate.bitPattern,
+                  HistoricalFoodMutation.isValidTimestamp(entry.date, now: operationDate),
+                  let unitRawValue = entry.servingUnitRawValue,
+                  NutritionUnit(rawValue: unitRawValue) != nil,
+                  let scaled = HistoricalFoodMutation.scaledSnapshot(
+                    originalCalories: entry.calories,
+                    originalAmount: entry.loggedAmount,
+                    originalPortions: entry.portionQuantity,
+                    newAmount: amount,
+                    newPortions: portionCount,
+                    calorieDensity: entry.resolvedLoggedCalorieDensity
+                  ),
+                  let nutrients = entry.nutrients.scaledIfFinite(by: scaled.multiplier) else {
+                throw PlanEvidenceMutationError.historicalMutationUnavailable
+            }
+
+            let oldDate = entry.date
+            let oldSnapshot = entry.mutationSnapshot
+            let valuesChanged = entry.loggedAmount.bitPattern != amount.bitPattern
+                || entry.portionQuantity.bitPattern != portionCount.bitPattern
+                || entry.calories != scaled.calories
+                || entry.nutrients != nutrients
+                || entry.mealType != mealType
+                || entry.date != date
+            guard valuesChanged else { return oldSnapshot }
+
+            entry.applyLoggedMeal(
+                foodName: entry.foodName,
+                calories: scaled.calories,
+                weightGrams: amount,
+                quantity: portionCount,
+                servingUnitRawValue: unitRawValue,
+                nutrients: nutrients,
+                mealType: mealType,
+                date: date,
+                modifiedAt: nextModificationDate(after: entry.modifiedAt, operationDate: operationDate),
+                loggedCalorieDensity: scaled.calorieDensity,
+                access: access
+            )
+            try staleCompletions(containing: [oldDate, date])
+            try bumpAllProfiles(reason: "historical-food-updated", at: operationDate)
+            try save(.mutation)
+            return entry.mutationSnapshot
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    @discardableResult
+    func copyHistoricalPlate(
+        stableID: UUID,
+        expectedModifiedAt: Date,
+        to date: Date,
+        mealType: String,
+        allowDuplicate: Bool = false
+    ) throws -> PlateEntryMutationSnapshot {
+        let operationDate = now()
+        try beginOperation()
+        guard HistoricalFoodMutation.isValidTimestamp(date, now: operationDate),
+              MealType(rawValue: mealType) != nil else {
+            throw PlanEvidenceMutationError.invalidHistoricalMutation
+        }
+        do {
+            let source = try requiredPlate(stableID: stableID)
+            let sourceSnapshot = source.mutationSnapshot
+            guard sourceSnapshot.modifiedAt.timeIntervalSinceReferenceDate.bitPattern
+                    == expectedModifiedAt.timeIntervalSinceReferenceDate.bitPattern else {
+                throw PlanEvidenceMutationError.compareAndSetFailed
+            }
+            guard sourceSnapshot.isKnownItem,
+                  sourceSnapshot.hasValidRawNutrients,
+                  HistoricalFoodMutation.isValidTimestamp(sourceSnapshot.date, now: operationDate),
+                  FoodCaloriePolicy.isValid(sourceSnapshot.calories),
+                  FoodAmountAdjustment.isValid(sourceSnapshot.loggedAmount),
+                  FoodAmountAdjustment.isValidPortionCount(sourceSnapshot.portionCount),
+                  let unitRawValue = sourceSnapshot.servingUnitRawValue,
+                  let unit = NutritionUnit(rawValue: unitRawValue) else {
+                throw PlanEvidenceMutationError.historicalMutationUnavailable
+            }
+            if !allowDuplicate, try hasEquivalentPlate(
+                foodName: sourceSnapshot.foodName,
+                calories: sourceSnapshot.calories,
+                amount: sourceSnapshot.loggedAmount,
+                portionCount: sourceSnapshot.portionCount,
+                servingUnitRawValue: unitRawValue,
+                nutrients: sourceSnapshot.nutrients,
+                mealType: mealType,
+                date: date,
+                loggedCalorieDensity: sourceSnapshot.loggedCalorieDensity
+            ) {
+                throw PlanEvidenceMutationError.duplicateHistoricalEntry
+            }
+            var usedIDs = Set(try modelContext.fetch(FetchDescriptor<PlateEntry>()).map(\.stableID))
+            let copiedID = try freshID(excluding: &usedIDs)
+            let copy = PlateEntry(
+                foodName: sourceSnapshot.foodName,
+                calories: sourceSnapshot.calories,
+                weightGrams: sourceSnapshot.loggedAmount,
+                quantity: sourceSnapshot.portionCount,
+                servingUnit: unit,
+                nutrients: sourceSnapshot.nutrients,
+                mealType: mealType,
+                date: date,
+                stableID: copiedID,
+                createdAt: operationDate,
+                modifiedAt: operationDate,
+                loggedSnapshotKind: .item,
+                loggedCalorieDensity: sourceSnapshot.loggedCalorieDensity
+            )
+            modelContext.insert(copy)
+            try staleCompletions(containing: [date])
+            try bumpAllProfiles(reason: "historical-food-copied", at: operationDate)
+            try save(.mutation)
+            return copy.mutationSnapshot
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    @discardableResult
+    func deleteHistoricalPlate(
+        stableID: UUID,
+        expectedModifiedAt: Date? = nil
+    ) throws -> PlateEntryMutationSnapshot {
+        let operationDate = now()
+        try beginOperation()
+        do {
+            let entry = try requiredPlate(stableID: stableID)
+            let baseSnapshot = entry.mutationSnapshot
+            if let expectedModifiedAt,
+               baseSnapshot.modifiedAt.timeIntervalSinceReferenceDate.bitPattern
+                    != expectedModifiedAt.timeIntervalSinceReferenceDate.bitPattern {
+                throw PlanEvidenceMutationError.compareAndSetFailed
+            }
+            let priorOperations = try modelContext.fetch(
+                FetchDescriptor<HistoricalPlateDeletionOperation>()
+            )
+            var usedOperationIDs = Set(priorOperations.map(\.operationID))
+            let operationID = try freshID(excluding: &usedOperationIDs)
+            let snapshot = baseSnapshot.withDeletionOperationID(operationID)
+            modelContext.insert(HistoricalPlateDeletionOperation(
+                operationID: operationID,
+                plateStableID: stableID,
+                deletedAt: operationDate
+            ))
+            for expired in priorOperations
+                .sorted(by: historicalDeletionOrder)
+                .prefix(max(0, priorOperations.count - Self.maximumHistoricalDeletionHistory + 1)) {
+                modelContext.delete(expired)
+            }
+            modelContext.delete(entry)
+            try staleCompletions(containing: [snapshot.date])
+            try bumpAllProfiles(reason: "historical-food-deleted", at: operationDate)
+            try save(.mutation)
+            return snapshot
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    @discardableResult
+    func restoreHistoricalPlate(_ snapshot: PlateEntryMutationSnapshot) throws -> PlateEntryMutationSnapshot {
+        let operationDate = now()
+        try beginOperation()
+        guard snapshot.stableID != .zero,
+              let deletionOperationID = snapshot.deletionOperationID,
+              deletionOperationID != .zero else {
+            throw PlanEvidenceMutationError.invalidHistoricalMutation
+        }
+        do {
+            let matchingOperations = try modelContext.fetch(
+                FetchDescriptor<HistoricalPlateDeletionOperation>()
+            ).filter {
+                $0.operationID == deletionOperationID
+                    && $0.plateStableID == snapshot.stableID
+            }
+            guard matchingOperations.count == 1, let deletionOperation = matchingOperations.first else {
+                throw PlanEvidenceMutationError.compareAndSetFailed
+            }
+            let existingIDs = try modelContext.fetch(FetchDescriptor<PlateEntry>()).map(\.stableID)
+            guard !existingIDs.contains(snapshot.stableID) else {
+                throw PlanEvidenceMutationError.identityCollision(entity: "PlateEntry", id: snapshot.stableID)
+            }
+            let entry = PlateEntry(
+                foodName: snapshot.foodName,
+                calories: snapshot.calories,
+                weightGrams: snapshot.loggedAmount,
+                quantity: snapshot.portionCount,
+                servingUnit: NutritionUnit(rawValue: snapshot.servingUnitRawValue ?? "") ?? .grams,
+                nutrients: snapshot.nutrients,
+                mealType: snapshot.mealType,
+                date: snapshot.date,
+                stableID: snapshot.stableID,
+                createdAt: snapshot.createdAt,
+                modifiedAt: snapshot.modifiedAt,
+                loggedSnapshotKind: snapshot.loggedSnapshotKindRawValue.flatMap(LoggedSnapshotKind.init(rawValue:)),
+                loggedCalorieDensity: snapshot.loggedCalorieDensity
+            )
+            entry.restoreLoggedSnapshot(snapshot, access: access)
+            entry.advanceModificationDate(
+                nextModificationDate(after: snapshot.modifiedAt, operationDate: operationDate),
+                access: access
+            )
+            modelContext.insert(entry)
+            modelContext.delete(deletionOperation)
+            try staleCompletions(containing: [snapshot.date])
+            try bumpAllProfiles(reason: "historical-food-restored", at: operationDate)
+            try save(.mutation)
+            return entry.mutationSnapshot
         } catch {
             modelContext.rollback()
             throw error
@@ -745,7 +1162,9 @@ final class PlanEvidenceMutationCoordinator {
                     date: insert.date,
                     stableID: insert.id,
                     createdAt: operationDate,
-                    modifiedAt: operationDate
+                    modifiedAt: operationDate,
+                    loggedCalorieDensity: Double(insert.match.caloriesPerServing)
+                        / insert.match.servingAmount
                 )
                 entry.validateOrBackfillIdentity(with: insert.id, at: operationDate, access: access)
                 modelContext.insert(entry)
@@ -776,6 +1195,7 @@ final class PlanEvidenceMutationCoordinator {
     func updatePlateEvidence(_ entry: PlateEntry, calories: Int, date: Date) throws {
         try updatePlate(
             stableID: entry.stableID,
+            expectedModifiedAt: entry.modifiedAt,
             foodName: entry.foodName,
             calories: calories,
             weightGrams: entry.weightGrams,
@@ -789,6 +1209,7 @@ final class PlanEvidenceMutationCoordinator {
 
     func updatePlate(
         stableID: UUID,
+        expectedModifiedAt: Date,
         foodName: String,
         calories: Int,
         weightGrams: Double,
@@ -796,18 +1217,30 @@ final class PlanEvidenceMutationCoordinator {
         servingUnitRawValue: String?,
         nutrients: FoodNutrients,
         mealType: String?,
-        date: Date
+        date: Date,
+        loggedCalorieDensity: Double? = nil
     ) throws {
         let operationDate = now()
         try beginOperation()
         guard CalorieCalculator.isValidCalories(calories),
-              date.timeIntervalSinceReferenceDate.isFinite else {
+              FoodAmountAdjustment.isValid(weightGrams),
+              FoodAmountAdjustment.isValidPortionCount(quantity),
+              (weightGrams * quantity).isFinite,
+              HistoricalFoodMutation.isValidTimestamp(date, now: operationDate) else {
             throw PlanEvidenceMutationError.invalidCalories
         }
         do {
             let entry = try requiredPlate(stableID: stableID)
+            guard entry.modifiedAt.timeIntervalSinceReferenceDate.bitPattern
+                    == expectedModifiedAt.timeIntervalSinceReferenceDate.bitPattern else {
+                throw PlanEvidenceMutationError.compareAndSetFailed
+            }
+            guard entry.loggedSnapshotKind == .item,
+                  entry.mutationSnapshot.hasValidRawNutrients else {
+                throw PlanEvidenceMutationError.historicalMutationUnavailable
+            }
             let oldDate = entry.date
-            let changesAdaptationEvidence = entry.calories != calories || oldDate != date
+            let oldSnapshot = plateEvidenceSnapshot(entry)
             entry.applyLoggedMeal(
                 foodName: foodName,
                 calories: calories,
@@ -817,10 +1250,12 @@ final class PlanEvidenceMutationCoordinator {
                 nutrients: nutrients,
                 mealType: mealType,
                 date: date,
-                modifiedAt: operationDate,
+                modifiedAt: nextModificationDate(after: entry.modifiedAt, operationDate: operationDate),
+                loggedCalorieDensity: loggedCalorieDensity
+                    ?? Double(calories) / (weightGrams * quantity),
                 access: access
             )
-            if changesAdaptationEvidence {
+            if plateEvidenceSnapshot(entry) != oldSnapshot {
                 try staleCompletions(containing: [oldDate, date])
                 try bumpAllProfiles(reason: "food-updated", at: operationDate)
             }
@@ -832,23 +1267,14 @@ final class PlanEvidenceMutationCoordinator {
     }
 
     func deletePlate(_ entry: PlateEntry) throws {
-        try deletePlate(stableID: entry.stableID)
+        try deletePlate(stableID: entry.stableID, expectedModifiedAt: entry.modifiedAt)
     }
 
-    func deletePlate(stableID: UUID) throws {
-        let operationDate = now()
-        try beginOperation()
-        do {
-            let entry = try requiredPlate(stableID: stableID)
-            let oldDate = entry.date
-            modelContext.delete(entry)
-            try staleCompletions(containing: [oldDate])
-            try bumpAllProfiles(reason: "food-deleted", at: operationDate)
-            try modelContext.save()
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
+    func deletePlate(stableID: UUID, expectedModifiedAt: Date) throws {
+        _ = try deleteHistoricalPlate(
+            stableID: stableID,
+            expectedModifiedAt: expectedModifiedAt
+        )
     }
 
     @discardableResult
@@ -1472,10 +1898,13 @@ final class PlanEvidenceMutationCoordinator {
     }
 
     private func requiredPlate(stableID: UUID) throws -> PlateEntry {
-        guard stableID != .zero,
-              let entry = try modelContext.fetch(FetchDescriptor<PlateEntry>()).first(where: {
-                  $0.stableID == stableID
-              }) else {
+        guard stableID != .zero else {
+            throw PlanEvidenceMutationError.identityVerificationFailed
+        }
+        let matches = try modelContext.fetch(FetchDescriptor<PlateEntry>()).filter {
+            $0.stableID == stableID
+        }
+        guard matches.count == 1, let entry = matches.first else {
             throw PlanEvidenceMutationError.identityVerificationFailed
         }
         return entry
@@ -1489,6 +1918,54 @@ final class PlanEvidenceMutationCoordinator {
             throw PlanEvidenceMutationError.identityVerificationFailed
         }
         return entry
+    }
+
+    private func requiredFood(stableID: UUID) throws -> Food {
+        guard stableID != .zero else {
+            throw PlanEvidenceMutationError.identityVerificationFailed
+        }
+        let matches = try modelContext.fetch(FetchDescriptor<Food>()).filter {
+            $0.stableID == stableID
+        }
+        guard matches.count == 1, let food = matches.first else {
+            throw PlanEvidenceMutationError.identityVerificationFailed
+        }
+        return food
+    }
+
+    private func isValidHistoricalFoodName(_ name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty
+            && trimmed.count <= 200
+            && !trimmed.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+    }
+
+    private func hasEquivalentPlate(
+        foodName: String,
+        calories: Int,
+        amount: Double,
+        portionCount: Double,
+        servingUnitRawValue: String?,
+        nutrients: FoodNutrients,
+        mealType: String?,
+        date: Date,
+        loggedCalorieDensity: Double?
+    ) throws -> Bool {
+        guard let destinationDay = finiteDay(date) else {
+            throw PlanEvidenceMutationError.invalidHistoricalMutation
+        }
+        return try modelContext.fetch(FetchDescriptor<PlateEntry>()).contains { entry in
+            finiteDay(entry.date) == destinationDay
+                && entry.foodName == foodName
+                && entry.calories == calories
+                && entry.loggedAmount.bitPattern == amount.bitPattern
+                && entry.portionQuantity.bitPattern == portionCount.bitPattern
+                && entry.servingUnitRawValue == servingUnitRawValue
+                && entry.nutrients == nutrients
+                && entry.mealType == mealType
+                && entry.resolvedLoggedCalorieDensity?.bitPattern
+                    == loggedCalorieDensity?.bitPattern
+        }
     }
 
     private func validateCAS(_ profile: UserProfile, revisionID: UUID?, evidenceRevision: Int64) throws {
@@ -1590,6 +2067,12 @@ final class PlanEvidenceMutationCoordinator {
         return calendar.startOfDay(for: date)
     }
 
+    private func nextModificationDate(after current: Date, operationDate: Date) -> Date {
+        guard current.timeIntervalSinceReferenceDate.isFinite else { return operationDate }
+        guard operationDate <= current else { return operationDate }
+        return current.addingTimeInterval(0.000_001)
+    }
+
     private func rejectCollisions(_ IDs: [UUID], entity: String) throws {
         var seen: Set<UUID> = []
         for id in IDs where !seen.insert(id).inserted {
@@ -1608,12 +2091,12 @@ final class PlanEvidenceMutationCoordinator {
     private func plateSnapshot(for day: Date) throws -> [PlateEvidenceSnapshot] {
         try modelContext.fetch(FetchDescriptor<PlateEntry>()).compactMap { plate in
             guard finiteDay(plate.date) == day else { return nil }
-            return PlateEvidenceSnapshot(
-                stableID: plate.stableID,
-                dateBitPattern: plate.date.timeIntervalSinceReferenceDate.bitPattern,
-                calories: plate.calories
-            )
+            return plateEvidenceSnapshot(plate)
         }.sorted(by: plateSnapshotOrder)
+    }
+
+    private func plateEvidenceSnapshot(_ plate: PlateEntry) -> PlateEvidenceSnapshot {
+        PlateEvidenceSnapshot(plate: plate)
     }
 
     private func plateSnapshotOrder(_ lhs: PlateEvidenceSnapshot, _ rhs: PlateEvidenceSnapshot) -> Bool {
@@ -1728,6 +2211,14 @@ final class PlanEvidenceMutationCoordinator {
         _ rhs: BulkFoodBatchOperation
     ) -> Bool {
         if lhs.committedAt != rhs.committedAt { return lhs.committedAt < rhs.committedAt }
+        return lhs.operationID.uuidString < rhs.operationID.uuidString
+    }
+
+    private func historicalDeletionOrder(
+        _ lhs: HistoricalPlateDeletionOperation,
+        _ rhs: HistoricalPlateDeletionOperation
+    ) -> Bool {
+        if lhs.deletedAt != rhs.deletedAt { return lhs.deletedAt < rhs.deletedAt }
         return lhs.operationID.uuidString < rhs.operationID.uuidString
     }
 

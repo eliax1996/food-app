@@ -12,6 +12,36 @@ nonisolated public struct CalorieDiaryRecord: Equatable, Identifiable, Sendable 
     public let loggedAmount: Double
     public let portionCount: Double
     public let unitRawValue: String
+    public let carbohydratesGrams: Double?
+    public let proteinGrams: Double?
+    public let fatGrams: Double?
+    public let fiberGrams: Double?
+    public let modifiedAt: Date
+    public let loggedSnapshotKindRawValue: String?
+    public let loggedCalorieDensity: Double?
+    public let hasSupportedStoredUnit: Bool
+
+    public var isKnownItemSnapshot: Bool {
+        loggedSnapshotKindRawValue == "item"
+    }
+
+    public var canEditOrCopy: Bool {
+        isKnownItemSnapshot
+            && id.uuidString != "00000000-0000-0000-0000-000000000000"
+            && hasSupportedStoredUnit
+            && FoodCaloriePolicy.isValid(calories)
+            && loggedAmount.isFinite
+            && loggedAmount > 0
+            && FoodAmountAdjustment.isValidPortionCount(portionCount)
+            && date.timeIntervalSinceReferenceDate.isFinite
+            && modifiedAt.timeIntervalSinceReferenceDate.isFinite
+            && MealType(rawValue: mealType ?? "") != nil
+            && [carbohydratesGrams, proteinGrams, fatGrams, fiberGrams]
+                .allSatisfy { value in
+                    guard let value else { return true }
+                    return value.isFinite && value >= 0
+                }
+    }
 
     public init(
         id: UUID,
@@ -21,7 +51,14 @@ nonisolated public struct CalorieDiaryRecord: Equatable, Identifiable, Sendable 
         calories: Int,
         loggedAmount: Double,
         portionCount: Double,
-        unitRawValue: String?
+        unitRawValue: String?,
+        carbohydratesGrams: Double? = nil,
+        proteinGrams: Double? = nil,
+        fatGrams: Double? = nil,
+        fiberGrams: Double? = nil,
+        modifiedAt: Date? = nil,
+        loggedSnapshotKindRawValue: String? = nil,
+        loggedCalorieDensity: Double? = nil
     ) {
         self.id = id
         self.date = date
@@ -30,7 +67,15 @@ nonisolated public struct CalorieDiaryRecord: Equatable, Identifiable, Sendable 
         self.calories = calories
         self.loggedAmount = loggedAmount
         self.portionCount = portionCount
+        hasSupportedStoredUnit = unitRawValue == "g" || unitRawValue == "ml"
         self.unitRawValue = unitRawValue == "ml" ? "ml" : "g"
+        self.carbohydratesGrams = carbohydratesGrams
+        self.proteinGrams = proteinGrams
+        self.fatGrams = fatGrams
+        self.fiberGrams = fiberGrams
+        self.modifiedAt = modifiedAt ?? date
+        self.loggedSnapshotKindRawValue = loggedSnapshotKindRawValue
+        self.loggedCalorieDensity = loggedCalorieDensity
     }
 }
 
@@ -52,7 +97,7 @@ nonisolated public struct CalorieDiaryDay: Equatable, Identifiable, Sendable {
 }
 
 nonisolated public enum CalorieDiary {
-    public static let orderedMealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"]
+    public static let orderedMealTypes = ["Breakfast", "Lunch", "Dinner", "Snack", "Unknown meal"]
 
     public static func days(
         from records: [CalorieDiaryRecord],
@@ -98,7 +143,10 @@ nonisolated public enum CalorieDiary {
     }
 
     private static func normalizedMealType(_ rawValue: String?) -> String {
-        guard let rawValue, orderedMealTypes.contains(rawValue) else { return "Snack" }
+        guard let rawValue,
+              MealType(rawValue: rawValue) != nil else {
+            return "Unknown meal"
+        }
         return rawValue
     }
 

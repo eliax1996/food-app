@@ -50,7 +50,14 @@ struct HistoryView: View {
                     calories: $0.calories,
                     loggedAmount: $0.loggedAmount,
                     portionCount: $0.portionQuantity,
-                    unitRawValue: $0.nutritionUnit.rawValue
+                    unitRawValue: $0.servingUnitRawValue,
+                    carbohydratesGrams: $0.carbohydratesGrams,
+                    proteinGrams: $0.proteinGrams,
+                    fatGrams: $0.fatGrams,
+                    fiberGrams: $0.fiberGrams,
+                    modifiedAt: $0.modifiedAt,
+                    loggedSnapshotKindRawValue: $0.loggedSnapshotKindRawValue,
+                    loggedCalorieDensity: $0.resolvedLoggedCalorieDensity
                 )
             },
             calendar: calendar
@@ -140,6 +147,16 @@ struct HistoryView: View {
                     diaryDays: calorieDiaryDays
                 )
             }
+
+            NavigationLink {
+                CalorieDiaryView(
+                    initialDate: calorieDiaryDays.first?.date ?? calendar.startOfDay(for: .now)
+                )
+            } label: {
+                Label("Food Diary", systemImage: "list.bullet.rectangle")
+                    .frame(minHeight: 44)
+            }
+            .accessibilityIdentifier("progress-food-diary")
         }
     }
 

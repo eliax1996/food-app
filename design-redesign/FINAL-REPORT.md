@@ -4,9 +4,9 @@
 
 **Closure milestone:** FINAL-001
 
-**Post-closure milestone:** COMPETITOR-GAP-001
+**Post-closure milestones:** COMPETITOR-GAP-001, BACKLOG-CLOSURE-001
 
-**Date:** 2026-08-18
+**Date:** 2026-08-20
 
 ## Outcome
 
@@ -23,11 +23,11 @@ Program meets redesign Definition of Done: primary journeys implemented and reta
 | Area | Baseline | Final |
 |---|---|---|
 | Daily answer | Percentage and flat intake rows competed with tools | Remaining/over calories leads; eaten/goal, water, food-log evidence, nutrition, and four meal summaries follow |
-| Food logging | Hidden/limited selection and keyboard-heavy correction | Search-first local/remote discovery, recents, scanner/manual fallback, exact fields, presets, and keyboard-free ±10/±1 |
+| Food logging | Hidden/limited selection and keyboard-heavy correction | Search-first local/remote discovery, recent/frequent shortcuts, scanner/manual fallback, exact fields, presets, and keyboard-free ±10/±1 |
 | Multi-food meals | One item per flow | Typed or on-device dictated description → provisional editable verified rows → one atomic confirmation |
 | Nutrition | Calories only | Immutable logged macro/fiber snapshots, explicit coverage, measured facts, and transparent adult references without opaque score |
-| Weight/history | Sparse combined history | Dedicated Weight Log CRUD, separate target-aware calorie/weight Progress analytics, and read-only meal-grouped Food Diary detail for selected recorded calorie days |
-| Plan | Manual goal fields | Optional explainable calculated plan, infeasible recovery, Manual/Calculated/Adapted provenance, proposal-only evidence-gated adaptation, exact revert |
+| Weight/history | Sparse combined history | Dedicated Weight Log CRUD, separate target-aware analytics, and date-first Food Diary with truthful known-item add/edit/copy/delete/undo plus legacy limitations |
+| Plan | Manual goal fields | Explainable calculated/adaptive plan plus optional user-entered macro/fiber targets that retain general references and never alter calorie evidence |
 | Reminders | Fixed/basic controls | Independent exact meal, water, daily/weekly weight intent; permission-aware scheduling and retryable errors |
 | Auxiliary surfaces | Secondary consumed-calorie presentation | Goal-aware medium widget and explicit Live Activity matching Today hierarchy |
 | Robustness | Normal-state layouts | Light/dark, normal/AX3, small/large, empty/dense/extreme fixtures and deterministic UI coverage |
@@ -64,7 +64,7 @@ Final walkthrough and deterministic fixtures cover:
 2. Log food with default Almond Milk at 100 g / 15 kcal.
 3. Bulk meal review with editable query, amount, source, and atomic total.
 4. Empty/populated Weight Log and calorie/weight Progress.
-5. Progress calorie selection → View Day → read-only meal-grouped Food Diary → adjacent recorded day.
+5. Progress calorie selection → View Day → meal-grouped Food Diary → known-snapshot add/edit/copy/delete/undo → adjacent recorded day.
 6. Settings → Plan and Settings → Reminders.
 7. Widget and explicit Live Activity.
 8. Accessibility 3 dark Today and Food Diary reachability.
@@ -79,7 +79,29 @@ Fresh category reassessment selected date-first historical food detail as cleare
 
 ![Historical Food Diary at Accessibility 3 in dark appearance](screenshots/COMPETITOR-GAP-001/attempt-01-diary-ax3-dark.png)
 
-Research and contract: [`../docs/historical-calorie-diary-assessment.md`](../docs/historical-calorie-diary-assessment.md). Experiment: [`experiments/COMPETITOR-GAP-001.md`](experiments/COMPETITOR-GAP-001.md).
+Research and initial contract: [`../docs/historical-calorie-diary-assessment.md`](../docs/historical-calorie-diary-assessment.md). Experiment: [`experiments/COMPETITOR-GAP-001.md`](experiments/COMPETITOR-GAP-001.md).
+
+## Finite backlog closure
+
+BACKLOG-CLOSURE-001 resolved every worthwhile candidate still mentioned in project Markdown:
+
+- known item snapshots support explicit historical add/edit/copy/delete/undo through one atomic coordinator; legacy aggregates stay visible but cannot be falsely edited/copied;
+- optional personal carbohydrate/protein/fat/fiber targets remain user-entered, local, distinct from general references, and coverage-gated;
+- frequently logged foods derive from local history without a persistent index;
+- app and widget use one complete/incomplete calorie accessibility contract;
+- Today, diary, widget, reminders, and Live Activity synchronize through extracted external-surface orchestration after writes.
+
+Unsupported candidates were closed rather than silently deferred: HealthKit/accounts/cross-device sync, streak/adherence coaching, exercise credits, duplicate per-meal shortcuts, photo/cloud AI, reminder windows, and extra amount-control variants are permanently rejected from current scope. New work requires a new explicit request.
+
+Evidence:
+
+![Personal targets in Plan](screenshots/BACKLOG-CLOSURE-001/plan-personal-targets-top-light.png)
+
+![Personal targets in Daily Nutrition](screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-top-light.png)
+
+![Historical diary item actions](screenshots/BACKLOG-CLOSURE-001/diary-actions-light.png)
+
+Accessibility 3 dark captures are indexed in [`SCREENSHOTS.md`](SCREENSHOTS.md). Contracts: [`../docs/historical-food-diary-mutation-specification.md`](../docs/historical-food-diary-mutation-specification.md) and [`../docs/personal-nutrition-targets-specification.md`](../docs/personal-nutrition-targets-specification.md).
 
 ## Product and safety guarantees
 
@@ -91,9 +113,11 @@ Final closure hardening preserves these invariants:
 - Invalid legacy calories make Today, meals, history, widget, and Live Activity calorie state visibly incomplete rather than silently low.
 - Bulk confirmation requires durable precommit state and one idempotent atomic transaction; no partial insertion.
 - Persistent-store failure shows retry instead of deleting data or crashing.
-- Reminder replacement is serialized, capacity-aware, rollback-capable, authorization-aware, and failure-visible.
+- Reminder replacement generation is assigned synchronously, then serialized, capacity-aware, rollback-capable, authorization-aware, and failure-visible; fresh-context snapshots follow Today, widget-water, diary, and weight writes.
 - Missing nutrient facts stay unknown; incomplete or invalid energy suppresses guidance.
-- Meal text/audio and learned corrections remain local and clearable; only derived search queries may reach Open Food Facts.
+- Meal text/audio, learned corrections, and personal nutrition targets remain local and clearable; only derived search queries may reach Open Food Facts.
+- Historical writes reject future destinations, stale commands, identity collisions, unsupported provenance, invalid scaling, and unconfirmed duplicates before one atomic save. Store-scoped migration preserves prior item editing without promoting unknown aggregates; raw-field undo consumes one-use tombstone, advances mutation generation, and never restores stale attestation.
+- General references remain visible beside personal targets; missing nutrient facts never become zero or a false target comparison.
 
 ## Independent review
 
@@ -107,41 +131,36 @@ Reviewer 2: APPROVE
 Reviewer 3: APPROVE
 ```
 
-No unresolved critical/high design or engineering finding remains. Post-closure diary review independently converged at **APPROVE / APPROVE / APPROVE** under identical critical/high criteria.
+No unresolved critical/high design or engineering finding remains. Initial diary review and final BACKLOG-CLOSURE-001 review each independently converged at **APPROVE / APPROVE / APPROVE** under identical neutral critical/high criteria. Closure reviewers drove and rechecked migration, CAS, exact undo, reversible density, strict parsing, synchronization ordering, and legacy-truth hardening before final convergence.
 
 ## Final validation
 
-Current exact-tree gates after COMPETITOR-GAP-001:
+Current exact-tree gates after BACKLOG-CLOSURE-001:
 
 | Gate | Result |
 |---|---|
-| `just validate 300` | Passed: 228 hostless tests, 2 opt-in live skips; app + widget compile, install, launch passed |
-| `just test-app-unit 600` | Passed: 315 tests, 2 opt-in live skips |
-| `TEST_CASE_TIMEOUT=60 just test-ui 1800` | Passed: 47/47 functional UI tests |
+| `just validate 600` | Passed: 243 hostless executed (241 passed / 2 opt-in live skips); app + widget compile, install, launch passed |
+| `just test-app-unit 900` | Passed: 351 passed / 2 opt-in live skips |
+| `TEST_CASE_TIMEOUT=60 just test-ui 2400` | Passed: 52/52 functional UI tests |
 | `git diff --check` | Passed |
 
 Live Open Food Facts tests remain intentionally opt-in; deterministic mocked/cache/API-contract tests run in normal gates.
 
-## Deferred, not blocked
+## Backlog disposition
 
-No high-priority redesign work remains. Separate evidence-backed future opportunities:
-
-- historical diary create/edit/delete/copy only after snapshot, attestation, destination, duplicate, confirmation, undo, and goal-history rules are specified;
-- optional personal macro targets with distinct safety contract;
-- HealthKit/account/cross-device consistency.
-
-Rejected directions remain rejected: LLM-authored nutrition, silent bulk logging, cloud upload of full meal text, scanner-only entry, opaque scores, and reminder-window claims without stronger evidence.
+No active or deferred project task remains. Historical mutations and personal targets were implemented under separate contracts. HealthKit/account/cross-device sync and other unsupported directions are explicitly rejected from current scope rather than left as proposals. Rejected directions also include LLM-authored nutrition, silent bulk logging, cloud upload of full meal text, scanner-only entry, opaque scores, streak pressure, exercise credits, and reminder windows.
 
 ## Evidence map
 
 - Current status: [`STATUS.md`](STATUS.md)
 - Visual index: [`SCREENSHOTS.md`](SCREENSHOTS.md)
 - Design decisions: [`02-design-log.md`](02-design-log.md)
-- Durable backlog: [`PRODUCT-BACKLOG.md`](PRODUCT-BACKLOG.md)
+- Closed decision archive: [`PRODUCT-BACKLOG.md`](PRODUCT-BACKLOG.md)
 - Closure experiment: [`experiments/FINAL-001.md`](experiments/FINAL-001.md)
-- Post-closure experiment: [`experiments/COMPETITOR-GAP-001.md`](experiments/COMPETITOR-GAP-001.md)
+- Post-closure diary experiment: [`experiments/COMPETITOR-GAP-001.md`](experiments/COMPETITOR-GAP-001.md)
+- Backlog-closure experiment: [`experiments/BACKLOG-CLOSURE-001.md`](experiments/BACKLOG-CLOSURE-001.md)
 - Full completion plan: [`COMPLETION-PLAN.md`](COMPLETION-PLAN.md)
 
 ## Final decision
 
-**Original autonomous Count Calories redesign and queued COMPETITOR-GAP-001 iteration are COMPLETE.**
+**Original redesign, COMPETITOR-GAP-001, and finite Markdown-backlog closure are COMPLETE. No documented implementation queue remains.**

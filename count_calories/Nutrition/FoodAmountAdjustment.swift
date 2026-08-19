@@ -1,10 +1,16 @@
 import Foundation
 
-nonisolated enum FoodAmountAdjustment {
+nonisolated public enum FoodAmountAdjustment {
     static let minimumAmount: Double = 0.01
 
     static func isValid(_ amount: Double) -> Bool {
         amount.isFinite && amount >= minimumAmount
+    }
+
+    public static func isValidPortionCount(_ portionCount: Double) -> Bool {
+        portionCount.isFinite
+            && portionCount > 0
+            && Int(exactly: portionCount.rounded()) != nil
     }
 
     static func result(for amount: Double, delta: Double) -> Double? {

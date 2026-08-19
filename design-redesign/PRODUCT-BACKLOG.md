@@ -1,6 +1,30 @@
-# Product redesign backlog
+# Product redesign decision archive
 
-Persistent prioritized backlog. Original redesign closure is complete; entries below preserve accepted decisions and deferred opportunities for later evidence-backed iterations.
+**Queue status:** EMPTY
+
+This file preserves accepted requirements, rejected attempts, and final candidate dispositions. It is not an active backlog. BACKLOG-CLOSURE-001 implemented every worthwhile remaining candidate and permanently rejected unsupported ones; no entry below authorizes future work without a new explicit user request.
+
+## Final closure — [BACKLOG-CLOSURE-001] Markdown backlog disposition
+
+**Status:** ACCEPTED / COMPLETE
+**Priority:** FINAL CLOSURE
+
+Implemented:
+
+- historical Food Diary known-snapshot add/edit/copy/delete/undo under explicit provenance, destination, duplicate, future-date, attestation, retained-goal, stale-command, and atomic rollback rules;
+- optional user-entered carbohydrate/protein/fat/fiber targets with general references retained, complete-coverage comparison, local persistence, and explicit clear;
+- derived recent/frequent food ranking without a persistent index;
+- shared app/widget complete-or-incomplete daily-calorie accessibility semantics;
+- extracted Today external-surface snapshot/synchronization for widget, reminders, and Live Activity.
+
+Permanently rejected from current scope:
+
+- HealthKit, account, or cross-device sync: no permission, identity, backend, conflict, or provenance contract; local/offline privacy remains product boundary;
+- streak/adherence coaching and exercise-calorie credits: no evidence supports engagement pressure or a trustworthy activity source;
+- duplicate dashboard per-meal shortcuts: global Log food plus meal-detail entry already meet task hierarchy;
+- photo recognition, cloud model fallback/full-description upload, LLM nutrition, reminder windows, scanner-only entry, and extra hold-repeat/amount-sheet variants: retained accuracy, privacy, fallback, or interaction evidence rejects them.
+
+These are closed decisions, not deferred proposals. Final gates: 243 hostless executed (241 pass / 2 skips), 351 app-hosted pass / 2 skips, 52/52 UI, build/install/launch, diff check, and 3/3 neutral critical/high approval. Evidence: `screenshots/BACKLOG-CLOSURE-001/`; contracts: `../docs/historical-food-diary-mutation-specification.md` and `../docs/personal-nutrition-targets-specification.md`.
 
 ## Closure — [FINAL-001] Whole-product acceptance
 
@@ -9,13 +33,13 @@ Persistent prioritized backlog. Original redesign closure is complete; entries b
 
 Fourteen final captures, exact +15 kcal default Almond Milk proof, final persistence/nutrition/reminder hardening, 3/3 independent critical/high approval, 222 hostless / 2 skips, 309 app-hosted / 2 skips, and 46/46 functional UI close original redesign. See `FINAL-REPORT.md` and `experiments/FINAL-001.md`.
 
-No unresolved high-priority redesign item remains. COMPETITOR-GAP-001 reassessed category evidence and implemented read-only date-first historical Food Diary detail. Remaining future candidates are historical mutation/copy under a separate contract, optional personal macro targets, and HealthKit/account/cross-device consistency.
+No unresolved redesign item remains. COMPETITOR-GAP-001 supplied initial date-first diary detail; BACKLOG-CLOSURE-001 later implemented contracted mutations and personal targets and rejected HealthKit/account/cross-device consistency from current scope.
 
 ## Post-closure — [COMPETITOR-GAP-001] Historical Food Diary
 
 **Status:** ACCEPTED — ATTEMPT 01 / COMPLETE
 
-Selected Calories points in Progress expose **View Day** into a native read-only diary. Recorded days retain assessed totals, meal ordering, immutable name/calorie/paired g-or-ml amount/portion/time snapshots, and previous/next recorded-day navigation. Invalid legacy calories mark totals incomplete. Historical mutation/copy and mixed metric history remain excluded. Current exact-tree gates: 228 hostless / 2 skips, 315 app-hosted / 2 skips, 47/47 functional UI, and 3/3 independent critical/high approval. Research: `../docs/historical-calorie-diary-assessment.md`; evidence: `screenshots/COMPETITOR-GAP-001/`; experiment: `experiments/COMPETITOR-GAP-001.md`.
+Selected Calories points in Progress expose **View Day** into initial native diary detail. Recorded days retain assessed totals, meal ordering, immutable name/calorie/paired g-or-ml amount/portion/time snapshots, and previous/next recorded-day navigation. Invalid legacy calories mark totals incomplete. BACKLOG-CLOSURE-001 later added contracted known-snapshot mutations; mixed metric history remains rejected. Milestone gates were 228 hostless / 2 skips, 315 app-hosted / 2 skips, 47/47 functional UI, and 3/3 independent critical/high approval. Research: `../docs/historical-calorie-diary-assessment.md`; evidence: `screenshots/COMPETITOR-GAP-001/`; experiment: `experiments/COMPETITOR-GAP-001.md`.
 
 ## Priority 1 — [FOOD-REMOTE-SEARCH-001] Remote food search and query cache
 
@@ -50,7 +74,7 @@ Local seeded/saved foods are finite. A valid food can appear absent even though 
 - Explicit bottom permits an attempt, including fresh terminal state, but obeys the 10/min search budget.
 - Positive TTL is 30d; terminal TTL is 90d.
 
-### Research questions
+### Research questions resolved before implementation
 
 - Which current official Open Food Facts search endpoint/schema is supported alongside v3.6 product lookup?
 - Is another API justified, licensed, and compatible, or should “APIs” mean version/fallback layers of Open Food Facts?
@@ -72,7 +96,7 @@ Use separate Search-a-licious client/protocol from barcode product lookup. Searc
 - Cache measurement covered 64 representative one-page five-hit queries at 65,841 bytes; 2,048 projected to 2,106,912 bytes (about 2.01 MiB). Count cap governs typical data; 32 MiB guards long/multipage outliers.
 - Focused tests: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate is 85 pass / 2 opt-in skips. Timed-out partial search responses are rejected rather than cached as terminal.
 - Manual Xcode flow passed Remote Oat Drink at 250 ml / 100 kcal, dismissed keyboard, increased daily total by exactly 100 kcal after save, and persisted local row without product refetch.
-- UI suite had 2 pass / 2 fail before the final focus fix due to lingering keyboard. Focus fix passed manual review. Later attempts were blocked before XCTest by process-handle failures even after recovery; exact-tree `just test-ui 300` then timed out before XCTest and reset the simulator. UI suite is not green.
+- Historical feature-local UI run had 2 pass / 2 fail before focus fix, then Xcode-host attempts failed before XCTest. Later whole-product exact-tree UI suites passed; this archived infrastructure record is not current missing work.
 
 ### Success criteria
 
@@ -133,7 +157,7 @@ Logging often means nudging a default amount from 100 g/ml to a nearby value. Op
 - Exact TextField remains secondary. Save uses same amount validity. Four controls are `−10`, `−1`, `+1`, `+10`; normal layout uses one row, Accessibility3 uses a 2 × 2 grid. Amount controls do not change servings, and common adjustment flow opens no keyboard.
 - Normal Almond Milk proof: `100 g / 15 kcal` → `−10` → `90 g / 14 kcal` → `+10` → `100 g / 15 kcal`. Remote Oat Drink at `250 ml / 100 kcal` verifies volume labels. Accessibility3 proof reached `90 g / 14 kcal` with serving `1`; menus were readable, total reachable, and no clipping appeared.
 - Accepted evidence: `screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png`, `attempt-01-adjusted.png`, `attempt-01-milliliters.png`, and `attempt-01-accessibility3.png`.
-- Focused amount tests: 5 pass. Aggregate: 90 pass / 2 opt-in skips; `just check` passed. A diagnostic UI test was added, but final attempts were blocked before XCTest because Application launch did not return a process handle after one recover. `just simulator-run` passed; UI suite is not green.
+- Focused amount tests: 5 pass. Aggregate at this milestone: 90 pass / 2 opt-in skips; `just check` passed. Feature-local UI hosting was blocked before XCTest, but later whole-product exact-tree UI suites passed this diagnostic flow; no amount-editor test remains red.
 
 ### Success criteria
 
@@ -149,7 +173,7 @@ Logging often means nudging a default amount from 100 g/ml to a nearby value. Op
 
 ### Evidence and result log
 
-- 2026-08-08: Backlog created from direct user feedback. Competitive pattern research pending.
+- 2026-08-08: Backlog created from direct user feedback; competitive pattern research was pending at creation and resolved before implementation later that day.
 - 2026-08-08: Research completed; A approved for first prototype with B as inline-review fallback. Unit, VoiceOver, Dynamic Type, deterministic test, and MCP-to-UI promotion plan recorded in `docs/amount-entry-pattern-assessment.md`.
 - 2026-08-08: Prototype A implemented and accepted in attempt 01. Focused amount tests passed 5/5; final UI attempts remained blocked before XCTest by process-handle failure after one recover, while `just simulator-run` passed.
 
@@ -187,7 +211,7 @@ Today | Weight | Progress | Settings
 3. Weight shows current/recent-seven-reading/target summary, compact raw-seven-reading native line + points with target rule, grouped newest-first measurements, toolbar add, row edit/backdate, multiple same-day entries, delete confirmation, and stacked undo. One reading shows a useful prompt; explicit endpoint dates appear only with at least two readings. `View full trends` selects `Progress` / `Weight`.
 4. Progress owns fuller fourteen-reading analytics and interpretation. Progress has no weight create/edit/delete controls.
 5. Settings retains target weight, age, calorie goal, target date, and reminders; it has no current-weight field or save path.
-6. No calorie CRUD is added. Date-first meal-grouped diary detail remains a separate scope from generic mixed Calories/Water/Weight history and was later implemented read-only in COMPETITOR-GAP-001.
+6. No calorie CRUD was added in this milestone. Date-first meal-grouped diary detail remained separate from generic mixed history, then gained initial detail in COMPETITOR-GAP-001 and contracted mutations in BACKLOG-CLOSURE-001.
 
 Full decision, evidence labels, exact source URLs, and access date: `docs/tracking-navigation-assessment.md` (all external sources accessed 2026-08-08).
 
@@ -204,14 +228,14 @@ Full decision, evidence labels, exact source URLs, and access date: `docs/tracki
 - Delete requires explicit confirmation and stacked undo; accidental swipe cannot silently destroy data.
 - Weight has no generic journal or calorie controls; its `View full trends` handoff selects Progress / Weight.
 - Settings retains target weight, age, daily calorie goal, target date, and reminders; removes current-weight recording field and save path.
-- Do not add historical calorie CRUD in this milestone. `PlateEntry` snapshot integrity and preview aggregate behavior require a separate future day-diary design.
+- Historical calorie CRUD was excluded from this milestone. Separate day-diary and mutation contracts later resolved `PlateEntry` snapshot integrity and legacy aggregate behavior.
 - Do not create generic mixed history table. Keep food history date/meal semantics separate from weight measurement semantics.
 - Preserve native accessibility: Dynamic Type, VoiceOver date/time/value labels and actions, localized formatting, dark mode, 44-point targets, and non-color-only meaning.
 
 ### Rejected options
 
 - **Initial three-tab drill-down: `Today | Progress | Settings`:** superseded by explicit discoverability feedback and dedicated-weight precedent. Initial nutrition evidence remains relevant but no longer controls root order.
-- **`Today | Log | Trends | Settings` with generic journal:** Log duplicates Today for current-day food work and creates one table with incompatible row density, aggregation, editing, and deletion rules. Calories history must become a separate day diary later, never this journal.
+- **`Today | Log | Trends | Settings` with generic journal:** Log duplicates Today for current-day food work and creates one table with incompatible row density, aggregation, editing, and deletion rules. Calories history became a separate day diary; generic journal remains rejected.
 
 ### Tests / success criteria
 
@@ -254,9 +278,9 @@ Acceptance gates are closed. TRACKING-IA-001 is accepted and complete.
 - 2026-08-08: App-hosted persistence tests passed after duplicate-profile/future-row correctness fixes and again in an integrated run. One later standalone `just test-app-unit 300` timed out before XCTest; this is external Xcode 27 host instability, not a red product gate.
 - 2026-08-08: TRACKING-IA-001 marked **ACCEPTED — ATTEMPT 01 / COMPLETE**.
 
-### Next component
+### Historical sequencing
 
-`empty/error/loading states`, followed by global consistency, dark mode, Dynamic Type, and small-device checks.
+This milestone was followed by completed STATES-001, consistency, dark mode, Dynamic Type, small-device, and final closure work. No next component remains.
 
 ---
 
@@ -276,7 +300,7 @@ Weight check-ins are repeated, low-complexity actions. Re-entering the previous 
 2. New weight defaults to the chronologically latest valid recorded measurement, not profile setup weight. Fall back to valid profile current weight, then 70 kg only when no measurement exists.
 3. Provide direct `−1`, `−0.1`, `+0.1`, and `+1` kg controls. Update the field immediately, preserve one-decimal precision, prevent nonpositive/nonfinite values, and keep exact keyboard entry available.
 4. Keep date and time editable in the same editor; do not add a second confirmation screen or silently record from one tap.
-5. Every app-owned numeric pad/decimal pad exposes a trailing keyboard **Done** action that only dismisses the keyboard. This includes weight, meal amount/servings, manual barcode, custom calories/serving/nutrients, Plan target weight, and future numeric setup fields.
+5. Every app-owned numeric pad/decimal pad exposes a trailing keyboard **Done** action that only dismisses the keyboard. This includes weight, meal amount/servings, manual barcode, custom calories/serving/nutrients, Plan target weight, and subsequent calculated/target setup fields.
 6. Use Apple’s native `ToolbarItemGroup(placement: .keyboard)` plus focus state. Keep modal Save/Cancel semantically separate from keyboard Done.
 7. Adjustment controls and keyboard Done remain VoiceOver-labeled, localized, dark-mode compatible, and at least 44 points where app-owned hit regions apply.
 8. Add deterministic default/adjustment tests, focused UI proof for keyboard dismissal and value changes, normal/dark/large-text screenshots, and exact-tree validation.
@@ -400,7 +424,7 @@ A calorie goal alone does not explain what a broadly balanced adult macro compos
 6. Keep food-label calories authoritative and separate from 4/4/9-derived macro energy; explain why the values may not reconcile exactly.
 7. Recalculate theoretical ranges when the calorie goal changes. Do not silently alter logged foods, calorie goals, or user choices.
 8. Label guidance as general adult population information, not medical advice or a personal prescription. Preserve explicit exclusions for children, pregnancy/lactation, clinical diets, and other individualized needs.
-9. During REFINE-001 research, decide whether users may optionally set personal macro targets while retaining transparent reference defaults and a restore action.
+9. Optional user-entered personal macro/fiber targets must retain transparent reference defaults and explicit **Use General References** reset; implemented in BACKLOG-CLOSURE-001.
 10. Cover formulas, rounding, finite/boundary calorie goals, unit presentation, missing coverage, VoiceOver, Dynamic Type, and dark mode with deterministic tests and screenshots.
 
 ### Success criteria
@@ -410,9 +434,9 @@ A calorie goal alone does not explain what a broadly balanced adult macro compos
 - Every displayed comparison exposes its basis and coverage.
 - No missing nutrient is inferred and no general reference is presented as universally optimal.
 
-### Scheduling decision
+### Scheduling result
 
-NUTRIENTS-001 is accepted and now supplies trustworthy persisted actuals, coverage, and measured daily comparison. Goal-integrated theoretical values proceed with REFINE-001’s explainable Plan/calorie-goal work.
+NUTRIENTS-001 supplied trustworthy actuals; REFINE-001 completed goal-integrated theoretical values; BACKLOG-CLOSURE-001 completed optional personal targets. No nutrition-goal item remains scheduled.
 
 ---
 

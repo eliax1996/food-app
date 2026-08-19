@@ -106,6 +106,7 @@ nonisolated struct DailyNutritionSummary: Equatable, Sendable {
     let macroSplit: MacroEnergySplit?
     let macroEnergyShare: MacroEnergyShare?
     let fiberReferenceGrams: Double?
+    let personalTargets: PersonalNutritionTargets?
     let guidance: [MacroGuidance]
 
     var hasEntries: Bool { entryCount > 0 }
@@ -128,7 +129,8 @@ nonisolated enum DailyNutrition {
 
     static func summary(
         records: [LoggedNutrition],
-        calorieGoal: Int
+        calorieGoal: Int,
+        personalTargets: PersonalNutritionTargets? = nil
     ) -> DailyNutritionSummary {
         var carbohydrateTotal: Double?
         var proteinTotal: Double?
@@ -195,6 +197,7 @@ nonisolated enum DailyNutrition {
             macroSplit: split,
             macroEnergyShare: energyShare,
             fiberReferenceGrams: calorieGoal > 0 ? 14 * Double(calorieGoal) / 1_000 : nil,
+            personalTargets: personalTargets,
             guidance: energyShare.map(guidance(for:)) ?? []
         )
     }
