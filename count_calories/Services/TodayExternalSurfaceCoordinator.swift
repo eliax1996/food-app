@@ -14,6 +14,28 @@ struct TodayExternalSurfaceSnapshot: Equatable {
     let weightReminderRecords: [WeightReminderRecord]
 }
 
+nonisolated enum TodayExternalSurfaceOutcome: Equatable, Sendable {
+    case success
+    case partial(String)
+    case cancelled
+
+    static func resolve(
+        widgetSaved: Bool,
+        reminderResult: ReminderSchedulingResult,
+        liveActivityResult: CaloriesLiveActivityManager.SynchronizationResult
+    ) -> Self {
+        guard liveActivityResult == .success else { return .cancelled }
+        switch reminderResult {
+        case .superseded:
+            return .cancelled
+        case .failed:
+            return .partial(widgetSaved ? "reminders" : "widget_and_reminders")
+        case .scheduled, .disabled, .authorizationUnavailable:
+            return widgetSaved ? .success : .partial("widget")
+        }
+    }
+}
+
 @MainActor
 enum TodayExternalSurfaceCoordinator {
     static func snapshot(
@@ -56,9 +78,14 @@ enum TodayExternalSurfaceCoordinator {
         waterGoal: Int = 8,
         preservePendingWidgetWater: Bool = true
     ) -> Task<Void, Never>? {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         guard !ProcessInfo.processInfo.arguments.contains("-design-review") else { return nil }
 #endif
+        let operation = AppLogger.begin(
+            "external_surfaces.synchronize",
+            category: .integrations,
+            source: "app"
+        )
         do {
             let readContext = ModelContext(modelContext.container)
             let value = snapshot(
@@ -70,34 +97,51 @@ enum TodayExternalSurfaceCoordinator {
                 waterGoal: waterGoal
             )
 
-            WidgetDailySummaryStore.save(
+            let widgetSaved = WidgetDailySummaryStore.save(
                 calories: value.calories,
                 caloriesAreComplete: value.caloriesAreComplete,
                 waterGlasses: value.waterGlasses,
                 lastWaterRecordedAt: value.lastWaterRecordedAt,
                 calorieGoal: value.calorieGoal,
                 waterGoal: value.waterGoal,
-                preservePendingWidgetWater: preservePendingWidgetWater
+                preservePendingWidgetWater: preservePendingWidgetWater,
+                parentOperationID: operation.id
             )
 
-            ReminderNotificationManager.shared.enqueueReschedule(
+            let reminderSynchronization = ReminderNotificationManager.shared.enqueueReschedule(
                 meals: value.mealReminderRecords,
                 water: value.waterReminderRecords,
                 weights: value.weightReminderRecords,
-                preferences: .stored()
+                preferences: .stored(),
+                parentOperationID: operation.id
             )
 
-            return CaloriesLiveActivityManager.synchronize(
+            let activitySynchronization = CaloriesLiveActivityManager.synchronize(
                 calories: value.calories,
                 caloriesAreComplete: value.caloriesAreComplete,
                 waterGlasses: value.waterGlasses,
                 calorieGoal: value.calorieGoal,
-                waterGoal: value.waterGoal
+                waterGoal: value.waterGoal,
+                parentOperationID: operation.id
             )
+            return Task { @MainActor in
+                let reminderResult = await reminderSynchronization.value
+                let liveActivityResult = await activitySynchronization.value
+                switch TodayExternalSurfaceOutcome.resolve(
+                    widgetSaved: widgetSaved,
+                    reminderResult: reminderResult,
+                    liveActivityResult: liveActivityResult
+                ) {
+                case .success:
+                    AppLogger.succeed(operation, count: 3)
+                case .partial(let component):
+                    AppLogger.partial(operation, failedComponent: component)
+                case .cancelled:
+                    AppLogger.cancel(operation, reason: "superseded")
+                }
+            }
         } catch {
-            AppLogger.persistence.error(
-                "Failed to synchronize Today external surfaces: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error)
             return nil
         }
     }

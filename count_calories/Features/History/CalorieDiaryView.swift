@@ -195,13 +195,17 @@ struct CalorieDiaryView: View {
         }
         .task {
             selectedDate = calendar.startOfDay(for: selectedDate)
+            let operation = AppLogger.begin(
+                "food_diary.refresh_staleness",
+                category: .persistence,
+                source: "food_diary"
+            )
             do {
                 mutationCoordinator?.synchronizeCalendar(calendar)
-                _ = try mutationCoordinator?.refreshFoodLogStaleness()
+                let count = try mutationCoordinator?.refreshFoodLogStaleness() ?? 0
+                AppLogger.succeed(operation, count: count)
             } catch {
-                AppLogger.persistence.error(
-                    "Failed to refresh Food Diary attestation state: \(error.localizedDescription, privacy: .public)"
-                )
+                AppLogger.fail(operation, error: error, rollback: "succeeded")
             }
         }
         .onChange(of: days.map(\.date)) { _, availableDates in
@@ -354,6 +358,11 @@ struct CalorieDiaryView: View {
 
     private func undoDeletion() {
         guard let deletedSnapshot else { return }
+        let operation = AppLogger.begin(
+            "food_diary.restore",
+            category: .userAction,
+            source: "food_diary"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -363,11 +372,10 @@ struct CalorieDiaryView: View {
             self.deletedSnapshot = nil
             selectedDate = calendar.startOfDay(for: deletedSnapshot.date)
             synchronizeAfterMutation()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to undo Food Diary deletion: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Deleted food could not be restored. Please try again."
         }
     }
@@ -547,6 +555,11 @@ private struct CalorieDiaryEntryDetailView: View {
 
     private func undoCopy() {
         guard let copiedSnapshot else { return }
+        let operation = AppLogger.begin(
+            "food_diary.copy_undo",
+            category: .userAction,
+            source: "food_diary"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -558,16 +571,20 @@ private struct CalorieDiaryEntryDetailView: View {
             )
             self.copiedSnapshot = nil
             onMutation()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to undo historical food copy: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Copied food could not be removed. Please try again."
         }
     }
 
     private func deleteEntry() {
+        let operation = AppLogger.begin(
+            "food_diary.delete",
+            category: .userAction,
+            source: "food_diary"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -579,11 +596,10 @@ private struct CalorieDiaryEntryDetailView: View {
             )
             onDelete(snapshot)
             dismiss()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to delete historical food: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "This historical food could not be deleted. Please try again."
         }
     }
@@ -712,6 +728,11 @@ private struct HistoricalFoodAddView: View {
     }
 
     private func save(allowDuplicate: Bool) {
+        let operation = AppLogger.begin(
+            "food_diary.add",
+            category: .userAction,
+            source: "food_diary"
+        )
         do {
             guard let mutationCoordinator, let selectedFood else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -727,13 +748,13 @@ private struct HistoricalFoodAddView: View {
             )
             onSaved(snapshot)
             dismiss()
+            AppLogger.succeed(operation)
         } catch PlanEvidenceMutationError.duplicateHistoricalEntry {
+            AppLogger.noop(operation, reason: "duplicate_confirmation_required")
             confirmingDuplicate = true
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to add historical food: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = historicalMutationErrorMessage(error)
         }
     }
@@ -831,6 +852,11 @@ struct HistoricalFoodEditView: View {
     }
 
     private func save() {
+        let operation = AppLogger.begin(
+            "food_diary.edit",
+            category: .userAction,
+            source: "food_diary"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -846,11 +872,10 @@ struct HistoricalFoodEditView: View {
             )
             onSaved(snapshot)
             dismiss()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to edit historical food: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = historicalMutationErrorMessage(error)
         }
     }
@@ -935,6 +960,11 @@ private struct HistoricalFoodCopyView: View {
     }
 
     private func copy(allowDuplicate: Bool) {
+        let operation = AppLogger.begin(
+            "food_diary.copy",
+            category: .userAction,
+            source: "food_diary"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -949,13 +979,13 @@ private struct HistoricalFoodCopyView: View {
             )
             onCopied(snapshot)
             dismiss()
+            AppLogger.succeed(operation)
         } catch PlanEvidenceMutationError.duplicateHistoricalEntry {
+            AppLogger.noop(operation, reason: "duplicate_confirmation_required")
             confirmingDuplicate = true
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to copy historical food: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = historicalMutationErrorMessage(error)
         }
     }
@@ -1150,7 +1180,7 @@ private func historicalMutationErrorMessage(_ error: Error) -> String {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Historical food diary") {
     let container = PreviewData.makeContainer(state: .normal)
     let entries = try! container.mainContext.fetch(FetchDescriptor<PlateEntry>())

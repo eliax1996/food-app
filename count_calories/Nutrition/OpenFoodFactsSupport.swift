@@ -17,6 +17,11 @@ struct OpenFoodFactsHTTPClient: Sendable {
     }
 
     func data(from url: URL, barcodeLength: Int) async throws -> Data? {
+        let operationID = UUID().uuidString
+        let parentID = NutritionOperationContext.parentIDText
+        Self.logger.info(
+            "event=operation_start operation=nutrition.product_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts barcode_length=\(barcodeLength, privacy: .public)"
+        )
         var request = configuredRequest(url: url)
         request.timeoutInterval = timeout
 
@@ -26,27 +31,41 @@ struct OpenFoodFactsHTTPClient: Sendable {
             (data, response) = try await session.data(for: request)
         } catch {
             Self.logger.error(
-                "Food lookup transport failed for barcode length \(barcodeLength, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                "event=operation_failure operation=nutrition.product_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts barcode_length=\(barcodeLength, privacy: .public) error_category=\(Self.transportErrorCategory(error), privacy: .public)"
             )
             throw error
         }
 
         guard let httpResponse = response as? HTTPURLResponse else {
+            Self.logger.error(
+                "event=operation_failure operation=nutrition.product_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts error_category=invalid_response"
+            )
             throw FoodNutritionFetchError.invalidResponse
         }
         if httpResponse.statusCode == 404 {
+            Self.logger.info(
+                "event=operation_noop operation=nutrition.product_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts outcome=not_found http_status=404"
+            )
             return nil
         }
         guard (200...299).contains(httpResponse.statusCode) else {
             Self.logger.error(
-                "Food lookup failed with HTTP status \(httpResponse.statusCode, privacy: .public)"
+                "event=operation_failure operation=nutrition.product_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts error_category=http http_status=\(httpResponse.statusCode, privacy: .public)"
             )
             throw FoodNutritionFetchError.serverError(httpResponse.statusCode)
         }
+        Self.logger.info(
+            "event=operation_success operation=nutrition.product_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts byte_count=\(data.count, privacy: .public)"
+        )
         return data
     }
 
     func searchData(from url: URL, queryLength: Int, page: Int) async throws -> Data {
+        let operationID = UUID().uuidString
+        let parentID = NutritionOperationContext.parentIDText
+        Self.logger.info(
+            "event=operation_start operation=nutrition.search_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts query_length=\(queryLength, privacy: .public) page=\(page, privacy: .public)"
+        )
         let request = configuredRequest(url: url)
 
         let data: Data
@@ -55,21 +74,42 @@ struct OpenFoodFactsHTTPClient: Sendable {
             (data, response) = try await session.data(for: request)
         } catch {
             Self.logger.error(
-                "Food search transport failed query length \(queryLength, privacy: .public) page \(page, privacy: .public)"
+                "event=operation_failure operation=nutrition.search_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts query_length=\(queryLength, privacy: .public) page=\(page, privacy: .public) error_category=\(Self.transportErrorCategory(error), privacy: .public)"
             )
             throw error
         }
 
         guard let httpResponse = response as? HTTPURLResponse else {
+            Self.logger.error(
+                "event=operation_failure operation=nutrition.search_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts error_category=invalid_response"
+            )
             throw FoodSearchError.invalidResponse
         }
-        Self.logger.info(
-            "Food search response query length \(queryLength, privacy: .public) page \(page, privacy: .public) status \(httpResponse.statusCode, privacy: .public)"
-        )
         guard (200...299).contains(httpResponse.statusCode) else {
+            Self.logger.error(
+                "event=operation_failure operation=nutrition.search_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts query_length=\(queryLength, privacy: .public) page=\(page, privacy: .public) error_category=http http_status=\(httpResponse.statusCode, privacy: .public)"
+            )
             throw FoodSearchError.serverError(httpResponse.statusCode)
         }
+        Self.logger.info(
+            "event=operation_success operation=nutrition.search_request operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=open_food_facts query_length=\(queryLength, privacy: .public) page=\(page, privacy: .public) http_status=\(httpResponse.statusCode, privacy: .public) byte_count=\(data.count, privacy: .public)"
+        )
         return data
+    }
+
+    private static func transportErrorCategory(_ error: Error) -> String {
+        guard let urlError = error as? URLError else { return "transport" }
+        switch urlError.code {
+        case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost,
+             .cannotFindHost, .dnsLookupFailed:
+            return "offline"
+        case .timedOut:
+            return "timeout"
+        case .cancelled:
+            return "cancelled"
+        default:
+            return "transport"
+        }
     }
 
     private func configuredRequest(url: URL) -> URLRequest {

@@ -21,6 +21,11 @@ final class AppPersistence: ObservableObject {
     }
 
     func retry() {
+        let operation = AppLogger.begin(
+            "persistent_store.open",
+            category: .persistence,
+            source: "app"
+        )
         do {
             let container = try makeContainer()
             ready = Ready(
@@ -28,12 +33,11 @@ final class AppPersistence: ObservableObject {
                 mutationCoordinator: PlanEvidenceMutationCoordinator(modelContainer: container)
             )
             hasError = false
+            AppLogger.succeed(operation)
         } catch {
             ready = nil
             hasError = true
-            AppLogger.persistence.error(
-                "Failed to open persistent store: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error)
         }
     }
 }
@@ -47,9 +51,19 @@ struct CountCaloriesApp: App {
     init() {
         let arguments = ProcessInfo.processInfo.arguments
         self.arguments = arguments
-#if DEBUG
-        let usesInMemoryStore = arguments.contains("-ui-testing") || arguments.contains("-design-review")
+#if DEBUG || RELEASE_VALIDATION
+        let persistentUITestSession: String? = {
+            guard arguments.contains("-ui-testing-persistent"),
+                  let marker = arguments.firstIndex(of: "-ui-test-session"),
+                  arguments.indices.contains(marker + 1)
+            else { return nil }
+            let value = arguments[marker + 1]
+            return value.isEmpty ? nil : value
+        }()
+        let usesInMemoryStore = (arguments.contains("-ui-testing") && persistentUITestSession == nil)
+            || arguments.contains("-design-review")
 #else
+        let persistentUITestSession: String? = nil
         let usesInMemoryStore = false
 #endif
         let schema = Schema([
@@ -64,10 +78,29 @@ struct CountCaloriesApp: App {
             HistoricalPlateDeletionOperation.self
         ])
         _persistence = StateObject(wrappedValue: AppPersistence {
-            let configuration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: usesInMemoryStore
-            )
+            let configuration: ModelConfiguration
+            if let persistentUITestSession {
+                let directory = FileManager.default.temporaryDirectory
+                    .appending(path: "CountCaloriesUITestingStores", directoryHint: .isDirectory)
+                try FileManager.default.createDirectory(
+                    at: directory,
+                    withIntermediateDirectories: true
+                )
+                let safeSession = persistentUITestSession.filter {
+                    $0.isLetter || $0.isNumber || $0 == "-"
+                }
+                guard !safeSession.isEmpty else { throw CocoaError(.fileWriteInvalidFileName) }
+                configuration = ModelConfiguration(
+                    "UITesting-\(safeSession)",
+                    schema: schema,
+                    url: directory.appending(path: "\(safeSession).store")
+                )
+            } else {
+                configuration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: usesInMemoryStore
+                )
+            }
             return try ModelContainer(for: schema, configurations: [configuration])
         })
     }
@@ -76,7 +109,7 @@ struct CountCaloriesApp: App {
         WindowGroup {
             if let ready = persistence.ready {
                 Group {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
                     if arguments.contains("-ui-testing") {
                         UITestingRoot()
                     } else if arguments.contains("-design-review") {
@@ -108,7 +141,7 @@ struct CountCaloriesApp: App {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 private struct UITestingRoot: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.planEvidenceMutationCoordinator) private var mutationCoordinator
@@ -166,13 +199,20 @@ private struct UITestingRoot: View {
                                 throw PlanEvidenceMutationError.coordinatorUnavailable
                             }
                             let fixtureContext = mutationCoordinator.testingModelContext
-                            try await resetStore(in: fixtureContext)
-                            let seededFixture = try seedAdaptiveFixtureIfRequested(
-                                in: fixtureContext,
-                                coordinator: mutationCoordinator
+                            let preservesPersistentFixture = ProcessInfo.processInfo.arguments.contains(
+                                "-ui-testing-persistent"
+                            ) && !ProcessInfo.processInfo.arguments.contains(
+                                "-ui-testing-reset"
                             )
-                            if !seededFixture {
-                                try seedDefaultProfileIfNeeded(in: fixtureContext)
+                            if !preservesPersistentFixture {
+                                try await resetStore(in: fixtureContext)
+                                let seededFixture = try seedAdaptiveFixtureIfRequested(
+                                    in: fixtureContext,
+                                    coordinator: mutationCoordinator
+                                )
+                                if !seededFixture {
+                                    try seedDefaultProfileIfNeeded(in: fixtureContext)
+                                }
                             }
                             let contentContext = ModelContext(modelContext.container)
                             if ProcessInfo.processInfo.arguments.contains("-ui-testing-adaptive-applied") {
@@ -339,6 +379,17 @@ private struct UITestingRoot: View {
         }
 
         ReminderPreferences().store()
+        _ = WidgetDailySummaryStore.save(
+            calories: 0,
+            waterGlasses: 0,
+            calorieGoal: 1_700,
+            waterGoal: 8,
+            reloadWidget: false,
+            preservePendingWidgetWater: false
+        )
+        if let summary = WidgetDailySummaryStore.load() {
+            _ = WidgetDailySummaryStore.acknowledgeWaterRevision(summary.resolvedRevision)
+        }
         CaloriePlanSetupStore.save(CaloriePlanSetupRecord(
             status: .skipped,
             draft: CaloriePlanSetupDraft()

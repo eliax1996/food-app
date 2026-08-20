@@ -75,6 +75,25 @@ final class CaloriePlanSetupStoreTests: XCTestCase {
         )
     }
 
+    func testSaveReportsEncodingFailureWithoutOverwritingStoredRecord() {
+        let valid = CaloriePlanSetupRecord(
+            status: .inProgress,
+            draft: CaloriePlanSetupDraft()
+        )
+        XCTAssertTrue(CaloriePlanSetupStore.save(valid, defaults: defaults))
+
+        var invalidDraft = valid.draft
+        invalidDraft.currentWeightKilograms = .nan
+        XCTAssertFalse(CaloriePlanSetupStore.save(
+            CaloriePlanSetupRecord(status: .inProgress, draft: invalidDraft),
+            defaults: defaults
+        ))
+        XCTAssertEqual(
+            CaloriePlanSetupStore.load(profileExists: true, defaults: defaults),
+            valid
+        )
+    }
+
     func testCorruptRecordFallsBackWithoutInventingCalculatedState() {
         defaults.set(Data("not-json".utf8), forKey: CaloriePlanSetupStore.storageKey)
 

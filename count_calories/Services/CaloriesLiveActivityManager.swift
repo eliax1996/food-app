@@ -4,8 +4,13 @@ import os
 
 @MainActor
 enum CaloriesLiveActivityManager {
+    nonisolated enum SynchronizationResult: Equatable, Sendable {
+        case success
+        case superseded
+    }
+
     private static var synchronizationGeneration = 0
-    private static var synchronizationTask: Task<Void, Never>?
+    private static var synchronizationTask: Task<SynchronizationResult, Never>?
 
     enum StartResult: Equatable {
         case started
@@ -24,8 +29,19 @@ enum CaloriesLiveActivityManager {
         calorieGoal: Int,
         waterGoal: Int
     ) -> StartResult {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return .unavailable }
-        guard !isActive else { return .alreadyActive }
+        let operation = AppLogger.begin(
+            "live_activity.start",
+            category: .integrations,
+            source: "today"
+        )
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            AppLogger.noop(operation, reason: "authorization_unavailable")
+            return .unavailable
+        }
+        guard !isActive else {
+            AppLogger.noop(operation, reason: "already_active")
+            return .alreadyActive
+        }
 
         let state = contentState(
             calories: calories,
@@ -45,21 +61,11 @@ enum CaloriesLiveActivityManager {
                 content: content,
                 pushType: nil
             )
+            AppLogger.succeed(operation, count: 1)
             return .started
         } catch {
-            Logger(subsystem: "ch.elia.count-calories", category: "LiveActivity")
-                .error("Could not start Live Activity: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error)
             return .failed
-        }
-    }
-
-    static func refreshCalorieGoalIfActive(_ calorieGoal: Int) async {
-        let activities = Activity<CaloriesActivityAttributes>.activities
-        guard !activities.isEmpty else { return }
-        for activity in activities {
-            var state = activity.content.state
-            state.calorieGoal = max(1, calorieGoal)
-            await activity.update(activityContent(state: state))
         }
     }
 
@@ -69,14 +75,24 @@ enum CaloriesLiveActivityManager {
         caloriesAreComplete: Bool,
         waterGlasses: Int,
         calorieGoal: Int,
-        waterGoal: Int
-    ) -> Task<Void, Never> {
+        waterGoal: Int,
+        parentOperationID: UUID? = nil
+    ) -> Task<SynchronizationResult, Never> {
         synchronizationGeneration += 1
         let generation = synchronizationGeneration
         let predecessor = synchronizationTask
-        let operation = Task { @MainActor in
+        let logOperation = AppLogger.begin(
+            "live_activity.synchronize",
+            category: .integrations,
+            source: "today",
+            parentID: parentOperationID
+        )
+        let operation = Task<SynchronizationResult, Never> { @MainActor in
             _ = await predecessor?.value
-            guard generation == synchronizationGeneration else { return }
+            guard generation == synchronizationGeneration else {
+                AppLogger.cancel(logOperation, reason: "superseded")
+                return .superseded
+            }
             if caloriesAreComplete {
                 await updateIfActive(
                     calories: calories,
@@ -85,11 +101,19 @@ enum CaloriesLiveActivityManager {
                     waterGoal: waterGoal
                 )
             } else {
-                await stop()
+                await stop(
+                    source: "incomplete_calories",
+                    parentOperationID: logOperation.id
+                )
             }
+            AppLogger.succeed(
+                logOperation,
+                count: Activity<CaloriesActivityAttributes>.activities.count
+            )
             if generation == synchronizationGeneration {
                 synchronizationTask = nil
             }
+            return .success
         }
         synchronizationTask = operation
         return operation
@@ -117,11 +141,25 @@ enum CaloriesLiveActivityManager {
         }
     }
 
-    static func stop() async {
+    static func stop(
+        source: String = "today",
+        parentOperationID: UUID? = nil
+    ) async {
+        let operation = AppLogger.begin(
+            "live_activity.stop",
+            category: .integrations,
+            source: source,
+            parentID: parentOperationID
+        )
         let activities = Activity<CaloriesActivityAttributes>.activities
+        guard !activities.isEmpty else {
+            AppLogger.noop(operation, reason: "not_active")
+            return
+        }
         for activity in activities {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
+        AppLogger.succeed(operation, count: activities.count)
     }
 
     private static func contentState(

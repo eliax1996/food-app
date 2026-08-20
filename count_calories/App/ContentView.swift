@@ -103,7 +103,7 @@ private enum AppTab: Hashable {
     case config
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Complete app") {
     ContentView()
         .previewPlanEvidenceContainer(PreviewData.makeContainer())

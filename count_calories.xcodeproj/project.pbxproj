@@ -10,6 +10,8 @@
 		00000000000000AA00000001 /* count_caloriesWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 00000000000000AA00000020 /* count_caloriesWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		00000000000000AA00000081 /* CaloriesActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000AA00000080 /* CaloriesActivityAttributes.swift */; };
 		00000000000000AA00000082 /* CaloriesActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000AA00000080 /* CaloriesActivityAttributes.swift */; };
+		00000000000000AA00000084 /* Shared/WidgetDailySummaryCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000AA00000083 /* Shared/WidgetDailySummaryCore.swift */; };
+		00000000000000AA00000085 /* Shared/WidgetDailySummaryCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000AA00000083 /* Shared/WidgetDailySummaryCore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +54,7 @@
 		000000000000000000000120 /* count_calories.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = count_calories.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		00000000000000AA00000020 /* count_caloriesWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = count_caloriesWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		00000000000000AA00000080 /* CaloriesActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaloriesActivityAttributes.swift; sourceTree = "<group>"; };
+		00000000000000AA00000083 /* Shared/WidgetDailySummaryCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/WidgetDailySummaryCore.swift; sourceTree = "<group>"; };
 		00000000000000BB00000001 /* count_caloriesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = count_caloriesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4546D3CF301E0DDE007397E1 /* count_caloriesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = count_caloriesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -107,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				00000000000000AA00000080 /* CaloriesActivityAttributes.swift */,
+				00000000000000AA00000083 /* Shared/WidgetDailySummaryCore.swift */,
 				000000000000000000000010 /* count_calories */,
 				00000000000000AA00000010 /* count_caloriesWidget */,
 				00000000000000BB00000002 /* count_caloriesTests */,
@@ -283,12 +287,14 @@
 			isa = PBXSourcesBuildPhase;
 			files = (
 				00000000000000AA00000081 /* CaloriesActivityAttributes.swift in Sources */,
+				00000000000000AA00000084 /* Shared/WidgetDailySummaryCore.swift in Sources */,
 			);
 		};
 		00000000000000AA00000031 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
 				00000000000000AA00000082 /* CaloriesActivityAttributes.swift in Sources */,
+				00000000000000AA00000085 /* Shared/WidgetDailySummaryCore.swift in Sources */,
 			);
 		};
 		00000000000000BB00000004 /* Sources */ = {
@@ -641,7 +647,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9SFF5NYD5Y;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "it.eliax1996.count-caloriesUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -663,7 +669,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9SFF5NYD5Y;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "it.eliax1996.count-caloriesUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -59,6 +59,57 @@ final class TodayExternalSurfaceCoordinatorTests: XCTestCase {
         XCTAssertEqual(snapshot.weightReminderRecords.count, 1)
     }
 
+    func testCompositeOutcomeWaitsForEveryChildTerminalAndReportsPartialFailures() {
+        XCTAssertEqual(
+            TodayExternalSurfaceOutcome.resolve(
+                widgetSaved: true,
+                reminderResult: .scheduled(4),
+                liveActivityResult: .success
+            ),
+            .success
+        )
+        XCTAssertEqual(
+            TodayExternalSurfaceOutcome.resolve(
+                widgetSaved: false,
+                reminderResult: .scheduled(4),
+                liveActivityResult: .success
+            ),
+            .partial("widget")
+        )
+        XCTAssertEqual(
+            TodayExternalSurfaceOutcome.resolve(
+                widgetSaved: true,
+                reminderResult: .failed,
+                liveActivityResult: .success
+            ),
+            .partial("reminders")
+        )
+        XCTAssertEqual(
+            TodayExternalSurfaceOutcome.resolve(
+                widgetSaved: false,
+                reminderResult: .failed,
+                liveActivityResult: .success
+            ),
+            .partial("widget_and_reminders")
+        )
+        XCTAssertEqual(
+            TodayExternalSurfaceOutcome.resolve(
+                widgetSaved: true,
+                reminderResult: .superseded,
+                liveActivityResult: .success
+            ),
+            .cancelled
+        )
+        XCTAssertEqual(
+            TodayExternalSurfaceOutcome.resolve(
+                widgetSaved: true,
+                reminderResult: .scheduled(4),
+                liveActivityResult: .superseded
+            ),
+            .cancelled
+        )
+    }
+
     func testSnapshotUsesSafeEmptyDefaults() {
         let snapshot = TodayExternalSurfaceCoordinator.snapshot(
             entries: [],

@@ -45,8 +45,6 @@ enum BarcodeScannerIssue: Equatable {
 }
 
 struct BarcodeScannerView: View {
-    fileprivate static let logger = Logger(subsystem: "ch.elia.count-calories", category: "barcode.scanner")
-
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @Binding var isPresented: Bool
@@ -73,7 +71,9 @@ struct BarcodeScannerView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let issue {
+                if let debugBarcode = Self.debugBarcode {
+                    fixtureScannerView(barcode: debugBarcode)
+                } else if let issue {
                     issueView(for: issue)
                 } else if shouldStartScanner {
                     DataScannerRepresentable(
@@ -120,6 +120,22 @@ struct BarcodeScannerView: View {
                   Self.debugIssue == nil
             else { return }
             startScanner()
+        }
+    }
+
+    private func fixtureScannerView(barcode: String) -> some View {
+        ContentUnavailableView {
+            Label("Test barcode ready", systemImage: "barcode.viewfinder")
+        } description: {
+            Text("Use deterministic scanner input.")
+        } actions: {
+            Button("Scan fixture barcode") {
+                onScan(barcode)
+                isPresented = false
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("barcode-scanner-fixture-scan")
         }
     }
 
@@ -202,6 +218,9 @@ struct BarcodeScannerView: View {
             issue = forcedIssue
             return
         }
+        if Self.debugBarcode != nil {
+            return
+        }
 
         let authorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
         if let authorizationIssue = Self.issue(for: authorizationStatus) {
@@ -258,8 +277,16 @@ struct BarcodeScannerView: View {
         }
     }
 
+    private static var debugBarcode: String? {
+#if DEBUG || RELEASE_VALIDATION
+        ProcessInfo.processInfo.arguments.contains("-scanner-success") ? "12345678" : nil
+#else
+        nil
+#endif
+    }
+
     private static var debugIssue: BarcodeScannerIssue? {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-scanner-permission-denied") {
             return .cameraPermissionDenied
@@ -275,7 +302,7 @@ struct BarcodeScannerView: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Scanner permission denied") {
     BarcodeScannerView(
         isPresented: .constant(true),
@@ -295,6 +322,11 @@ struct DataScannerRepresentable: UIViewControllerRepresentable {
     }
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
+        let operation = AppLogger.begin(
+            "scanner.start",
+            category: .scanner,
+            source: "camera"
+        )
         let scanner = DataScannerViewController(
             recognizedDataTypes: [.barcode(symbologies: [.ean13, .ean8, .upce, .code128])],
             qualityLevel: .balanced,
@@ -307,18 +339,21 @@ struct DataScannerRepresentable: UIViewControllerRepresentable {
         scanner.delegate = context.coordinator
 
         guard DataScannerViewController.isSupported else {
+            AppLogger.noop(operation, reason: "unsupported")
             context.coordinator.reportIssue(.unsupported)
             return scanner
         }
         guard DataScannerViewController.isAvailable else {
+            AppLogger.noop(operation, reason: "temporarily_unavailable")
             context.coordinator.reportIssue(.temporarilyUnavailable)
             return scanner
         }
 
         do {
             try scanner.startScanning()
+            AppLogger.succeed(operation)
         } catch {
-            BarcodeScannerView.logger.error("Failed to start barcode scanner: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error)
             context.coordinator.reportIssue(.temporarilyUnavailable)
         }
         return scanner

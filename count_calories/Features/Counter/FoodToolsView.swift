@@ -394,7 +394,7 @@ private struct CustomFoodNutrientsEditor: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 private struct PushedFoodToolsPreview<Destination: View>: View {
     @State private var path = [1]
 

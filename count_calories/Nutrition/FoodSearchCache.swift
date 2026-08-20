@@ -145,6 +145,12 @@ actor FoodSearchCache {
             return nil
         }
 
+        let operationID = UUID().uuidString
+        let parentID = NutritionOperationContext.parentIDText
+        let previousEntries = entries
+        Self.logger.info(
+            "event=operation_start operation=food_search.cache_write operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=remote page=\(page.page, privacy: .public)"
+        )
         var entry: Entry
         if replacingPageOne {
             guard page.page == 1 else { return nil }
@@ -178,10 +184,18 @@ actor FoodSearchCache {
         }
         entries[key] = entry
         let evictions = evictToFit()
-        try persist()
+        do {
+            try persist()
+        } catch {
+            entries = previousEntries
+            Self.logger.error(
+                "event=operation_failure operation=food_search.cache_write operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=remote error_category=storage"
+            )
+            throw error
+        }
         let bytes = encodedSize()
         Self.logger.info(
-            "Stored food search cache; entries \(self.entries.count, privacy: .public), bytes \(bytes, privacy: .public)"
+            "event=operation_success operation=food_search.cache_write operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=remote entries=\(self.entries.count, privacy: .public) bytes=\(bytes, privacy: .public) evictions=\(evictions, privacy: .public)"
         )
         if evictions > 0 {
             Self.logger.notice(

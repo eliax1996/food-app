@@ -174,7 +174,7 @@ final class MealDictationController {
 
 nonisolated enum MealDictationServiceFactories {
     static func make(arguments: [String] = ProcessInfo.processInfo.arguments) -> any MealDictationServiceMaking {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         if arguments.contains("-ui-testing-dictation-denied") {
             return FixtureMealDictationServiceFactory(scenario: .denied)
         }
@@ -227,7 +227,7 @@ private actor UnsupportedMealDictationService: MealDictationServicing {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 private nonisolated enum FixtureMealDictationScenario: Equatable, Sendable {
     case denied
     case interrupted

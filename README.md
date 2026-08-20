@@ -10,8 +10,10 @@ Repository operations use `just` exclusively:
 just iterate       # hostless tests + incremental compile
 just check         # incremental compile
 just test-unit     # deterministic hostless tests
-just simulator-run # build, install, launch simulator app
-just validate      # final unit/build/install/launch gate
+just simulator-run   # build, install, launch simulator app
+just validate        # development hostless/build/install/launch gate
+just release-validate # production gate: hostless + app-hosted + UI + install/launch
+just simulator-logs  # recent privacy-safe app operation logs
 ```
 
 See `AGENT.md` for complete engineering, testing, simulator, continuity, delegation, and milestone-commit rules. Accepted green features should be committed as focused local milestones; unfinished work and `.TASK_NOTES.md` stay out.
@@ -34,6 +36,10 @@ Empirical strengths, weaknesses, quota behavior, and policy changes are tracked 
 
 Use Xcode MCP once to explore or visually inspect a flow. If the same flow must be repeated to prove behavior—or it protects a critical journey—promote it to deterministic XCTest UI coverage before another manual proof. UI tests may cost CPU, but replace repeated agent navigation and save tokens/time. Test-authoring subagents must add step diagnostics and run/fix the created tests to green with a higher bounded timeout (`just test-ui 240` by default), not stop after generating code or the first failure. Keep tests isolated from live network, camera, permissions, wall clock, and uncontrolled persisted state.
 
+## Production guard and observability
+
+`just test` and `just validate` remain fast development gates. Production candidates require `just release-validate`, which runs hostless, optimized Release-config app-hosted/UI, signed production Release archive/app+widget checks, App Store Connect IPA export, then pure Release simulator install/launch with post-bootstrap process-alive canary. State-changing operations emit correlated privacy-safe start/result events; `just simulator-logs` displays them. User-entered health/meal values and raw errors are never logged. Full coverage matrix and unavoidable system-boundary smoke requirements: [`docs/test-observability-production-readiness-assessment.md`](docs/test-observability-production-readiness-assessment.md).
+
 ## Product redesign
 
 Original autonomous redesign and finite Markdown-backlog closure are **COMPLETE**. Final report, baseline comparison, screenshots, independent review, candidate dispositions, and exact validation: [`design-redesign/FINAL-REPORT.md`](design-redesign/FINAL-REPORT.md).
@@ -50,12 +56,15 @@ Today | Weight | Progress | Settings
 - **Settings:** target weight, age, daily calorie goal, target date, optional user-entered macro/fiber targets, and reminders; no current-weight field or save path.
 - No generic Calories/Water/Weight table. Historical food stays separate and date-first; unknown legacy aggregates remain visible but cannot be falsely edited/copied as item snapshots.
 
-Final results:
+Current automated results:
 
-- `just validate 600`: **243 hostless executed (241 passed / 2 opt-in live skips)**; app + widget compile, simulator install, and launch passed.
-- `just test-app-unit 900`: **351 passed / 2 opt-in live skips**.
-- `TEST_CASE_TIMEOUT=60 just test-ui 2400`: **52/52 passed**.
-- Original closure, diary, and final backlog-closure critical/high reviews each converged at **APPROVE / APPROVE / APPROVE**.
+- hostless: **254 executed (252 passed / 2 opt-in live skips)**;
+- app-hosted: **376 passed / 2 opt-in live skips**;
+- optimized Release-config functional UI: **55/55 passed**;
+- signed production archive: app/widget structure and strict signatures passed;
+- pure Release simulator app: built, installed, launched, and remained alive after bootstrap canary.
+
+Production approval remains blocked until required iOS 17 self-hosted workflow/branch protection runs `just release-validate`; local machine has only iOS 27 runtime. Original closure, diary, and backlog-closure reviews remain accepted; current production-readiness assessment is linked above.
 
 ## Redesign evidence
 

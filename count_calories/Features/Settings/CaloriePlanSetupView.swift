@@ -836,50 +836,73 @@ struct CaloriePlanSetupView: View {
     }
 
     private func closeAndResumeLater() {
+        let operation = AppLogger.begin(
+            "plan_setup.save_draft",
+            category: .userAction,
+            source: "calculated_setup"
+        )
+        guard persist(status: .inProgress) else {
+            AppLogger.partial(operation, failedComponent: "draft_store")
+            return
+        }
         if profile == nil {
             modelContext.insert(UserProfile())
             do {
                 try modelContext.save()
             } catch {
                 modelContext.rollback()
-                AppLogger.persistence.error(
-                    "Failed to preserve manual profile for resumable setup: \(error.localizedDescription, privacy: .public)"
-                )
+                AppLogger.fail(operation, error: error, rollback: "succeeded")
                 errorMessage = "Setup progress could not be saved. Try again."
                 return
             }
         }
-        persist(status: .inProgress)
         dismiss()
         onFinish()
+        AppLogger.succeed(operation)
     }
 
     private func keepCurrentGoal() {
+        let operation = AppLogger.begin(
+            "plan_setup.keep_current",
+            category: .userAction,
+            source: "calculated_setup"
+        )
         if profile != nil {
-            persist(status: .skipped)
+            guard persist(status: .skipped) else {
+                AppLogger.partial(operation, failedComponent: "draft_store")
+                return
+            }
             dismiss()
             onFinish()
+            AppLogger.succeed(operation)
             return
         }
 
-        persist(status: .skipped)
+        guard persist(status: .skipped) else {
+            AppLogger.partial(operation, failedComponent: "draft_store")
+            return
+        }
         modelContext.insert(UserProfile())
         do {
             try modelContext.save()
             dismiss()
             onFinish()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            persist(status: .inProgress)
-            AppLogger.persistence.error(
-                "Failed to preserve current plan during setup: \(error.localizedDescription, privacy: .public)"
-            )
+            _ = persist(status: .inProgress)
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Your current plan could not be prepared. Try again."
         }
     }
 
     private func applyRecommendation() {
         guard let recommendation else { return }
+        let operation = AppLogger.begin(
+            "plan_setup.apply",
+            category: .userAction,
+            source: "calculated_setup"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -889,24 +912,38 @@ struct CaloriePlanSetupView: View {
                 recommendation,
                 measurementSystem: draft.measurementSystem
             )
-            persist(status: .completed)
+            let setupRecordSaved = persist(status: .completed)
             dismiss()
             onFinish()
+            if setupRecordSaved {
+                AppLogger.succeed(operation)
+            } else {
+                AppLogger.partial(operation, failedComponent: "draft_store")
+            }
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to apply calculated plan: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Calculated plan was not saved. Your manual goal is unchanged."
         }
     }
 
-    private func persist(status: CaloriePlanSetupStatus) {
-        CaloriePlanSetupStore.save(CaloriePlanSetupRecord(
+    @discardableResult
+    private func persist(status: CaloriePlanSetupStatus) -> Bool {
+        let saved = CaloriePlanSetupStore.save(CaloriePlanSetupRecord(
             status: status,
             draft: draft,
             acceptedPlanDateAtStart: acceptedPlanDateAtStart
         ))
+        if !saved {
+            let operation = AppLogger.begin(
+                "plan_setup.draft_persist",
+                category: .persistence,
+                source: "calculated_setup"
+            )
+            AppLogger.partial(operation, failedComponent: "encoding")
+            errorMessage = "Setup progress could not be saved. Try again."
+        }
+        return saved
     }
 
     private func issueMessage(_ issue: CaloriePlanIssue) -> String {
@@ -1002,7 +1039,7 @@ extension CaloriePlanSetupDraft {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Calculated setup") {
     CaloriePlanSetupView(
         profile: UserProfile(),

@@ -64,7 +64,7 @@ nonisolated struct CaloriePlanSetupRecord: Codable, Equatable, Sendable {
 
 nonisolated enum CaloriePlanSetupDefaults {
     static var current: UserDefaults {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         if ProcessInfo.processInfo.arguments.contains("-ui-testing") {
             return UserDefaults(suiteName: "ch.elia.count-calories.ui-testing.plan-setup") ?? .standard
         }
@@ -96,12 +96,18 @@ nonisolated enum CaloriePlanSetupStore {
         return record
     }
 
+    @discardableResult
     static func save(
         _ record: CaloriePlanSetupRecord,
         defaults: UserDefaults = CaloriePlanSetupDefaults.current
-    ) {
-        guard let data = try? JSONEncoder().encode(record) else { return }
-        defaults.set(data, forKey: storageKey)
+    ) -> Bool {
+        do {
+            let data = try JSONEncoder().encode(record)
+            defaults.set(data, forKey: storageKey)
+            return true
+        } catch {
+            return false
+        }
     }
 
     static func reset(defaults: UserDefaults = CaloriePlanSetupDefaults.current) {

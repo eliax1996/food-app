@@ -617,7 +617,7 @@ private struct FoodSearchView: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 private struct MealEditorPreview: View {
     private let foods: [Food]
     @State private var selectedMeal = MealType.breakfast

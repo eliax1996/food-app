@@ -275,7 +275,7 @@ private func weightText(_ kilograms: Double) -> String {
     return "\(kilograms.formatted(.number.precision(.fractionLength(1)))) kg"
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Settings") {
     ConfigView()
         .previewPlanEvidenceContainer(PreviewData.makeContainer())

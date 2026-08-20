@@ -61,7 +61,7 @@ actor RemoteFoodSearchService {
     private let now: @Sendable () -> Date
     private var requestStarts: [Date] = []
     private var flights: [FlightKey: Flight] = [:]
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
     private var waiterCounts: [FlightKey: Int] = [:]
 #endif
 
@@ -104,40 +104,66 @@ actor RemoteFoodSearchService {
         languages: [String],
         intent: FoodSearchLoadIntent = .automatic
     ) async throws -> RemoteFoodSearchResult {
-        try validate(query: query, languages: languages)
-        let key = FoodSearchCacheKey(
-            query: query,
-            languages: languages,
-            projectionSchemaVersion: projectionSchemaVersion
+        let operationID = UUID()
+        let operationIDText = operationID.uuidString
+        Self.logger.info(
+            "event=operation_start operation=food_search.load operation_id=\(operationIDText, privacy: .public) parent_id=none source=app query_length=\(query.count, privacy: .public)"
         )
-        let cachedSnapshot = await cache.snapshot(for: key)
-        guard let plan = fetchPlan(for: cachedSnapshot, at: now(), intent: intent) else {
-            return RemoteFoodSearchResult(snapshot: cachedSnapshot)
-        }
+        do {
+            let result = try await NutritionOperationContext.$parentOperationID.withValue(operationID) {
+                try validate(query: query, languages: languages)
+                let key = FoodSearchCacheKey(
+                    query: query,
+                    languages: languages,
+                    projectionSchemaVersion: projectionSchemaVersion
+                )
+                let cachedSnapshot = await cache.snapshot(for: key)
+                guard let plan = fetchPlan(for: cachedSnapshot, at: now(), intent: intent) else {
+                    return RemoteFoodSearchResult(snapshot: cachedSnapshot)
+                }
 
-        let page = try await remotePage(
-            query: query,
-            languages: languages,
-            key: key,
-            plan: plan
-        )
-        // Completion can win cancellation race. Never let cancelled waiter persist a page.
-        try Task.checkCancellation()
-        let storedSnapshot = try await cache.store(
-            page,
-            for: key,
-            fetchedAt: now(),
-            expectedGeneration: plan.generation,
-            replacingPageOne: plan.replacingPageOne
-        )
-        // Another coalesced waiter can store first. Never return pre-fetch cache state.
-        let finalSnapshot: FoodSearchCacheSnapshot?
-        if let storedSnapshot {
-            finalSnapshot = storedSnapshot
-        } else {
-            finalSnapshot = await cache.snapshot(for: key)
+                let page = try await remotePage(
+                    query: query,
+                    languages: languages,
+                    key: key,
+                    plan: plan
+                )
+                // Completion can win cancellation race. Never let cancelled waiter persist a page.
+                try Task.checkCancellation()
+                let storedSnapshot = try await cache.store(
+                    page,
+                    for: key,
+                    fetchedAt: now(),
+                    expectedGeneration: plan.generation,
+                    replacingPageOne: plan.replacingPageOne
+                )
+                // Another coalesced waiter can store first. Never return pre-fetch cache state.
+                let finalSnapshot: FoodSearchCacheSnapshot?
+                if let storedSnapshot {
+                    finalSnapshot = storedSnapshot
+                } else {
+                    finalSnapshot = await cache.snapshot(for: key)
+                }
+                return RemoteFoodSearchResult(snapshot: finalSnapshot)
+            }
+            let resultCount = result.snapshot?.orderedPages.reduce(0) {
+                $0 + $1.page.foods.count
+            } ?? 0
+            Self.logger.info(
+                "event=operation_success operation=food_search.load operation_id=\(operationIDText, privacy: .public) parent_id=none source=app result_count=\(resultCount, privacy: .public)"
+            )
+            return result
+        } catch is CancellationError {
+            Self.logger.info(
+                "event=operation_cancelled operation=food_search.load operation_id=\(operationIDText, privacy: .public) parent_id=none source=app"
+            )
+            throw CancellationError()
+        } catch {
+            Self.logger.error(
+                "event=operation_failure operation=food_search.load operation_id=\(operationIDText, privacy: .public) parent_id=none source=app error_category=search"
+            )
+            throw error
         }
-        return RemoteFoodSearchResult(snapshot: finalSnapshot)
     }
 
     func search(
@@ -241,12 +267,13 @@ actor RemoteFoodSearchService {
         }
 
         if var flight = flights[flightKey] {
+            let parentID = NutritionOperationContext.parentIDText
             Self.logger.info(
-                "Coalesced food search request; query length \(key.normalizedQuery.count, privacy: .public), page \(plan.page, privacy: .public)"
+                "event=operation_join operation=food_search.remote operation_id=\(flight.id.uuidString, privacy: .public) parent_id=\(parentID, privacy: .public) source=search query_length=\(key.normalizedQuery.count, privacy: .public) page=\(plan.page, privacy: .public)"
             )
             flight.waiters[id] = continuation
             flights[flightKey] = flight
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
             waiterCounts[flightKey] = flight.waiters.count
 #endif
             return
@@ -262,7 +289,7 @@ actor RemoteFoodSearchService {
             )
             flight.waiters[id] = continuation
             flights[flightKey] = flight
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
             waiterCounts[flightKey] = flight.waiters.count
 #endif
         } catch {
@@ -295,24 +322,27 @@ actor RemoteFoodSearchService {
         let page = plan.page
         let logger = Self.logger
         let id = UUID()
+        let parentID = NutritionOperationContext.parentIDText
         logger.info(
-            "Food search remote start; query length \(queryLength, privacy: .public), page \(page, privacy: .public)"
+            "event=operation_start operation=food_search.remote operation_id=\(id.uuidString, privacy: .public) parent_id=\(parentID, privacy: .public) source=search query_length=\(queryLength, privacy: .public) page=\(page, privacy: .public)"
         )
         let task = Task<FoodSearchPage, Error> { [fetcher, pageSize] in
             do {
-                let response = try await fetcher.search(
-                    query: query,
-                    page: page,
-                    pageSize: pageSize,
-                    languages: languages
-                )
+                let response = try await NutritionOperationContext.$parentOperationID.withValue(id) {
+                    try await fetcher.search(
+                        query: query,
+                        page: page,
+                        pageSize: pageSize,
+                        languages: languages
+                    )
+                }
                 logger.info(
-                    "Food search remote success; query length \(queryLength, privacy: .public), page \(page, privacy: .public)"
+                    "event=operation_success operation=food_search.remote operation_id=\(id.uuidString, privacy: .public) parent_id=\(parentID, privacy: .public) source=search query_length=\(queryLength, privacy: .public) page=\(page, privacy: .public) result_count=\(response.foods.count, privacy: .public)"
                 )
                 return response
             } catch {
                 logger.error(
-                    "Food search remote failure; query length \(queryLength, privacy: .public), page \(page, privacy: .public)"
+                    "event=operation_failure operation=food_search.remote operation_id=\(id.uuidString, privacy: .public) parent_id=\(parentID, privacy: .public) source=search query_length=\(queryLength, privacy: .public) page=\(page, privacy: .public) error_category=remote"
                 )
                 throw error
             }
@@ -329,7 +359,7 @@ actor RemoteFoodSearchService {
         return Flight(id: id, task: task, waiters: [:])
     }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
     func testingWaiterCount(query: String, languages: [String]) -> Int {
         let cacheKey = FoodSearchCacheKey(
             query: query,
@@ -345,13 +375,13 @@ actor RemoteFoodSearchService {
         continuation.resume(throwing: CancellationError())
         guard flight.waiters.isEmpty else {
             flights[key] = flight
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
             waiterCounts[key] = flight.waiters.count
 #endif
             return
         }
         flights.removeValue(forKey: key)
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         waiterCounts.removeValue(forKey: key)
 #endif
         flight.task.cancel()
@@ -364,7 +394,7 @@ actor RemoteFoodSearchService {
     ) {
         guard let flight = flights[key], flight.id == id else { return }
         flights.removeValue(forKey: key)
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         waiterCounts.removeValue(forKey: key)
 #endif
         flight.waiters.values.forEach { $0.resume(with: result) }

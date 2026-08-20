@@ -267,7 +267,7 @@ struct HistoryView: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 private struct HistoryPreview: View {
     @State var metric: HistoryMetric
     let state: DesignReviewState

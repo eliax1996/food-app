@@ -74,7 +74,7 @@ final class BulkMealDraftController: Identifiable {
         self.draftID = draftID
         self.operationID = operationID
         self.allowRemoteMatching = allowRemoteMatching
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         availability = ProcessInfo.processInfo.arguments.contains("-ui-testing-bulk-unavailable")
             ? .unavailable(.deviceNotEligible)
             : extractor.availability(for: locale)
@@ -125,7 +125,7 @@ final class BulkMealDraftController: Identifiable {
             draftStore = store
             draftLease = await store.acquireLease()
         }
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         let fixtureDraft = ProcessInfo.processInfo.arguments.contains("-ui-testing-bulk-draft")
             ? BulkFoodDraft(
                 description: "100 g almond milk",
@@ -215,7 +215,14 @@ final class BulkMealDraftController: Identifiable {
             errorMessage = "Meal description could not be read."
             return
         }
+        let operation = AppLogger.begin(
+            "bulk.extract",
+            category: .bulkFood,
+            source: "description",
+            count: description.count
+        )
         guard case .available = availability else {
+            AppLogger.noop(operation, reason: "manual_fallback")
             beginManualReview(savedFoods: savedFoods)
             return
         }
@@ -226,12 +233,18 @@ final class BulkMealDraftController: Identifiable {
         extractionTask = Task { [weak self, extractor] in
             do {
                 let extraction = try await extractor.extract(description: description, locale: .current)
-                guard let self, !Task.isCancelled, self.generation == requestGeneration else { return }
+                guard let self, !Task.isCancelled, self.generation == requestGeneration else {
+                    AppLogger.cancel(operation, reason: "superseded")
+                    return
+                }
+                AppLogger.succeed(operation, count: extraction.items.count)
                 await self.apply(extraction, savedFoods: savedFoods, generation: requestGeneration)
             } catch is CancellationError {
+                AppLogger.cancel(operation)
                 guard let self, self.generation == requestGeneration else { return }
                 self.stage = .describe
             } catch {
+                AppLogger.fail(operation, error: error)
                 guard let self, self.generation == requestGeneration else { return }
                 self.stage = .describe
                 self.errorMessage = Self.extractionMessage(error)
@@ -243,7 +256,7 @@ final class BulkMealDraftController: Identifiable {
         cancelWork()
         clearCommitSnapshot()
         generation &+= 1
-        #if DEBUG
+        #if DEBUG || RELEASE_VALIDATION
         if ProcessInfo.processInfo.arguments.contains("-ui-testing-bulk-food"),
            let food = savedFoods.first(where: { $0.name == "Almond Milk" }) {
             let match = BulkFoodMatch(
@@ -284,7 +297,7 @@ final class BulkMealDraftController: Identifiable {
     func addManualItem(savedFoods: [Food]) {
         clearCommitSnapshot()
         guard items.count < BulkFoodLimits.maximumItems else { return }
-        #if DEBUG
+        #if DEBUG || RELEASE_VALIDATION
         let fixtureQuery = ProcessInfo.processInfo.arguments.contains("-ui-testing-bulk-food")
             ? (savedFoods.first(where: { $0.name == "Almond Milk" })?.name ?? "")
             : ""
@@ -298,7 +311,7 @@ final class BulkMealDraftController: Identifiable {
             unit: .grams,
             amountOrigin: .defaultAmount
         )
-        #if DEBUG
+        #if DEBUG || RELEASE_VALIDATION
         if ProcessInfo.processInfo.arguments.contains("-ui-testing-bulk-food"),
            let food = savedFoods.first(where: { $0.name == "Almond Milk" }) {
             // Keep fixture independent from keyboard and matcher scheduling.
@@ -515,7 +528,17 @@ final class BulkMealDraftController: Identifiable {
     }
 
     func saveDraft() async throws {
-        guard let draftStore, let draftLease else { throw BulkFoodPersistenceError.unavailable }
+        let operation = AppLogger.begin(
+            "bulk.draft_save",
+            category: .bulkFood,
+            source: "bulk_review",
+            count: items.count
+        )
+        guard let draftStore, let draftLease else {
+            let error = BulkFoodPersistenceError.unavailable
+            AppLogger.fail(operation, error: error)
+            throw error
+        }
         let draft = BulkFoodDraft(
             id: draftID,
             description: descriptionText,
@@ -525,12 +548,29 @@ final class BulkMealDraftController: Identifiable {
             commitDate: commitDate,
             updatedAt: .now
         )
-        try await draftStore.save(draft, lease: draftLease)
-        storedDraftID = draftID
+        do {
+            try await draftStore.save(draft, lease: draftLease)
+            storedDraftID = draftID
+            AppLogger.succeed(operation, count: items.count)
+        } catch {
+            AppLogger.fail(operation, error: error)
+            throw error
+        }
     }
 
     func discardDraft() async throws {
-        try await clearDraft()
+        let operation = AppLogger.begin(
+            "bulk.draft_discard",
+            category: .bulkFood,
+            source: "bulk_review"
+        )
+        do {
+            try await clearDraft()
+            AppLogger.succeed(operation)
+        } catch {
+            AppLogger.fail(operation, error: error)
+            throw error
+        }
     }
 
     private func clearDraft() async throws {
@@ -746,6 +786,7 @@ struct BulkMealLoggingView: View {
     @State private var pendingResultItemID: UUID?
     @State private var amountTexts: [UUID: String] = [:]
     @State private var dictationBaseText = ""
+    @State private var dictationLogOperation: AppLogOperation?
     @State private var isCommitting = false
     @FocusState private var descriptionFocused: Bool
     @FocusState private var amountFieldFocused: Bool
@@ -898,11 +939,13 @@ struct BulkMealLoggingView: View {
                 Task { try? await controller.saveDraft() }
             }
             if dictation.hasActiveRequest {
+                cancelDictationLog(reason: "scene_inactive")
                 Task { await dictation.cancel() }
             }
         }
         .onDisappear {
             controller.cancelWork()
+            cancelDictationLog(reason: "view_dismissed")
             Task { await dictation.cancel() }
         }
         .presentationDetents([.large])
@@ -1402,21 +1445,34 @@ struct BulkMealLoggingView: View {
     private func confirm() {
         guard !isCommitting else { return }
         isCommitting = true
+        let operation = AppLogger.begin(
+            "bulk.review_confirm",
+            category: .bulkFood,
+            source: "bulk_review",
+            count: controller.items.count,
+            id: controller.operationID
+        )
         Task { @MainActor in
             do {
                 let inserts = try await controller.prepareCommit()
                 try onConfirm(inserts, controller.operationID)
                 let total = inserts.compactMap { $0.match.calories(for: $0.amount) }.reduce(0, +)
                 announce("Logged \(inserts.count) foods, \(total) calories.")
+                let cleanupSucceeded: Bool
                 do {
                     try await controller.retainSuccessfulChoices()
+                    cleanupSucceeded = true
                 } catch {
-                    AppLogger.persistence.error(
-                        "Bulk post-commit learning or draft cleanup failed: \(error.localizedDescription, privacy: .public)"
-                    )
+                    cleanupSucceeded = false
+                }
+                if cleanupSucceeded {
+                    AppLogger.succeed(operation, count: inserts.count)
+                } else {
+                    AppLogger.partial(operation, failedComponent: "learning_or_draft_cleanup")
                 }
                 dismiss()
             } catch {
+                AppLogger.fail(operation, error: error, rollback: "succeeded")
                 isCommitting = false
                 controller.errorMessage = "Your foods could not be logged. Nothing was added. Please try again."
             }
@@ -1452,9 +1508,20 @@ struct BulkMealLoggingView: View {
                 await dictation.stop()
             } else {
                 dictationBaseText = controller.descriptionText
+                dictationLogOperation = AppLogger.begin(
+                    "dictation.capture",
+                    category: .bulkFood,
+                    source: "bulk_description"
+                )
                 await dictation.start()
             }
         }
+    }
+
+    private func cancelDictationLog(reason: String) {
+        guard let operation = dictationLogOperation else { return }
+        AppLogger.cancel(operation, reason: reason)
+        dictationLogOperation = nil
     }
 
     private func openMicrophoneSettings() {
@@ -1467,9 +1534,19 @@ struct BulkMealLoggingView: View {
         switch new {
         case .listening(let finalized, _):
             transcript = finalized.trimmingCharacters(in: .whitespacesAndNewlines)
-        case .failed:
+        case .failed(let failure):
+            if let operation = dictationLogOperation {
+                AppLogger.fail(operation, error: failure)
+                dictationLogOperation = nil
+            }
             transcript = dictation.currentFinalizedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        case .idle, .requestingPermission, .preparingAssets, .finishing:
+        case .idle:
+            if let operation = dictationLogOperation {
+                AppLogger.succeed(operation)
+                dictationLogOperation = nil
+            }
+            return
+        case .requestingPermission, .preparingAssets, .finishing:
             return
         }
         guard !transcript.isEmpty else { return }

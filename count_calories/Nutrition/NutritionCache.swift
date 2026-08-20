@@ -26,11 +26,11 @@ actor NutritionCache: FoodNutritionCaching {
             entries = try Self.load(from: fileURL)
         } catch {
             entries = [:]
-            Self.logger.error("Discarding corrupt nutrition cache: \(error.localizedDescription, privacy: .public)")
+            Self.logger.error("event=cache_recovery cache=nutrition outcome=discarded error_category=decode_or_io")
             do {
                 try FileManager.default.removeItem(at: fileURL)
             } catch {
-                Self.logger.error("Failed to remove corrupt nutrition cache: \(error.localizedDescription, privacy: .public)")
+                Self.logger.error("event=cache_recovery cache=nutrition outcome=remove_failed error_category=io")
             }
         }
     }
@@ -59,7 +59,7 @@ actor NutritionCache: FoodNutritionCaching {
         do {
             try persist()
         } catch {
-            Self.logger.error("Failed to persist nutrition cache access: \(error.localizedDescription, privacy: .public)")
+            Self.logger.error("event=cache_touch cache=nutrition outcome=write_failed error_category=io")
         }
         Self.logger.debug("Nutrition cache hit for barcode length \(barcode.count, privacy: .public)")
         return entry.nutrition
@@ -70,10 +70,26 @@ actor NutritionCache: FoodNutritionCaching {
     }
 
     func store(_ nutrition: FoodNutrition, for barcode: String) throws {
-        entries[barcode] = CachedNutrition(nutrition: nutrition, lastAccessed: .now)
-        try evictToFit()
-        try persist()
-        Self.logger.info("Stored nutrition cache entry; entries: \(self.entries.count, privacy: .public), bytes: \(self.encodedSize(), privacy: .public)")
+        let operationID = UUID().uuidString
+        let parentID = NutritionOperationContext.parentIDText
+        Self.logger.info(
+            "event=operation_start operation=nutrition.cache_write operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=nutrition_lookup"
+        )
+        let previousEntries = entries
+        do {
+            entries[barcode] = CachedNutrition(nutrition: nutrition, lastAccessed: .now)
+            try evictToFit()
+            try persist()
+            Self.logger.info(
+                "event=operation_success operation=nutrition.cache_write operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=nutrition_lookup entries=\(self.entries.count, privacy: .public) bytes=\(self.encodedSize(), privacy: .public)"
+            )
+        } catch {
+            entries = previousEntries
+            Self.logger.error(
+                "event=operation_failure operation=nutrition.cache_write operation_id=\(operationID, privacy: .public) parent_id=\(parentID, privacy: .public) source=nutrition_lookup error_category=storage"
+            )
+            throw error
+        }
     }
 
     private static func load(from fileURL: URL) throws -> [String: CachedNutrition] {
@@ -114,21 +130,43 @@ struct NutritionLookupService: Sendable {
 
     func lookup(barcode: String) async throws -> FoodNutritionFetchResult {
         let normalizedBarcode = barcode.filter(\.isNumber)
-        if let cachedNutrition = await cache.nutrition(for: normalizedBarcode) {
-            Self.logger.info("Nutrition lookup served from cache for barcode length \(normalizedBarcode.count, privacy: .public)")
-            return .found(cachedNutrition)
-        }
+        let operationID = UUID()
+        let operationIDText = operationID.uuidString
+        Self.logger.info(
+            "event=operation_start operation=nutrition.lookup operation_id=\(operationIDText, privacy: .public) parent_id=none source=app barcode_length=\(normalizedBarcode.count, privacy: .public)"
+        )
+        return try await NutritionOperationContext.$parentOperationID.withValue(operationID) {
+            if let cachedNutrition = await cache.nutrition(for: normalizedBarcode) {
+                Self.logger.info(
+                    "event=operation_success operation=nutrition.lookup operation_id=\(operationIDText, privacy: .public) parent_id=none source=cache barcode_length=\(normalizedBarcode.count, privacy: .public)"
+                )
+                return .found(cachedNutrition)
+            }
 
-        Self.logger.info("Nutrition lookup requesting remote data for barcode length \(normalizedBarcode.count, privacy: .public)")
-        let result = try await client.fetchNutrition(for: normalizedBarcode)
-        switch result {
-        case let .found(nutrition):
-            try await cache.store(nutrition, for: normalizedBarcode)
-        case .incompleteProduct:
-            Self.logger.notice("Nutrition lookup found a product without usable calories for barcode length \(normalizedBarcode.count, privacy: .public)")
-        case .notFound:
-            Self.logger.notice("Nutrition lookup found no remote product for barcode length \(normalizedBarcode.count, privacy: .public)")
+            do {
+                let result = try await client.fetchNutrition(for: normalizedBarcode)
+                switch result {
+                case let .found(nutrition):
+                    try await cache.store(nutrition, for: normalizedBarcode)
+                    Self.logger.info(
+                        "event=operation_success operation=nutrition.lookup operation_id=\(operationIDText, privacy: .public) parent_id=none source=remote barcode_length=\(normalizedBarcode.count, privacy: .public)"
+                    )
+                case .incompleteProduct:
+                    Self.logger.notice(
+                        "event=operation_noop operation=nutrition.lookup operation_id=\(operationIDText, privacy: .public) parent_id=none source=remote outcome=incomplete barcode_length=\(normalizedBarcode.count, privacy: .public)"
+                    )
+                case .notFound:
+                    Self.logger.notice(
+                        "event=operation_noop operation=nutrition.lookup operation_id=\(operationIDText, privacy: .public) parent_id=none source=remote outcome=not_found barcode_length=\(normalizedBarcode.count, privacy: .public)"
+                    )
+                }
+                return result
+            } catch {
+                Self.logger.error(
+                    "event=operation_failure operation=nutrition.lookup operation_id=\(operationIDText, privacy: .public) parent_id=none source=remote error_category=lookup"
+                )
+                throw error
+            }
         }
-        return result
     }
 }

@@ -99,9 +99,11 @@ Decision archive: `PRODUCT-BACKLOG.md`.
 
 ## Validation snapshot
 
-- Current exact-tree `just validate 600`: **passed** — 243 hostless executed (241 passed / 2 opt-in live skips); app + widget compile, install, and launch passed.
-- Current app-hosted `just test-app-unit 900`: **351 passed / 2 opt-in live skips**.
-- Current functional `TEST_CASE_TIMEOUT=60 just test-ui 2400`: **52/52 passed**.
+- Current hostless: **254 executed (252 passed / 2 opt-in live skips)**.
+- Current app-hosted: **376 passed / 2 opt-in live skips**.
+- Current optimized Release-config functional UI: **55/55 passed**.
+- Signed production archive app/widget structure and strict signatures passed; pure Release simulator bootstrap canary passed on iOS 27.
+- Production `just release-validate` remains fail-closed until configured iOS 17 runner/runtime and required remote status exist; local iOS 27 cannot approve minimum-OS release.
 - `git diff --check`: **passed**.
 - 2026-08-20 full Markdown re-audit: **54/54 read, 0 unchecked tasks, 0 broken local/evidence paths, 0 active items, 3/3 independent approval**.
 - Live Open Food Facts checks remain intentionally opt-in.

@@ -168,6 +168,18 @@ final class NutritionLookupTests: XCTestCase {
         XCTAssertEqual(fallbackCallCount, 0)
     }
 
+    func testLookupPropagatesOneParentOperationIDIntoRemoteClient() async throws {
+        let cache = try NutritionCache(fileURL: temporaryFileURL(), maximumBytes: 10_000)
+        let client = StubNutritionClient(result: .notFound)
+        let service = NutritionLookupService(client: client, cache: cache)
+
+        _ = try await service.lookup(barcode: "12345678")
+
+        let parentIDs = await client.parentOperationIDs
+        XCTAssertEqual(parentIDs.count, 1)
+        XCTAssertNotNil(parentIDs[0])
+    }
+
     func testLookupUsesPersistentCacheBeforeNetwork() async throws {
         let fileURL = try temporaryFileURL()
         let cache = try NutritionCache(fileURL: fileURL, maximumBytes: 10_000)
@@ -262,6 +274,29 @@ final class NutritionLookupTests: XCTestCase {
         XCTAssertEqual(persistedNutrition, nutrition)
     }
 
+    func testFailedNutritionCacheWriteRollsBackInMemoryEntry() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let blockedParent = directory.appending(path: "not-a-directory")
+        try Data("block".utf8).write(to: blockedParent)
+        let cache = try NutritionCache(
+            fileURL: blockedParent.appending(path: "cache.json"),
+            maximumBytes: 10_000
+        )
+        let nutrition = sampleNutrition(barcode: "12345678")
+
+        do {
+            try await cache.store(nutrition)
+            XCTFail("Blocked cache path should fail.")
+        } catch {
+            // Expected storage failure.
+        }
+        let retained = await cache.nutrition(for: nutrition.barcode)
+        XCTAssertNil(retained)
+    }
+
     private func sampleNutrition(
         barcode: String,
         name: String = "Sample food"
@@ -286,6 +321,7 @@ final class NutritionLookupTests: XCTestCase {
 
 private actor StubNutritionClient: FoodNutritionFetching {
     private(set) var callCount = 0
+    private(set) var parentOperationIDs: [UUID?] = []
     private let result: FoodNutritionFetchResult?
     private let error: FoodNutritionFetchError?
     private let delay: Duration
@@ -310,6 +346,7 @@ private actor StubNutritionClient: FoodNutritionFetching {
 
     func fetchNutrition(for barcode: String) async throws -> FoodNutritionFetchResult {
         callCount += 1
+        parentOperationIDs.append(NutritionOperationContext.parentOperationID)
         if delay > .zero {
             try await Task.sleep(for: delay)
         }

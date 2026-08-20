@@ -130,7 +130,7 @@ struct AdaptivePlanView: View {
     }
 
     private var displayedPlanSource: PlanGoalSource {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         if ProcessInfo.processInfo.arguments.contains("-ui-testing-adaptive-applied"),
            currentAppliedProposal != nil {
             return .adapted
@@ -592,7 +592,7 @@ struct AdaptivePlanView: View {
     }
 
     private func markYesterdayComplete(_ day: Date) {
-        perform(retry: { markYesterdayComplete(day) }) {
+        perform(name: "adaptive.attest_yesterday", retry: { markYesterdayComplete(day) }) {
             let coordinator = try requiredCoordinator()
             if yesterdayCompletion?.isStale == true {
                 _ = try coordinator.reconfirmFoodLog(for: day)
@@ -604,7 +604,7 @@ struct AdaptivePlanView: View {
     }
 
     private func enable() {
-        perform(retry: enable) {
+        perform(name: "adaptive.enable", retry: enable) {
             let coordinator = try requiredCoordinator()
             _ = try coordinator.enableAdaptiveCheckIns(supportedScopeConfirmed: supportedScopeConfirmed)
             refresh()
@@ -612,14 +612,14 @@ struct AdaptivePlanView: View {
     }
 
     private func disable() {
-        perform(retry: disable) {
+        perform(name: "adaptive.disable", retry: disable) {
             try requiredCoordinator().disableAdaptiveCheckIns()
             refresh()
         }
     }
 
     private func decline(_ proposal: AdaptivePlanProposalRecord) {
-        perform(retry: { decline(proposal) }) {
+        perform(name: "adaptive.decline", retry: { decline(proposal) }) {
             try requiredCoordinator().declinePendingProposal(id: proposal.id)
             refresh()
         }
@@ -627,6 +627,11 @@ struct AdaptivePlanView: View {
 
     private func apply(_ proposal: AdaptivePlanProposalRecord) {
         confirmingProposal = nil
+        let operation = AppLogger.begin(
+            "adaptive.apply",
+            category: .userAction,
+            source: "goal_check_ins"
+        )
         do {
             _ = try requiredCoordinator().applyPendingProposal(
                 id: proposal.id,
@@ -636,8 +641,9 @@ struct AdaptivePlanView: View {
             )
             retryAction = nil
             refresh()
+            AppLogger.succeed(operation)
         } catch {
-            AppLogger.persistence.error("Goal check-in apply failed: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             if proposalNeedsRefresh(after: error) {
                 do {
                     evaluationResult = try requiredCoordinator().evaluateCurrent()
@@ -676,7 +682,7 @@ struct AdaptivePlanView: View {
 
     private func revert(_ proposal: AdaptivePlanProposalRecord) {
         guard let revisionID = proposal.appliedRevisionID else { return }
-        perform(retry: { revert(proposal) }) {
+        perform(name: "adaptive.revert", retry: { revert(proposal) }) {
             _ = try requiredCoordinator().revertAppliedProposal(appliedRevisionID: revisionID)
             refresh()
         }
@@ -687,12 +693,18 @@ struct AdaptivePlanView: View {
             evaluationResult = nil
             return
         }
+        let operation = AppLogger.begin(
+            "adaptive.evaluate",
+            category: .persistence,
+            source: "goal_check_ins"
+        )
         do {
             evaluationResult = try requiredCoordinator().evaluateCurrent()
+            AppLogger.succeed(operation)
         } catch {
             errorMessage = "Goal check-ins could not be refreshed. Please try again."
             retryAction = refresh
-            AppLogger.persistence.error("Failed to refresh goal check-ins: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error)
         }
     }
 
@@ -704,14 +716,24 @@ struct AdaptivePlanView: View {
         return mutationCoordinator
     }
 
-    private func perform(retry: @escaping () -> Void, _ operation: () throws -> Void) {
+    private func perform(
+        name: String,
+        retry: @escaping () -> Void,
+        _ mutation: () throws -> Void
+    ) {
+        let operation = AppLogger.begin(
+            name,
+            category: .userAction,
+            source: "goal_check_ins"
+        )
         do {
-            try operation()
+            try mutation()
             retryAction = nil
+            AppLogger.succeed(operation)
         } catch {
             retryAction = retry
             errorMessage = "Your goal is unchanged. Please try again."
-            AppLogger.persistence.error("Goal check-in transaction failed: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
         }
     }
 }
@@ -837,7 +859,7 @@ private extension AdaptiveWindowEstimateRecord {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Adaptive proposal") {
     let container = PreviewData.makeContainer(state: .adaptiveProposal)
     let profile = try! container.mainContext.fetch(FetchDescriptor<UserProfile>()).first!

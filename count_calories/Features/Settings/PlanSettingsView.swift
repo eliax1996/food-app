@@ -452,32 +452,43 @@ struct PlanSettingsView: View {
     }
 
     private func clearPersonalTargets() {
+        let operation = AppLogger.begin(
+            "nutrition_targets.clear",
+            category: .userAction,
+            source: "settings"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
             }
             try mutationCoordinator.setPersonalNutritionTargets(nil)
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to clear personal nutrition targets: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Personal nutrition targets could not be cleared. Nothing changed."
         }
     }
 
     private func restoreCalculatedGoal() {
+        let operation = AppLogger.begin(
+            "plan.restore_calculated",
+            category: .userAction,
+            source: "settings"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
             }
             mutationCoordinator.synchronizeCalendar(calendar)
-            guard try mutationCoordinator.restoreCalculatedPlan() else { return }
+            guard try mutationCoordinator.restoreCalculatedPlan() else {
+                AppLogger.noop(operation, reason: "already_calculated")
+                return
+            }
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to restore calculated plan: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Calculated goal could not be restored. Your manual goal is unchanged."
         }
     }
@@ -694,6 +705,11 @@ private struct PlanEditor: View {
     private func save() {
         guard isValid, let parsedDailyGoal else { return }
 
+        let operation = AppLogger.begin(
+            "plan.manual_save",
+            category: .userAction,
+            source: "settings"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -705,11 +721,10 @@ private struct PlanEditor: View {
                 targetDate: targetDate
             )
             dismiss()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to save plan settings: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Plan changes could not be saved. Try again."
         }
     }
@@ -769,7 +784,7 @@ private func rangeText(_ range: ClosedRange<Double>) -> String {
     "\(percentText(range.lowerBound))–\(percentText(range.upperBound))"
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Plan complete") {
     NavigationStack {
         PlanSettingsView(profile: UserProfile())

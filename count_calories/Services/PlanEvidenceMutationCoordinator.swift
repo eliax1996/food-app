@@ -106,7 +106,7 @@ final class PlanEvidenceMutationCoordinator {
         self.calendar = calendar
     }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
     var testingModelContext: ModelContext { modelContext }
 
     func ensureAppliedFixtureVisibleForTesting() throws {
@@ -404,10 +404,7 @@ final class PlanEvidenceMutationCoordinator {
             }
             try resetPlanMutation(profile: profile, reason: "calculated-plan-accepted", at: operationDate)
             try modelContext.save()
-            WidgetDailySummaryStore.refreshCalorieGoal(profile.dailyCalorieGoal)
-            Task {
-                await CaloriesLiveActivityManager.refreshCalorieGoalIfActive(profile.dailyCalorieGoal)
-            }
+            synchronizeAuxiliaryGoalSurfacesIfNeeded(for: .mutation)
             return profile
         } catch {
             modelContext.rollback()
@@ -1778,12 +1775,11 @@ final class PlanEvidenceMutationCoordinator {
     }
 
     private func synchronizeAuxiliaryGoalSurfacesIfNeeded(for phase: SavePhase) {
-        guard phase == .mutation,
-              let profile = try? requiredProfile() else { return }
-        WidgetDailySummaryStore.refreshCalorieGoal(profile.dailyCalorieGoal)
-        Task {
-            await CaloriesLiveActivityManager.refreshCalorieGoalIfActive(profile.dailyCalorieGoal)
-        }
+        guard phase == .mutation else { return }
+        _ = TodayExternalSurfaceCoordinator.synchronize(
+            modelContext: modelContext,
+            calendar: calendar
+        )
     }
 
     private func ensureNoUnrelatedChanges(allowing allowed: [any PersistentModel] = []) throws {

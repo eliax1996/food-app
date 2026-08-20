@@ -2,18 +2,20 @@ set shell := ["zsh", "-cu"]
 
 # This file is the only supported entrypoint for project operations. The helper
 # script rejects direct invocation so configuration cannot drift between callers.
-xcode := "/Applications/Xcode-beta.app"
+xcode := env_var_or_default("XCODE_PATH", "/Applications/Xcode-beta.app")
 project := "count_calories.xcodeproj"
 scheme := "MyApp"
 configuration := "Debug"
 team := "9SFF5NYD5Y"
 bundle_id := "ch.elia.count-calories"
-physical_destination := "00008140-001E23E83E89401C"
-physical_device := "FD02682B-3BA2-554C-B4A6-E6B9DCE614AD"
-simulator := "B171D474-2B64-4D85-B15C-F231E745BD0F"
+physical_destination := env_var_or_default("PHYSICAL_DESTINATION_ID", "00008140-001E23E83E89401C")
+physical_device := env_var_or_default("PHYSICAL_DEVICE_ID", "FD02682B-3BA2-554C-B4A6-E6B9DCE614AD")
+simulator := env_var_or_default("SIMULATOR_ID", "B171D474-2B64-4D85-B15C-F231E745BD0F")
 derived_data := "/private/tmp/count_calories-derived"
 iteration_timeout := env_var_or_default("ITERATION_TIMEOUT", "60")
 validation_timeout := env_var_or_default("VALIDATION_TIMEOUT", "90")
+ui_test_timeout := env_var_or_default("UI_TEST_TIMEOUT", "2400")
+release_timeout := env_var_or_default("RELEASE_TIMEOUT", "2400")
 test_case_timeout := env_var_or_default("TEST_CASE_TIMEOUT", "30")
 
 # Show the available commands.
@@ -63,10 +65,13 @@ test-rerun timeout=iteration_timeout: (_run "test-rerun" timeout "")
 test-one identifier timeout=iteration_timeout: (_run "test-one" timeout identifier)
 
 # Run functional UI smoke tests without launch-performance measurement.
-test-ui timeout=validation_timeout: (_run "test-ui" timeout "")
+test-ui timeout=ui_test_timeout: (_run "test-ui" timeout "")
 
 # Run one functional UI XCTest filter (Class/method) for focused authoring and diagnosis.
 test-ui-one identifier timeout=validation_timeout: (_run "test-ui-one" timeout identifier)
+
+# Run one functional UI test in optimized Release configuration with test seams.
+test-ui-release-one identifier timeout=validation_timeout: (_run "test-ui-release-one" timeout identifier)
 
 # Run the app-hosted unit target when iOS-specific test hosting needs verification.
 test-app-unit timeout=validation_timeout: (_run "test-app-unit" timeout "")
@@ -80,8 +85,20 @@ test timeout=validation_timeout: (_run "test-all" timeout "")
 # Summarize the most recent simulator test result without launching a new test.
 test-results timeout=iteration_timeout: (_run "test-results" timeout "")
 
+# Show recent privacy-safe Count Calories unified logs from configured simulator.
+simulator-logs timeout=iteration_timeout: (_run "simulator-logs" timeout "")
+
 # Run unit tests, compile, install, and launch; UI automation remains an explicit recipe.
 validate timeout=validation_timeout: (_run "validate" timeout "")
+
+# Build/sign/archive and launch pure Release artifact without rerunning tests.
+release-artifact-check timeout=release_timeout: (_run "release-artifact-check" timeout "")
+
+# Current-runtime diagnostic: full optimized/artifact gate, but not minimum-iOS release approval.
+release-config-check timeout=release_timeout: (_run "release-config-check" timeout "")
+
+# Production gate: iOS 17 checks plus App Store Connect distribution IPA export.
+release-validate timeout=release_timeout: (_run "release-validate" timeout "")
 
 # Run the complete test suite on the physical iPhone.
 device-test timeout=validation_timeout: (_run "device-test" timeout "")

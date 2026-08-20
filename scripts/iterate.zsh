@@ -37,7 +37,12 @@ readonly device_derived_data="$DERIVED_DATA_ROOT/device"
 readonly swiftpm_scratch="$DERIVED_DATA_ROOT/swiftpm"
 readonly module_cache="$DERIVED_DATA_ROOT/module-cache"
 readonly simulator_app="$simulator_derived_data/Build/Products/${CONFIGURATION}-iphonesimulator/count_calories.app"
+readonly release_simulator_app="$simulator_derived_data/Build/Products/Release-iphonesimulator/count_calories.app"
 readonly device_app="$device_derived_data/Build/Products/${CONFIGURATION}-iphoneos/count_calories.app"
+readonly release_archive="$device_derived_data/Archives/CountCalories.xcarchive"
+readonly release_export="$device_derived_data/Export"
+readonly release_export_options="$device_derived_data/ExportOptions.plist"
+readonly test_diagnostics="$DERIVED_DATA_ROOT/test-diagnostics"
 
 export CLANG_MODULE_CACHE_PATH="$module_cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$module_cache"
@@ -110,6 +115,28 @@ simulator_common_args=(
     COMPILER_INDEX_STORE_ENABLE=NO
 )
 
+release_simulator_common_args=(
+    -project "$PROJECT"
+    -scheme "$SCHEME"
+    -configuration Release
+    -destination "platform=iOS Simulator,id=$SIMULATOR_ID"
+    -derivedDataPath "$simulator_derived_data"
+    -quiet
+    COMPILER_INDEX_STORE_ENABLE=NO
+)
+
+release_validation_test_args=(
+    -project "$PROJECT"
+    -scheme "$SCHEME"
+    -configuration Release
+    -destination "platform=iOS Simulator,id=$SIMULATOR_ID"
+    -derivedDataPath "$simulator_derived_data"
+    -quiet
+    COMPILER_INDEX_STORE_ENABLE=NO
+    ENABLE_TESTABILITY=YES
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS=RELEASE_VALIDATION
+)
+
 device_common_args=(
     -project "$PROJECT"
     -scheme "$SCHEME"
@@ -120,6 +147,18 @@ device_common_args=(
     COMPILER_INDEX_STORE_ENABLE=NO
 )
 
+release_archive_args=(
+    -project "$PROJECT"
+    -scheme "$SCHEME"
+    -configuration Release
+    -destination "generic/platform=iOS"
+    -derivedDataPath "$device_derived_data"
+    -archivePath "$release_archive"
+    -quiet
+    DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
+    COMPILER_INDEX_STORE_ENABLE=NO
+)
+
 test_options=(
     -parallel-testing-enabled NO
     -maximum-concurrent-test-simulator-destinations 1
@@ -127,6 +166,41 @@ test_options=(
     -default-test-execution-time-allowance "$TEST_CASE_TIMEOUT"
     -maximum-test-execution-time-allowance 60
 )
+
+verify_required_simulator_os() {
+    local required_major="${REQUIRED_SIMULATOR_OS_MAJOR:-}"
+    [[ -z "$required_major" ]] && return 0
+    if [[ "$required_major" != <1-> ]]; then
+        print -u2 -- "error: REQUIRED_SIMULATOR_OS_MAJOR must be an integer"
+        return 64
+    fi
+
+    local runtimes
+    runtimes="$(/usr/bin/mktemp -t count-calories-runtimes.XXXXXX)"
+    if ! run_with_timeout 20 "$xcrun" simctl list devices -j > "$runtimes"; then
+        /bin/rm -f "$runtimes"
+        return 1
+    fi
+    if /usr/bin/python3 -c '
+import json, sys
+path, device_id, major = sys.argv[1:]
+data = json.load(open(path))
+for runtime, devices in data.get("devices", {}).items():
+    if any(device.get("udid") == device_id for device in devices):
+        marker = f"iOS-{major}-"
+        raise SystemExit(0 if marker in runtime else 2)
+raise SystemExit(3)
+' "$runtimes" "$SIMULATOR_ID" "$required_major"; then
+        :
+    else
+        local exit_code=$?
+        /bin/rm -f "$runtimes"
+        print -u2 -- "error: configured simulator $SIMULATOR_ID is not on required iOS $required_major runtime (status $exit_code)"
+        return 1
+    fi
+    /bin/rm -f "$runtimes"
+    print -- "✓ Configured simulator uses required iOS $required_major runtime"
+}
 
 ensure_simulator_ready() {
     local device_list
@@ -175,10 +249,22 @@ build_simulator() {
         "$xcodebuild" build "${simulator_common_args[@]}"
 }
 
+build_release_simulator() {
+    run_step "Release simulator build" "$operation_timeout" \
+        "$xcodebuild" build "${release_simulator_common_args[@]}"
+}
+
 install_simulator() {
     ensure_simulator_ready
     terminate_simulator_app
     run_step "Install simulator app" 60 "$xcrun" simctl install "$SIMULATOR_ID" "$simulator_app"
+}
+
+install_release_simulator() {
+    ensure_simulator_ready
+    terminate_simulator_app
+    run_step "Install Release simulator app" 60 \
+        "$xcrun" simctl install "$SIMULATOR_ID" "$release_simulator_app"
 }
 
 launch_simulator() {
@@ -186,9 +272,84 @@ launch_simulator() {
     run_step "Launch simulator app" 30 "$xcrun" simctl launch "$SIMULATOR_ID" "$BUNDLE_ID"
 }
 
+launch_release_simulator() {
+    terminate_simulator_app
+    local started=$SECONDS
+    local output
+    print -- "→ Launch pure Release simulator app (timeout 30s)"
+    if output="$(run_with_timeout 30 "$xcrun" simctl launch "$SIMULATOR_ID" "$BUNDLE_ID")"; then
+        print -- "$output"
+        print -- "✓ Launch pure Release simulator app ($((SECONDS - started))s)"
+    else
+        local exit_code=$?
+        print -u2 -- "✗ Launch pure Release simulator app failed with status $exit_code"
+        return "$exit_code"
+    fi
+    local pid="${output##*: }"
+    if [[ "$pid" != <1-> ]]; then
+        print -u2 -- "error: could not parse pure Release app PID from: $output"
+        return 1
+    fi
+    /bin/sleep 3
+    run_step "Verify pure Release app remains alive" 10 /bin/kill -0 "$pid"
+}
+
 build_device() {
     run_step "Incremental physical-device build" "$operation_timeout" \
         "$xcodebuild" build "${device_common_args[@]}"
+}
+
+archive_release() {
+    /bin/rm -rf "$release_archive"
+    run_step "Signed Release archive" "$operation_timeout" \
+        "$xcodebuild" archive "${release_archive_args[@]}"
+    run_step "Validate archived app" 20 \
+        /bin/test -d "$release_archive/Products/Applications/count_calories.app"
+    run_step "Validate archived widget extension" 20 \
+        /bin/test -d "$release_archive/Products/Applications/count_calories.app/PlugIns/count_caloriesWidget.appex"
+    run_step "Verify archived app signature" 30 \
+        /usr/bin/codesign --verify --deep --strict \
+        "$release_archive/Products/Applications/count_calories.app"
+    run_step "Verify archived widget signature" 30 \
+        /usr/bin/codesign --verify --strict \
+        "$release_archive/Products/Applications/count_calories.app/PlugIns/count_caloriesWidget.appex"
+}
+
+export_release() {
+    /bin/mkdir -p "$device_derived_data"
+    /bin/rm -rf "$release_export"
+    /bin/cat > "$release_export_options" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>destination</key>
+    <string>export</string>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>teamID</key>
+    <string>$DEVELOPMENT_TEAM</string>
+    <key>uploadSymbols</key>
+    <true/>
+</dict>
+</plist>
+EOF
+    run_step "Export App Store Connect IPA" "$operation_timeout" \
+        "$xcodebuild" -exportArchive \
+        -archivePath "$release_archive" \
+        -exportPath "$release_export" \
+        -exportOptionsPlist "$release_export_options" \
+        -quiet
+    local ipas=("$release_export"/*.ipa(N))
+    if (( ${#ipas} != 1 )); then
+        print -u2 -- "error: expected one exported IPA, found ${#ipas}"
+        return 1
+    fi
+    print -- "✓ Exported distribution IPA: $ipas[1]"
 }
 
 install_device() {
@@ -202,6 +363,20 @@ launch_device() {
         --device "$PHYSICAL_DEVICE_ID" "$BUNDLE_ID"
 }
 
+capture_simulator_app_logs() {
+    /bin/mkdir -p "$test_diagnostics"
+    local output="$test_diagnostics/count-calories-$(/bin/date +%Y%m%d-%H%M%S).log"
+    if run_with_timeout 30 "$xcrun" simctl spawn "$SIMULATOR_ID" log show \
+        --last 15m \
+        --style compact \
+        --predicate 'subsystem == "ch.elia.count-calories"' > "$output"; then
+        print -- "→ Captured Count Calories logs: $output"
+    else
+        print -u2 -- "warning: could not capture Count Calories simulator logs"
+        /bin/rm -f "$output"
+    fi
+}
+
 run_simulator_tests() {
     local scope="$1"
     shift
@@ -213,8 +388,29 @@ run_simulator_tests() {
         return 0
     else
         local exit_code=$?
+        capture_simulator_app_logs
         if (( exit_code == 124 )); then
             print -u2 -- "Test infrastructure timed out; resetting the simulator for the next iteration."
+            reset_simulator || true
+        fi
+        return "$exit_code"
+    fi
+}
+
+run_release_validation_tests() {
+    local scope="$1"
+    shift
+    ensure_simulator_ready
+    terminate_simulator_app
+
+    if run_step "$scope" "$operation_timeout" \
+        "$xcodebuild" test "${release_validation_test_args[@]}" "${test_options[@]}" "$@"; then
+        return 0
+    else
+        local exit_code=$?
+        capture_simulator_app_logs
+        if (( exit_code == 124 )); then
+            print -u2 -- "Release-validation test infrastructure timed out; resetting simulator."
             reset_simulator || true
         fi
         return "$exit_code"
@@ -243,6 +439,20 @@ run_core_tests() {
         --disable-sandbox \
         --disable-index-store \
         "$@"
+}
+
+run_release_candidate() {
+    run_core_tests "Hostless core tests"
+    run_release_validation_tests "Release-config app-hosted unit tests" \
+        "-only-testing:count_caloriesTests"
+    reset_simulator
+    run_release_validation_tests "Release-config functional UI tests" \
+        "-only-testing:count_caloriesUITests" \
+        "-skip-testing:count_caloriesUITests/CountCaloriesUITests/testLaunchPerformance"
+    archive_release
+    build_release_simulator
+    install_release_simulator
+    launch_release_simulator
 }
 
 case "$action" in
@@ -293,6 +503,15 @@ case "$action" in
         run_simulator_tests "Selected functional UI test" \
             "-only-testing:count_caloriesUITests/$argument"
         ;;
+    test-ui-release-one)
+        if [[ -z "$argument" ]]; then
+            print -u2 -- "error: test-ui-release-one requires an XCTest filter"
+            exit 64
+        fi
+        reset_simulator
+        run_release_validation_tests "Selected Release-config UI test" \
+            "-only-testing:count_caloriesUITests/$argument"
+        ;;
     test-app-unit)
         run_simulator_tests "App-hosted unit tests" "-only-testing:count_caloriesTests"
         ;;
@@ -316,11 +535,34 @@ case "$action" in
         run_step "List latest test details" "$operation_timeout" \
             "$xcrun" xcresulttool get test-results tests --path "$result_bundles[1]"
         ;;
+    simulator-logs)
+        ensure_simulator_ready
+        run_step "Show recent Count Calories logs" "$operation_timeout" \
+            "$xcrun" simctl spawn "$SIMULATOR_ID" log show \
+            --last 30m \
+            --style compact \
+            --predicate 'subsystem == "ch.elia.count-calories"'
+        ;;
     validate)
         run_core_tests "Hostless core tests"
         build_simulator
         install_simulator
         launch_simulator
+        ;;
+    release-artifact-check)
+        archive_release
+        build_release_simulator
+        install_release_simulator
+        launch_release_simulator
+        ;;
+    release-config-check)
+        run_release_candidate
+        ;;
+    release-validate)
+        REQUIRED_SIMULATOR_OS_MAJOR=17
+        verify_required_simulator_os
+        run_release_candidate
+        export_release
         ;;
     device-build)
         build_device

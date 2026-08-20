@@ -8,10 +8,41 @@
 import XCTest
 
 final class CountCaloriesUITests: XCTestCase {
+    private var capturedFailureArtifacts = false
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        capturedFailureArtifacts = false
         XCUIApplication().terminate()
+        try? FileManager.default.removeItem(atPath: "/tmp/count-calories-ui-trace")
+    }
+
+    override func record(_ issue: XCTIssue) {
+        if !capturedFailureArtifacts {
+            capturedFailureArtifacts = true
+            let app = XCUIApplication()
+
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "Failure screenshot"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+
+            let hierarchy = XCTAttachment(string: app.debugDescription)
+            hierarchy.name = "Failure accessibility hierarchy"
+            hierarchy.lifetime = .keepAlways
+            add(hierarchy)
+
+            if let trace = try? String(
+                contentsOfFile: "/tmp/count-calories-ui-trace",
+                encoding: .utf8
+            ), !trace.isEmpty {
+                let traceAttachment = XCTAttachment(string: trace)
+                traceAttachment.name = "UI journey trace"
+                traceAttachment.lifetime = .keepAlways
+                add(traceAttachment)
+            }
+        }
+        super.record(issue)
     }
 
     @MainActor
@@ -59,6 +90,53 @@ final class CountCaloriesUITests: XCTestCase {
         XCTContext.runActivity(named: "Verify saved total") { _ in
             saveMealButton.tap()
             assertDailyTotal(calorieTotal, eaten: initialEatenCalories + 15, phase: "Total")
+        }
+    }
+
+    @MainActor
+    func testMealAndWaterPersistAcrossIsolatedFileBackedRelaunch() throws {
+        let app = XCUIApplication()
+        let session = UUID().uuidString
+        let persistentArguments = [
+            "-ui-testing",
+            "-ui-testing-persistent",
+            "-ui-test-session", session,
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let addMeal = app.buttons["add-meal"]
+        let saveMeal = app.buttons["save-meal"]
+        let calorieTotal = app.staticTexts["daily-calorie-total"]
+        let addWater = app.buttons["Add glass"]
+        let removeWater = app.buttons["Remove glass"]
+
+        XCTContext.runActivity(named: "Create persisted meal and water") { _ in
+            app.launchArguments = persistentArguments + ["-ui-testing-reset"]
+            app.launch()
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout))
+            assertHittable(addWater, identifier: "Add glass", phase: "Persistent first launch")
+            addWater.tap()
+            addWater.tap()
+            assertExists(app.staticTexts["2 of 8 glasses"], identifier: "2 of 8 glasses", phase: "Persistent water")
+
+            assertHittable(addMeal, identifier: "add-meal", phase: "Persistent meal")
+            addMeal.tap()
+            assertHittable(saveMeal, identifier: "save-meal", phase: "Persistent meal")
+            saveMeal.tap()
+            assertDailyTotal(calorieTotal, eaten: 15, phase: "Persistent first launch")
+        }
+
+        XCTContext.runActivity(named: "Relaunch same isolated store") { _ in
+            app.terminate()
+            app.launchArguments = persistentArguments
+            app.launch()
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout))
+            assertDailyTotal(calorieTotal, eaten: 15, phase: "Persistent relaunch")
+            assertExists(app.staticTexts["2 of 8 glasses"], identifier: "2 of 8 glasses", phase: "Persistent relaunch")
+
+            assertHittable(removeWater, identifier: "Remove glass", phase: "Persistent relaunch")
+            removeWater.tap()
+            assertExists(app.staticTexts["1 of 8 glasses"], identifier: "1 of 8 glasses", phase: "Persistent water mutation")
         }
     }
 
@@ -907,6 +985,40 @@ final class CountCaloriesUITests: XCTestCase {
                 phase: "Persistence"
             )
         }
+    }
+
+    @MainActor
+    func testScannerSuccessOpensVerifiedFoodAndLogsIt() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-scanner-success",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let scanBarcode = app.buttons["scan-barcode"]
+        let scanFixture = app.buttons["barcode-scanner-fixture-scan"]
+        let mealEditor = app.descendants(matching: .any).matching(identifier: "meal-editor").firstMatch
+        let selectedFood = app.staticTexts["selected-food-name"]
+        let amount = app.textFields["meal-amount"]
+        let calculatedTotal = app.descendants(matching: .any).matching(identifier: "calculated-total").firstMatch
+        let save = app.buttons["save-meal"]
+        let dailyTotal = app.staticTexts["daily-calorie-total"]
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout))
+        assertHittable(scanBarcode, identifier: "scan-barcode", phase: "Scanner success")
+        scanBarcode.tap()
+        assertHittable(scanFixture, identifier: "barcode-scanner-fixture-scan", phase: "Scanner success")
+        scanFixture.tap()
+
+        assertExists(mealEditor, identifier: "meal-editor", phase: "Scanner success")
+        assertLabel(selectedFood, expected: "Fixture Granola", phase: "Scanner success")
+        assertExactValue(amount, expected: "45 grams", phase: "Scanner success")
+        assertExactValue(calculatedTotal, expected: "189 calories", phase: "Scanner success")
+        assertHittable(save, identifier: "save-meal", phase: "Scanner success")
+        save.tap()
+        assertDailyTotal(dailyTotal, eaten: 189, phase: "Scanner success")
     }
 
     @MainActor
@@ -2168,8 +2280,13 @@ final class CountCaloriesUITests: XCTestCase {
         for (field, value) in values {
             for _ in 0..<3 where !field.isHittable { app.swipeUp() }
             assertHittable(field, identifier: field.identifier, phase: "Personal targets editor")
-            field.tap()
-            field.typeText(value)
+            replaceText(
+                in: field,
+                with: value,
+                app: app,
+                identifier: field.identifier,
+                phase: "Personal targets editor"
+            )
         }
         let energy = app.descendants(matching: .any)
             .matching(identifier: "personal-target-macro-energy")
@@ -2983,6 +3100,93 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     @MainActor
+    func testReminderSavePersistsIntentWhenNotificationAccessIsDenied() throws {
+        let app = XCUIApplication()
+        let session = UUID().uuidString
+        let persistentArguments = [
+            "-ui-testing",
+            "-ui-testing-persistent",
+            "-ui-testing-reminders-denied",
+            "-ui-test-session", session,
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US"
+        ]
+        let settings = app.tabBars.buttons["Settings"]
+        let remindersLink = app.descendants(matching: .any)
+            .matching(identifier: "settings-reminders-link")
+            .firstMatch
+        let customize = app.buttons["meal-reminders-customize"]
+        let enablement = app.buttons.matching(identifier: "meal-reminders-enable-disable").firstMatch
+        let breakfastToggle = app.switches["breakfast-reminder-toggle"]
+        let save = app.buttons["reminders-save"]
+        let breakfastSummary = app.descendants(matching: .any)
+            .matching(identifier: "breakfast-reminder-summary")
+            .firstMatch
+        let authorization = app.descendants(matching: .any)
+            .matching(identifier: "reminder-authorization-status")
+            .firstMatch
+
+        func openReminders(phase: String) {
+            assertHittable(settings, identifier: "Settings tab", phase: phase)
+            settings.tap()
+            assertHittable(remindersLink, identifier: "settings-reminders-link", phase: phase)
+            remindersLink.tap()
+            assertExists(app.descendants(matching: .any).matching(identifier: "reminder-settings").firstMatch,
+                         identifier: "reminder-settings", phase: phase)
+        }
+
+        XCTContext.runActivity(named: "Save reminder intent while denied") { _ in
+            app.launchArguments = persistentArguments + ["-ui-testing-reset"]
+            app.launch()
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout))
+            openReminders(phase: "Reminder denied first launch")
+
+            assertHittable(customize, identifier: "meal-reminders-customize", phase: "Reminder denied")
+            customize.tap()
+            assertHittable(enablement, identifier: "meal-reminders-enable-disable", phase: "Reminder denied")
+            enablement.tap()
+            assertHittable(breakfastToggle, identifier: "breakfast-reminder-toggle", phase: "Reminder denied")
+            breakfastToggle.coordinate(
+                withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
+            ).tap()
+            assertExactValue(breakfastToggle, expected: "1", phase: "Reminder denied")
+            assertHittable(save, identifier: "reminders-save", phase: "Reminder denied")
+            save.tap()
+
+            assertExists(breakfastSummary, identifier: "breakfast-reminder-summary", phase: "Reminder denied saved")
+            XCTAssertTrue(
+                accessibilityValue(of: breakfastSummary).contains("Enabled"),
+                "Reminder denied: saved intent not visible; \(diagnostic(for: breakfastSummary))"
+            )
+            for _ in 0..<8 where !authorization.exists { app.swipeUp() }
+            assertExists(authorization, identifier: "reminder-authorization-status", phase: "Reminder denied saved")
+            XCTAssertTrue(
+                authorization.label.contains("Off in iOS Settings"),
+                "Reminder denied: authorization state missing; \(diagnostic(for: authorization))"
+            )
+        }
+
+        XCTContext.runActivity(named: "Relaunch saved reminder intent") { _ in
+            app.terminate()
+            app.launchArguments = persistentArguments
+            app.launch()
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: uiTimeout))
+            openReminders(phase: "Reminder denied relaunch")
+            assertExists(breakfastSummary, identifier: "breakfast-reminder-summary", phase: "Reminder denied relaunch")
+            XCTAssertTrue(
+                accessibilityValue(of: breakfastSummary).contains("Enabled"),
+                "Reminder denied relaunch: intent did not persist; \(diagnostic(for: breakfastSummary))"
+            )
+            for _ in 0..<8 where !authorization.exists { app.swipeUp() }
+            assertExists(authorization, identifier: "reminder-authorization-status", phase: "Reminder denied relaunch")
+            XCTAssertTrue(
+                authorization.label.contains("Off in iOS Settings"),
+                "Reminder denied relaunch: authorization state missing; \(diagnostic(for: authorization))"
+            )
+        }
+    }
+
+    @MainActor
     func testWeightAndWaterReminderSummariesOpenEditorWithoutSaving() throws {
         let app = launchReminderSettings()
         let weightEditor = app.descendants(matching: .any)
@@ -3360,6 +3564,13 @@ final class CountCaloriesUITests: XCTestCase {
                 15,
                 "Saved meal changed normal 15 kcal flow."
             )
+        }
+
+        XCTContext.runActivity(named: "Reconfirm populated Today") { _ in
+            assertHittable(complete, identifier: "mark-food-log-complete", phase: "Reconfirm populated Today")
+            complete.tap()
+            assertLabel(status, expected: "Complete", phase: "Reconfirmed populated Today")
+            assertAbsent(confirmEmpty, identifier: "I ate nothing today", phase: "Reconfirmed populated Today")
         }
     }
 

@@ -125,6 +125,11 @@ private struct ProfileEditor: View {
     }
 
     private func save() {
+        let operation = AppLogger.begin(
+            "profile.save",
+            category: .userAction,
+            source: "settings"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -132,11 +137,10 @@ private struct ProfileEditor: View {
             mutationCoordinator.synchronizeCalendar(calendar)
             try mutationCoordinator.changeProfileContext(age: age)
             dismiss()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to save profile settings: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Profile changes could not be saved. Try again."
         }
     }
@@ -155,7 +159,7 @@ private func heightText(
     return "\(feet) ft \(inches.formatted(.number.precision(.fractionLength(0...1)))) in"
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Profile") {
     NavigationStack {
         ProfileSettingsView(profile: UserProfile())

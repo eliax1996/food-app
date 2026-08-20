@@ -187,17 +187,21 @@ struct PersonalNutritionTargetsEditor: View {
 
     private func save() {
         guard let targets else { return }
+        let operation = AppLogger.begin(
+            "nutrition_targets.save",
+            category: .userAction,
+            source: "settings"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
             }
             try mutationCoordinator.setPersonalNutritionTargets(targets)
             dismiss()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error(
-                "Failed to save personal nutrition targets: \(error.localizedDescription, privacy: .public)"
-            )
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Personal nutrition targets could not be saved. Nothing changed."
         }
     }
@@ -207,7 +211,7 @@ struct PersonalNutritionTargetsEditor: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Personal targets") {
     PersonalNutritionTargetsEditor(profile: UserProfile())
         .previewPlanEvidenceContainer(PreviewData.makeContainer())

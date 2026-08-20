@@ -41,6 +41,25 @@ final class ReminderNotificationTests: XCTestCase {
         XCTAssertEqual(Set(stored.keys), Set([old.identifier, unchanged.identifier]))
     }
 
+    func testFailedReminderReplacementReportsRollbackFailure() async {
+        let old = notificationRequest(identifier: "count-calories.reminder.old")
+        let replacement = notificationRequest(identifier: "count-calories.reminder.new")
+        var attempts = 0
+
+        let result = await ReminderNotificationManager.replacePendingRequestsDetailed(
+            existingRequests: [old],
+            desiredRequests: [replacement],
+            add: { _ in
+                attempts += 1
+                throw CocoaError(.fileWriteUnknown)
+            },
+            remove: { _ in }
+        )
+
+        XCTAssertEqual(attempts, 2, "Desired add and rollback restore must both be attempted.")
+        XCTAssertEqual(result, .failed(rollbackSucceeded: false))
+    }
+
     func testSuccessfulReminderReplacementAddsDesiredBeforeRemovingObsolete() async {
         let old = notificationRequest(identifier: "count-calories.reminder.old")
         let replacement = notificationRequest(identifier: "count-calories.reminder.new")
@@ -429,16 +448,9 @@ final class ReminderNotificationTests: XCTestCase {
         )
         let context = container.mainContext
         let today = Date(timeIntervalSince1970: 1_700_000_000)
-        let suiteName = WidgetDailySummaryStore.appGroupIdentifier
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        let previousData = defaults.data(forKey: "dailySummary")
-        defer {
-            if let previousData {
-                defaults.set(previousData, forKey: "dailySummary")
-            } else {
-                defaults.removeObject(forKey: "dailySummary")
-            }
-        }
+        let previousData = try WidgetDailySummaryStore.testingStoredData()
+        defer { try? WidgetDailySummaryStore.replaceTestingStoredData(previousData) }
+        try WidgetDailySummaryStore.replaceTestingStoredData(nil)
         WidgetDailySummaryStore.save(
             calories: 300,
             waterGlasses: 4,
@@ -448,6 +460,9 @@ final class ReminderNotificationTests: XCTestCase {
             date: today,
             reloadWidget: false
         )
+        var widgetSummary = try XCTUnwrap(WidgetDailySummaryStore.load())
+        widgetSummary.revision = 1
+        try WidgetDailySummaryStore.replaceTestingStoredData(JSONEncoder().encode(widgetSummary))
 
         var synchronizedGlasses: Int?
         try WidgetWaterImportService.synchronize(
@@ -467,19 +482,74 @@ final class ReminderNotificationTests: XCTestCase {
     }
 
     @MainActor
+    func testWidgetImportRetriesWhenNewerRevisionWinsAcknowledgementRace() throws {
+        let container = try ModelContainer(
+            for: WaterDay.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let now = Date()
+        container.mainContext.insert(WaterDay(date: now, glasses: 4))
+        try container.mainContext.save()
+        var first = WidgetDailySummary.empty(date: now)
+        first.waterGlasses = 5
+        first.revision = 1
+        var second = first
+        second.waterGlasses = 6
+        second.revision = 2
+        var loads = [first, second]
+        var acknowledged: [Int64] = []
+        var synchronizedGlasses: Int?
+
+        try WidgetWaterImportService.synchronize(
+            in: container,
+            now: now,
+            synchronizeExternalSurfaces: { context, _ in
+                synchronizedGlasses = try? context.fetch(FetchDescriptor<WaterDay>()).first?.glasses
+            },
+            loadSummary: { loads.isEmpty ? nil : loads.removeFirst() },
+            acknowledgeRevision: { revision in
+                acknowledged.append(revision)
+                return revision == 2
+            }
+        )
+
+        XCTAssertEqual(acknowledged, [1, 2])
+        XCTAssertEqual(
+            try container.mainContext.fetch(FetchDescriptor<WaterDay>()).first?.glasses,
+            6
+        )
+        XCTAssertEqual(synchronizedGlasses, 6)
+    }
+
+    @MainActor
+    func testWidgetImportIgnoresAppOriginSummaryWithoutPendingRevision() throws {
+        let container = try ModelContainer(
+            for: WaterDay.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let now = Date()
+        let previousData = try WidgetDailySummaryStore.testingStoredData()
+        defer { try? WidgetDailySummaryStore.replaceTestingStoredData(previousData) }
+        try WidgetDailySummaryStore.replaceTestingStoredData(nil)
+        XCTAssertTrue(WidgetDailySummaryStore.save(
+            calories: 0,
+            waterGlasses: 4,
+            date: now,
+            reloadWidget: false,
+            preservePendingWidgetWater: false
+        ))
+
+        try WidgetWaterImportService.synchronize(in: container, now: now)
+
+        XCTAssertTrue(try container.mainContext.fetch(FetchDescriptor<WaterDay>()).isEmpty)
+    }
+
+    @MainActor
     func testAppMirrorPreservesPendingWidgetWaterUntilImport() throws {
         let today = Date()
-        let defaults = try XCTUnwrap(UserDefaults(
-            suiteName: WidgetDailySummaryStore.appGroupIdentifier
-        ))
-        let previousData = defaults.data(forKey: "dailySummary")
-        defer {
-            if let previousData {
-                defaults.set(previousData, forKey: "dailySummary")
-            } else {
-                defaults.removeObject(forKey: "dailySummary")
-            }
-        }
+        let previousData = try WidgetDailySummaryStore.testingStoredData()
+        defer { try? WidgetDailySummaryStore.replaceTestingStoredData(previousData) }
+        try WidgetDailySummaryStore.replaceTestingStoredData(nil)
         WidgetDailySummaryStore.save(
             calories: 100,
             waterGlasses: 4,
@@ -491,7 +561,7 @@ final class ReminderNotificationTests: XCTestCase {
         var pending = try XCTUnwrap(WidgetDailySummaryStore.load())
         pending.waterGlasses = 5
         pending.revision = 1
-        defaults.set(try JSONEncoder().encode(pending), forKey: "dailySummary")
+        try WidgetDailySummaryStore.replaceTestingStoredData(JSONEncoder().encode(pending))
 
         WidgetDailySummaryStore.save(
             calories: 200,
@@ -506,6 +576,135 @@ final class ReminderNotificationTests: XCTestCase {
         XCTAssertEqual(merged.calories, 200)
         XCTAssertEqual(merged.waterGlasses, 5)
         XCTAssertEqual(merged.resolvedRevision, 1)
+    }
+
+    @MainActor
+    func testAppMirrorPreservesPendingWidgetTimestampWhenCountReturnedToSameValue() throws {
+        let previousData = try WidgetDailySummaryStore.testingStoredData()
+        defer { try? WidgetDailySummaryStore.replaceTestingStoredData(previousData) }
+        try WidgetDailySummaryStore.replaceTestingStoredData(nil)
+        let oldTimestamp = Date(timeIntervalSince1970: 1_700_000_000)
+        let widgetTimestamp = Date(timeIntervalSince1970: 1_700_000_100)
+        var pending = WidgetDailySummary.empty(date: widgetTimestamp)
+        pending.waterGlasses = 4
+        pending.lastWaterRecordedAt = widgetTimestamp
+        pending.revision = 2
+        try WidgetDailySummaryStore.replaceTestingStoredData(JSONEncoder().encode(pending))
+
+        XCTAssertTrue(WidgetDailySummaryStore.save(
+            calories: 100,
+            waterGlasses: 4,
+            lastWaterRecordedAt: oldTimestamp,
+            calorieGoal: 1_700,
+            waterGoal: 8,
+            date: widgetTimestamp,
+            reloadWidget: false,
+            preservePendingWidgetWater: true
+        ))
+
+        let retained = try XCTUnwrap(WidgetDailySummaryStore.load())
+        XCTAssertEqual(retained.waterGlasses, 4)
+        XCTAssertEqual(retained.lastWaterRecordedAt, widgetTimestamp)
+        XCTAssertEqual(retained.resolvedRevision, 2)
+    }
+
+    @MainActor
+    func testPendingWidgetWaterThenAppDeltaProducesSixAndClearsRevision() throws {
+        let previousData = try WidgetDailySummaryStore.testingStoredData()
+        defer { try? WidgetDailySummaryStore.replaceTestingStoredData(previousData) }
+        try WidgetDailySummaryStore.replaceTestingStoredData(nil)
+        var pending = WidgetDailySummary.empty()
+        pending.waterGlasses = 5
+        pending.revision = 1
+        try WidgetDailySummaryStore.replaceTestingStoredData(JSONEncoder().encode(pending))
+
+        let result = try WidgetDailySummaryMutation.adjustWater(pending, by: 1)
+        XCTAssertEqual(result.waterGlasses, 6)
+        XCTAssertTrue(WidgetDailySummaryStore.save(
+            calories: 0,
+            waterGlasses: result.waterGlasses,
+            calorieGoal: 1_700,
+            waterGoal: 8,
+            reloadWidget: false,
+            preservePendingWidgetWater: false
+        ))
+
+        let saved = try XCTUnwrap(WidgetDailySummaryStore.load())
+        XCTAssertEqual(saved.waterGlasses, 6)
+        XCTAssertEqual(saved.resolvedRevision, 0)
+    }
+
+    @MainActor
+    func testWaterAcknowledgementRejectsNewerWidgetRevisionWithoutOverwrite() throws {
+        let previousData = try WidgetDailySummaryStore.testingStoredData()
+        defer { try? WidgetDailySummaryStore.replaceTestingStoredData(previousData) }
+        try WidgetDailySummaryStore.replaceTestingStoredData(nil)
+        var pending = WidgetDailySummary.empty()
+        pending.waterGlasses = 5
+        pending.revision = 1
+        let appAdjustment = try WidgetDailySummaryMutation.adjustWater(pending, by: 1)
+        let newerWidgetAdjustment = try WidgetDailySummaryMutation.adjustWater(
+            appAdjustment,
+            by: 1
+        )
+        try WidgetDailySummaryStore.replaceTestingStoredData(
+            JSONEncoder().encode(newerWidgetAdjustment)
+        )
+
+        XCTAssertFalse(WidgetDailySummaryStore.acknowledgeWaterRevision(
+            appAdjustment.resolvedRevision
+        ))
+        let retained = try XCTUnwrap(WidgetDailySummaryStore.load())
+        XCTAssertEqual(retained.waterGlasses, 7)
+        XCTAssertEqual(retained.resolvedRevision, 3)
+    }
+
+    @MainActor
+    func testAppWidgetSummarySaveRecoversCorruptSharedPayload() throws {
+        let previousData = try WidgetDailySummaryStore.testingStoredData()
+        defer { try? WidgetDailySummaryStore.replaceTestingStoredData(previousData) }
+        try WidgetDailySummaryStore.replaceTestingStoredData(nil)
+        try WidgetDailySummaryStore.replaceTestingStoredData(Data("corrupt".utf8))
+
+        XCTAssertNil(
+            WidgetDailySummaryStore.adjustWater(by: 1),
+            "A water intent must fail until app truth rebuilds corrupt shared state."
+        )
+        XCTAssertTrue(WidgetDailySummaryStore.save(
+            calories: 100,
+            waterGlasses: 2,
+            calorieGoal: 1_700,
+            waterGoal: 8,
+            reloadWidget: false
+        ))
+        let recovered = try XCTUnwrap(WidgetDailySummaryStore.load())
+        XCTAssertEqual(recovered.calories, 100)
+        XCTAssertEqual(recovered.waterGlasses, 2)
+    }
+
+    @MainActor
+    func testLegacyWidgetDefaultsMigrateIntoAtomicSharedFile() throws {
+        let previousData = try WidgetDailySummaryStore.testingStoredData()
+        defer { try? WidgetDailySummaryStore.replaceTestingStoredData(previousData) }
+        try WidgetDailySummaryStore.replaceTestingStoredData(nil)
+        let defaults = try XCTUnwrap(UserDefaults(
+            suiteName: WidgetDailySummaryStore.appGroupIdentifier
+        ))
+        let previousLegacy = defaults.data(forKey: "dailySummary")
+        defer {
+            if let previousLegacy {
+                defaults.set(previousLegacy, forKey: "dailySummary")
+            } else {
+                defaults.removeObject(forKey: "dailySummary")
+            }
+        }
+        var legacy = WidgetDailySummary.empty()
+        legacy.waterGlasses = 3
+        defaults.set(try JSONEncoder().encode(legacy), forKey: "dailySummary")
+
+        XCTAssertEqual(WidgetDailySummaryStore.load()?.waterGlasses, 3)
+        XCTAssertNotNil(try WidgetDailySummaryStore.testingStoredData())
+        XCTAssertNil(defaults.data(forKey: "dailySummary"))
     }
 
     func testLegacyWidgetSummaryDecodesWithoutWaterTimestamp() throws {

@@ -105,7 +105,7 @@ struct CalorieCounterView: View {
     }
 
     private var isDesignReview: Bool {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         ProcessInfo.processInfo.arguments.contains("-design-review")
             || ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
 #else
@@ -114,7 +114,7 @@ struct CalorieCounterView: View {
     }
 
     private var usesBulkFoodFixture: Bool {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-ui-testing-bulk-food")
             || arguments.contains("-design-review-bulk-food")
@@ -555,6 +555,11 @@ struct CalorieCounterView: View {
     }
 
     private func markTodayFoodLogComplete() {
+        let operation = AppLogger.begin(
+            "food_log.attest",
+            category: .userAction,
+            source: "today"
+        )
         do {
             guard let coordinator = mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -566,10 +571,12 @@ struct CalorieCounterView: View {
             case .inProgress:
                 _ = try coordinator.markFoodLogComplete(for: .now)
             case .complete:
+                AppLogger.noop(operation, reason: "already_complete")
                 return
             }
+            AppLogger.succeed(operation)
         } catch {
-            AppLogger.persistence.error("Failed to attest food log: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error)
             errorMessage = "Food log could not be marked complete. Please try again."
         }
     }
@@ -578,32 +585,36 @@ struct CalorieCounterView: View {
         Binding(
             get: { todaysWater?.glasses ?? 0 },
             set: { newValue in
-                let day = todaysWater ?? createTodayWaterDay()
-                let previousValue = day.glasses
-                day.glasses = newValue
-                if newValue > previousValue {
-                    day.lastRecordedAt = .now
-                }
-                if saveChanges() {
-                    mirrorTodayToWidgetStore(preservePendingWidgetWater: false)
-                }
+                let previousValue = todaysWater?.glasses ?? 0
+                applyWaterDelta(newValue - previousValue, source: "today")
             }
         )
     }
 
     private func adjustWater(by delta: Int) {
+        applyWaterDelta(delta, source: "deep_link")
+    }
+
+    private func applyWaterDelta(_ delta: Int, source: String) {
+        guard delta != 0 else { return }
+        guard let summary = WidgetDailySummaryStore.adjustWater(by: delta) else {
+            errorMessage = "Water could not be updated. Please try again."
+            return
+        }
         let day = todaysWater ?? createTodayWaterDay()
-        day.glasses = min(max(0, day.glasses + delta), 30)
-        if delta > 0 {
-            day.lastRecordedAt = .now
+        day.glasses = summary.waterGlasses
+        day.lastRecordedAt = summary.lastWaterRecordedAt ?? day.lastRecordedAt
+        guard saveChanges(operation: "water.adjust", source: source) else {
+            return // Pending shared revision lets next import recover this committed intent.
         }
-        if saveChanges() {
-            mirrorTodayToWidgetStore(preservePendingWidgetWater: false)
+        if !WidgetDailySummaryStore.acknowledgeWaterRevision(summary.resolvedRevision) {
+            synchronizeWaterFromWidgetStore()
         }
+        mirrorTodayToWidgetStore(preservePendingWidgetWater: true)
     }
 
     private func prepareLocalData() {
-        #if DEBUG
+        #if DEBUG || RELEASE_VALIDATION
         if ProcessInfo.processInfo.arguments.contains("-ui-testing-adaptive-applied") {
             return
         }
@@ -622,22 +633,30 @@ struct CalorieCounterView: View {
         if currentWaterDay.glasses > 0 && currentWaterDay.lastRecordedAt == nil {
             currentWaterDay.lastRecordedAt = .now
         }
-        if saveChanges(), let mutationCoordinator {
+        if saveChanges(operation: "startup.prepare_local_data", source: "app"), let mutationCoordinator {
             mutationCoordinator.synchronizeCalendar(calendar)
+            let migrationOperation = AppLogger.begin(
+                "food_provenance.migrate",
+                category: .persistence,
+                source: "startup"
+            )
             do {
-                _ = try mutationCoordinator.migrateLegacyPlateProvenanceIfNeeded()
+                let migrated = try mutationCoordinator.migrateLegacyPlateProvenanceIfNeeded()
+                AppLogger.succeed(migrationOperation, count: migrated)
             } catch {
-                AppLogger.persistence.error(
-                    "Failed to migrate legacy food provenance: \(error.localizedDescription, privacy: .public)"
-                )
+                AppLogger.fail(migrationOperation, error: error, rollback: "succeeded")
                 errorMessage = "Some older food entries could not be prepared for safe editing. They remain unchanged and can still be deleted."
             }
+            let stalenessOperation = AppLogger.begin(
+                "food_log.refresh_staleness",
+                category: .persistence,
+                source: "startup"
+            )
             do {
-                _ = try mutationCoordinator.refreshFoodLogStaleness()
+                let refreshed = try mutationCoordinator.refreshFoodLogStaleness()
+                AppLogger.succeed(stalenessOperation, count: refreshed)
             } catch {
-                AppLogger.persistence.error(
-                    "Failed to refresh food-log evidence: \(error.localizedDescription, privacy: .public)"
-                )
+                AppLogger.fail(stalenessOperation, error: error, rollback: "succeeded")
                 errorMessage = "Food-log evidence could not be refreshed. Existing food remains unchanged; review before reconfirming."
             }
         }
@@ -671,7 +690,19 @@ struct CalorieCounterView: View {
                 )
             }
         }
-        let persistence = try? await BulkFoodPersistenceSession.applicationSession()
+        let persistenceOperation = AppLogger.begin(
+            "bulk.persistence_prepare",
+            category: .bulkFood,
+            source: "today"
+        )
+        let persistence: BulkFoodPersistenceSession?
+        do {
+            persistence = try await BulkFoodPersistenceSession.applicationSession()
+            AppLogger.succeed(persistenceOperation)
+        } catch {
+            persistence = nil
+            AppLogger.fail(persistenceOperation, error: error)
+        }
         let extractor = BulkFoodExtractorFactory.make()
         let matcher = BulkFoodMatcher(
             remoteService: service,
@@ -712,22 +743,35 @@ struct CalorieCounterView: View {
     }
 
     private func confirmBulkMeal(_ inserts: [BulkPlateInsert], operationID: UUID) throws {
-        guard let coordinator = mutationCoordinator else {
-            throw PlanEvidenceMutationError.coordinatorUnavailable
-        }
-        coordinator.synchronizeCalendar(calendar)
-        guard let committedDay = inserts.first?.date else {
-            throw PlanEvidenceMutationError.invalidBulkBatch
-        }
-        let insertedIDs = try coordinator.insertPlateBatch(
-            inserts,
-            expectedDay: committedDay,
-            operationID: operationID
+        let operation = AppLogger.begin(
+            "bulk.commit",
+            category: .bulkFood,
+            source: "bulk_review",
+            count: inserts.count,
+            id: operationID
         )
-        guard insertedIDs.count == inserts.count else {
-            throw PlanEvidenceMutationError.invalidBulkBatch
+        do {
+            guard let coordinator = mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            coordinator.synchronizeCalendar(calendar)
+            guard let committedDay = inserts.first?.date else {
+                throw PlanEvidenceMutationError.invalidBulkBatch
+            }
+            let insertedIDs = try coordinator.insertPlateBatch(
+                inserts,
+                expectedDay: committedDay,
+                operationID: operationID
+            )
+            guard insertedIDs.count == inserts.count else {
+                throw PlanEvidenceMutationError.invalidBulkBatch
+            }
+            mirrorTodayToWidgetStore()
+            AppLogger.succeed(operation, count: insertedIDs.count)
+        } catch {
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
+            throw error
         }
-        mirrorTodayToWidgetStore()
     }
 
     private func prepareMealSheetForAdd(mealType: MealType? = nil) {
@@ -755,6 +799,11 @@ struct CalorieCounterView: View {
             return
         }
 
+        let operation = AppLogger.begin(
+            "meal.add",
+            category: .userAction,
+            source: "meal_editor"
+        )
         do {
             guard editingEntry == nil else {
                 throw PlanEvidenceMutationError.compareAndSetFailed
@@ -777,14 +826,20 @@ struct CalorieCounterView: View {
             try coordinator.insertPlate(entry)
             mirrorTodayToWidgetStore()
             showingAddMeal = false
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error("Failed to save meal evidence: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Your meal could not be saved. Please try again."
         }
     }
 
     private func deletePlate(_ entry: PlateEntry, expectedModifiedAt: Date) {
+        let operation = AppLogger.begin(
+            "meal.delete",
+            category: .userAction,
+            source: "meal_detail"
+        )
         do {
             guard let coordinator = mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -795,9 +850,10 @@ struct CalorieCounterView: View {
                 expectedModifiedAt: expectedModifiedAt
             )
             mirrorTodayToWidgetStore()
+            AppLogger.succeed(operation)
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error("Failed to delete meal evidence: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Your meal could not be deleted. Please try again."
         }
     }
@@ -818,12 +874,18 @@ struct CalorieCounterView: View {
     }
 
     private func selectRemoteFood(_ nutrition: FoodNutrition) -> Bool {
+        let operation = AppLogger.begin(
+            "food.remote_save",
+            category: .persistence,
+            source: "remote_search"
+        )
         let servingAmount = nutrition.defaultAmount.value
         let servingUnit = nutrition.defaultAmount.unit
         let rawServingCalories = nutrition.calories(for: servingAmount)
         guard rawServingCalories.isFinite,
               rawServingCalories >= 0,
               rawServingCalories <= Double(CalorieCalculator.maximumCalories) else {
+            AppLogger.noop(operation, reason: "invalid_calories")
             errorMessage = "This food reports an unsupported calorie value. Choose another record or create a custom food."
             return false
         }
@@ -850,12 +912,13 @@ struct CalorieCounterView: View {
             try modelContext.save()
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error("Failed to save remote search food: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Your food could not be saved. Please try again."
             return false
         }
         selectedFood = food
         weightGrams = servingAmount
+        AppLogger.succeed(operation)
         return true
     }
 
@@ -880,7 +943,7 @@ struct CalorieCounterView: View {
             )
         )
         modelContext.insert(food)
-        if saveChanges() {
+        if saveChanges(operation: "food.custom_save", source: "food_tools") {
             selectedFood = food
             weightGrams = food.servingGrams
             newFoodName = ""
@@ -1014,7 +1077,7 @@ struct CalorieCounterView: View {
 
     private func startBarcodeLookup() {
         let barcodeToLookup = barcode.filter(\.isNumber)
-        #if DEBUG
+        #if DEBUG || RELEASE_VALIDATION
         if ProcessInfo.processInfo.arguments.contains("-ui-testing"), barcodeToLookup == "99999999" {
             cancelBarcodeLookup()
             barcodeLookupFailure = .offline
@@ -1046,19 +1109,29 @@ struct CalorieCounterView: View {
     }
 
     private func performBarcodeLookup(barcode: String, generation: Int) async {
+        let operation = AppLogger.begin(
+            "barcode.lookup",
+            category: .scanner,
+            source: "food_tools"
+        )
         do {
             let service = try NutritionLookupServiceFactory.make()
             let result = try await service.lookup(barcode: barcode)
-            guard isCurrentBarcodeLookup(generation) else { return }
+            guard isCurrentBarcodeLookup(generation) else {
+                AppLogger.cancel(operation, reason: "superseded")
+                return
+            }
 
             let nutrition: FoodNutrition
             switch result {
             case let .found(foundNutrition):
                 nutrition = foundNutrition
             case .incompleteProduct:
+                AppLogger.noop(operation, reason: "incomplete_product")
                 finishBarcodeLookup(generation, failure: .incomplete)
                 return
             case .notFound:
+                AppLogger.noop(operation, reason: "not_found")
                 finishBarcodeLookup(generation, failure: .notFound)
                 return
             }
@@ -1069,6 +1142,7 @@ struct CalorieCounterView: View {
             guard rawServingCalories.isFinite,
                   rawServingCalories >= 0,
                   rawServingCalories <= Double(CalorieCalculator.maximumCalories) else {
+                AppLogger.noop(operation, reason: "invalid_calories")
                 finishBarcodeLookup(generation, failure: .incomplete)
                 return
             }
@@ -1097,11 +1171,14 @@ struct CalorieCounterView: View {
                 try modelContext.save()
             } catch {
                 modelContext.rollback()
-                AppLogger.persistence.error("Failed to save barcode food: \(error.localizedDescription, privacy: .public)")
+                AppLogger.fail(operation, error: error, rollback: "succeeded")
                 finishBarcodeLookup(generation, failure: .saveFailed)
                 return
             }
-            guard isCurrentBarcodeLookup(generation) else { return }
+            guard isCurrentBarcodeLookup(generation) else {
+                AppLogger.cancel(operation, reason: "superseded_after_save")
+                return
+            }
 
             selectedFood = food
             weightGrams = servingAmount
@@ -1113,9 +1190,12 @@ struct CalorieCounterView: View {
             barcodeLookupSucceeded = true
             self.barcode = ""
             showingFoodTools = false
+            AppLogger.succeed(operation)
         } catch is CancellationError {
+            AppLogger.cancel(operation)
             return
         } catch {
+            AppLogger.fail(operation, error: error)
             guard isCurrentBarcodeLookup(generation) else { return }
             finishBarcodeLookup(generation, failure: BarcodeLookupFailure.classify(error))
         }
@@ -1152,26 +1232,27 @@ struct CalorieCounterView: View {
 
     private func synchronizeWaterFromWidgetStore() {
         guard !isDesignReview else { return }
-        guard
-            let summary = WidgetDailySummaryStore.load(),
-            Calendar.current.isDateInToday(summary.date)
-        else {
-            return
-        }
+        for _ in 0..<3 {
+            guard
+                let summary = WidgetDailySummaryStore.load(),
+                Calendar.current.isDateInToday(summary.date),
+                summary.resolvedRevision > 0
+            else {
+                return
+            }
 
-        let day = todaysWater ?? createTodayWaterDay()
-        guard
-            day.glasses != summary.waterGlasses
-                || day.lastRecordedAt != summary.lastWaterRecordedAt
-        else {
-            return
+            let day = todaysWater ?? createTodayWaterDay()
+            let addedWater = summary.waterGlasses > day.glasses
+            day.glasses = summary.waterGlasses
+            day.lastRecordedAt = summary.lastWaterRecordedAt
+                ?? (addedWater ? .now : day.lastRecordedAt)
+            guard saveChanges(operation: "water.import", source: "widget") else {
+                return
+            }
+            if WidgetDailySummaryStore.acknowledgeWaterRevision(summary.resolvedRevision) {
+                return
+            }
         }
-
-        let addedWater = summary.waterGlasses > day.glasses
-        day.glasses = summary.waterGlasses
-        day.lastRecordedAt = summary.lastWaterRecordedAt
-            ?? (addedWater ? .now : day.lastRecordedAt)
-        _ = saveChanges()
     }
 
     private func mirrorTodayToWidgetStore(
@@ -1185,7 +1266,7 @@ struct CalorieCounterView: View {
             preservePendingWidgetWater: preservePendingWidgetWater
         )
         Task {
-            await synchronization?.value
+            _ = await synchronization?.value
             isLiveActivityActive = CaloriesLiveActivityManager.isActive
         }
     }
@@ -1218,20 +1299,22 @@ struct CalorieCounterView: View {
     }
 
     @discardableResult
-    private func saveChanges() -> Bool {
+    private func saveChanges(operation name: String, source: String) -> Bool {
+        let operation = AppLogger.begin(name, category: .persistence, source: source)
         do {
             try modelContext.save()
+            AppLogger.succeed(operation)
             return true
         } catch {
             modelContext.rollback()
-            AppLogger.persistence.error("Failed to save calorie data: \(error.localizedDescription, privacy: .public)")
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             errorMessage = "Your changes could not be saved. Please try again."
             return false
         }
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Counter") {
     CalorieCounterView(
         addMealRequestID: .constant(nil),

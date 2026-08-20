@@ -2,7 +2,7 @@ import Foundation
 
 enum NutritionLookupServiceFactory {
     static func make() throws -> NutritionLookupService {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-ui-testing") || arguments.contains("-design-review") {
             return NutritionLookupService(
@@ -18,7 +18,7 @@ enum NutritionLookupServiceFactory {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 private actor InMemoryNutritionCache: FoodNutritionCaching {
     private var entries: [String: FoodNutrition] = [:]
 

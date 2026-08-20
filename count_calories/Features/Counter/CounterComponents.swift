@@ -412,7 +412,7 @@ struct MealEntryRow: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 private struct CounterComponentsPreview: View {
     private let almondMilk = Food(name: "Almond Milk", calories: 15, servingGrams: 100)
     private let meal = PlateEntry(

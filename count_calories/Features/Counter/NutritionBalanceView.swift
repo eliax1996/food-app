@@ -499,7 +499,7 @@ private func rangeText(_ range: ClosedRange<Double>) -> String {
     "\(percentText(range.lowerBound))–\(percentText(range.upperBound))"
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 private struct PushedNutritionPreview<Destination: View>: View {
     @State private var path = [1]
 

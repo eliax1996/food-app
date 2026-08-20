@@ -44,11 +44,16 @@ Use `just` as the only entrypoint for project operations. Do not invoke `scripts
 - `just test-one Class[/method]`: incrementally compile and run one hostless test filter.
 - `just test-rerun`: rerun the already-built hostless tests only when sources have not changed.
 - `just test-app-unit`: explicitly verify the duplicate app-hosted XCTest integration when needed.
-- `just test-ui`: run functional UI smoke tests behind a clean simulator restart, excluding launch-performance measurement.
+- `just test-ui`: run functional UI journeys behind a clean simulator restart, excluding launch-performance measurement; default command timeout is 2,400 seconds while each test remains capped at 60 seconds.
 - `just test-ui-one Class/method`: run one functional UI test behind a clean simulator restart for focused authoring and diagnosis.
+- `just test-ui-release-one Class/method`: run one optimized Release-configuration UI test with explicit `RELEASE_VALIDATION` seams.
 - `just test-performance`: run launch measurement explicitly; performance tests never belong in the edit loop or correctness gate.
 - `just test`: run the automated correctness gate: hostless unit tests and an incremental app compile.
-- `just validate`: run unit tests, compile, install, and launch in the simulator. Xcode 27 UI-test hosting is intentionally explicit because it can stall before XCTest starts.
+- `just validate`: run hostless tests, compile, install, and launch in the simulator; this remains a development/runtime gate, not sufficient production-release proof.
+- `just release-config-check`: full optimized tests/archive/signature/pure-Release bootstrap on current simulator; diagnostic only, never minimum-OS approval.
+- `just release-artifact-check`: archive/signature/pure-Release bootstrap without rerunning tests while authoring release harness.
+- `just release-validate`: mandatory pre-production gate: hard-required iOS 17 runtime, hostless tests, optimized Release-configuration app-hosted/UI tests with explicit `RELEASE_VALIDATION` seams (no `DEBUG`), signed production Release archive/signature checks, App Store Connect IPA export, Release simulator install, launch, and post-bootstrap process-alive canary in one locked operation.
+- `just simulator-logs`: show recent privacy-safe Count Calories unified logs; failed simulator tests also capture these logs under derived-data test diagnostics.
 - `just simulator-build`, `just simulator-install`, `just simulator-run`: incremental simulator app operations.
 - `just build`, `just install`, `just launch`, `just run`: incremental physical-iPhone operations.
 - `just device-test`, `just device-validate`: complete physical-iPhone validation operations.
@@ -65,13 +70,13 @@ Use `just check` for most app/UI edits, `just test-one` while changing one cover
 
 `just test-ui` is an expensive end-to-end check because it restarts and boots the full simulator runtime. Keep it out of the inner edit loop, but do not skip it: for every non-documentation feature or bug fix that changes app behavior, run it at least once near completion against the final working tree. When a product failure requires a fix, or a later edit changes the tested artifact, rerun `just test-ui` after the final fix. Add or extend stable UI tests when a critical user flow needs repeatable end-to-end proof that unit tests cannot provide. Report Xcode test-host infrastructure failures independently from product, compilation, or unit-test failures.
 
-Before declaring implementation complete, validate the exact working tree with `just validate`; use `just device-validate` when simulator infrastructure is unavailable, then perform the final `just test-ui` proof when simulator UI testing is available. Documentation-only changes do not require validation.
+Before declaring an ordinary implementation complete, validate exact working tree with `just validate`; use `just device-validate` when simulator infrastructure is unavailable, then perform final `just test-ui` proof when simulator UI testing is available. Before any production/distribution decision, run exact-tree `just release-validate`; no earlier milestone count substitutes for that result. Documentation-only changes do not require validation.
 
-Every potentially blocking external tool is protected by a process-group timeout. Defaults are 60 seconds for iteration, 90 seconds for validation/UI operations, and 30 seconds per ordinary XCTest method, with a 60-second hard per-test maximum. Override command deadlines with `ITERATION_TIMEOUT=...` or `VALIDATION_TIMEOUT=...`, or pass the timeout as the recipe's final positional argument. Do not remove or repeatedly increase the timeout while diagnosing a stall.
+Every potentially blocking external tool is protected by a process-group timeout. Defaults are 60 seconds for iteration, 90 seconds for ordinary validation, 2,400 seconds for full UI/release gates, and 30 seconds per ordinary XCTest method, with a 60-second hard per-test maximum. Override command deadlines with `ITERATION_TIMEOUT`, `VALIDATION_TIMEOUT`, `UI_TEST_TIMEOUT`, or `RELEASE_TIMEOUT`, or pass timeout as recipe’s final positional argument. Do not remove or repeatedly increase timeout while diagnosing a stall.
 
 Every `just` project operation also acquires one non-blocking cross-process lock. A concurrent invocation exits with status 75 instead of sharing the simulator or derived-data database. Wait for the active operation to finish, then retry.
 
-Use this completion sequence for every implementation: inspect the affected code, its conceptual file boundaries, and existing tests; make the smallest correct change; add or update deterministic unit tests for changed observable behavior; use narrow unit and compile checks during iteration; then run `just validate` or `just device-validate`. Near the end, run `just test-ui` once on the final app artifact as described above. Fix failures or warnings and rerun every final check invalidated by a subsequent code or build-affecting edit. Report each final command and outcome when work is complete.
+Use this completion sequence for every implementation: inspect affected code, conceptual boundaries, and existing tests; make smallest correct change; add/update deterministic unit tests for changed behavior; use narrow unit and compile checks; then run `just validate` or `just device-validate`. Near end, run `just test-ui` once on final app artifact. For release-ready work, finish with `just release-validate`. Pull-request release workflow expects self-hosted iOS 17 runner and must be required by remote branch protection; workflow presence alone is not enforcement. Fix failures/warnings and rerun every invalidated final check. Report each final command and outcome.
 
 Keep this document current. When code, project operations, validation commands, architecture, product direction, or engineering practices change, update the affected `AGENT.md` guidance in the same change. Do not retain instructions that no longer describe the repository.
 
@@ -185,10 +190,13 @@ When removing or replacing code, always ask: **Can some piece of code be written
 
 Design observable features. Add concise, structured `Logger` events at meaningful boundaries so failures can be understood from device logs without reproducing them manually.
 
-- Log lookup source decisions: cache hit, cache miss, remote success, remote not found, and remote failure.
-- Log operational context such as barcode length or HTTP status, never full user-entered data or sensitive personal information.
-- Log cache writes and evictions with entry counts or byte usage when that helps diagnose behavior.
-- Do not log on every render, normal UI interaction, or hot path without a diagnostic purpose.
+- Emit one structured span for every state-changing user intent and important integration boundary: `operation_start` plus exactly one terminal `operation_success`, `operation_failure`, `operation_partial`, `operation_noop`, or `operation_cancelled`.
+- Use fixed operation/source/reason taxonomy, random operation IDs, parent IDs across external-surface fan-out, stable error categories, safe counts, and explicit rollback outcome.
+- Log lookup source decisions: cache hit/miss, remote start/success/not-found/failure, fallback, page, result count, barcode/query length, and HTTP status—never barcode/query value.
+- Log cache writes, corruption recovery, and evictions with entry counts or byte usage when useful.
+- Never log meal descriptions, dictation transcripts/audio, food names, profile/weight/nutrition values, exact user dates, full barcodes, search queries, or raw/localized errors. Map errors to stable categories.
+- Do not log navigation taps, Cancel without mutation, every render, field edits, or hot-path changes. Complete state replay from logs would violate privacy; goal is complete operational causality for mutations and integrations.
+- Use `just simulator-logs` for diagnosis. Simulator test failures retain filtered app logs automatically; UI failures attach screenshot, accessibility hierarchy, and bounded journey trace to `.xcresult`.
 
 ## Tests
 
@@ -251,4 +259,4 @@ Nutrition coverage should protect at least:
 - Remote search coverage should protect official flat Search-a-licious `hits`, current-language-plus-`en` query keys, 3-grapheme/750ms/page-5 policy, useful-result auto-fetch versus explicit load-more, valid-barcode deduplication, final snapshots and generation isolation, 30-day positive and 90-day empty-terminal freshness, the rolling 10/minute limiter, persistent JSON-LRU count/byte bounds with no-write-on-read, selection persistence without product refetch, and DEBUG fixture behavior.
 - Opt-in live v3.6 and v2 checks through `RUN_OPEN_FOOD_FACTS_LIVE_TEST=1 just test-one OpenFoodFactsLiveTests`; never include live network calls in normal gates.
 
-Keep `just test` as the bounded automated correctness gate and keep UI/performance checks available as explicit recipes. A passing UI run complements unit coverage; it never replaces missing deterministic unit tests. Run narrow tests throughout implementation, then final validation and UI proof before declaring behavior-changing work complete.
+Keep `just test` as bounded edit-loop correctness gate. It is intentionally not production approval. A passing UI run complements unit/app-hosted coverage and never replaces deterministic tests. Run narrow tests throughout implementation, final validation/UI proof for behavior changes, and exact `just release-validate` before production/distribution.

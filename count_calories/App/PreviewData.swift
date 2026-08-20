@@ -1,4 +1,4 @@
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 import Foundation
 import SwiftData
 import SwiftUI

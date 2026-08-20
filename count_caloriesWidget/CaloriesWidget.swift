@@ -2,7 +2,12 @@ import AppIntents
 import ActivityKit
 import SwiftUI
 import WidgetKit
+import os
 
+private let widgetLogger = Logger(
+    subsystem: "ch.elia.count-calories",
+    category: "widget"
+)
 private let addFoodURL = URL(string: "countcalories://add-food")!
 
 struct CaloriesWidgetEntry: TimelineEntry {
@@ -32,9 +37,12 @@ struct AddWaterIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        let summary = WidgetDailySummaryStore.adjustWater(by: 1)
+        let adjustment = try WidgetDailySummaryStore.adjustWater(by: 1)
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetDailySummaryStore.widgetKind)
-        await WidgetLiveActivityUpdater.apply(summary)
+        await WidgetLiveActivityUpdater.apply(
+            adjustment.summary,
+            parentOperationID: adjustment.operationID
+        )
         return .result()
     }
 }
@@ -45,29 +53,49 @@ struct RemoveWaterIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        let summary = WidgetDailySummaryStore.adjustWater(by: -1)
+        let adjustment = try WidgetDailySummaryStore.adjustWater(by: -1)
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetDailySummaryStore.widgetKind)
-        await WidgetLiveActivityUpdater.apply(summary)
+        await WidgetLiveActivityUpdater.apply(
+            adjustment.summary,
+            parentOperationID: adjustment.operationID
+        )
         return .result()
     }
 }
 
 private enum WidgetLiveActivityUpdater {
-    static func apply(_ summary: WidgetDailySummary) async {
-        for activity in Activity<CaloriesActivityAttributes>.activities {
-            let state = CaloriesActivityAttributes.ContentState(
-                calories: summary.calories,
-                waterGlasses: summary.waterGlasses,
-                calorieGoal: summary.resolvedCalorieGoal,
-                waterGoal: summary.resolvedWaterGoal
-            )
-            await activity.update(
-                ActivityContent(
-                    state: state,
-                    staleDate: activity.content.staleDate
+    static func apply(
+        _ summary: WidgetDailySummary,
+        parentOperationID: UUID
+    ) async {
+        let operationID = UUID().uuidString
+        widgetLogger.info(
+            "event=operation_start operation=widget.live_activity_update operation_id=\(operationID, privacy: .public) parent_id=\(parentOperationID.uuidString, privacy: .public) source=widget"
+        )
+        let activities = Activity<CaloriesActivityAttributes>.activities
+        let decision = WidgetLiveActivityUpdateDecision.resolve(summary: summary)
+        for activity in activities {
+            switch decision {
+            case .update:
+                let state = CaloriesActivityAttributes.ContentState(
+                    calories: summary.calories,
+                    waterGlasses: summary.waterGlasses,
+                    calorieGoal: summary.resolvedCalorieGoal,
+                    waterGoal: summary.resolvedWaterGoal
                 )
-            )
+                await activity.update(
+                    ActivityContent(
+                        state: state,
+                        staleDate: activity.content.staleDate
+                    )
+                )
+            case .stop:
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
         }
+        widgetLogger.info(
+            "event=operation_success operation=widget.live_activity_update operation_id=\(operationID, privacy: .public) parent_id=\(parentOperationID.uuidString, privacy: .public) source=widget decision=\(decision == .update ? "update" : "stop", privacy: .public) count=\(activities.count, privacy: .public)"
+        )
     }
 }
 

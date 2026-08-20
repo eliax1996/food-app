@@ -315,6 +315,17 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Token/quota note: final three-way Sol pass completed within bounded process timeout; initial parallel Luna pass produced one empty timeout.
 - Policy effect: use Sol medium for finite repository-wide documentation reconciliation when every file must be read; retain exact model/effort and audit counters immediately.
 
+### 2026-08-20 — Terra `high` + Luna `max`: production test and observability audit
+
+- Shape: parallel feature/test matrix, UI-journey/gate audit, logging/privacy audit, then repeated identical critical/high whole-tree reviews.
+- Outcome: reviewers found real release-gate, file-backed relaunch, reminder-save, scanner-success, widget storage/race/completeness, external fan-out, cache rollback, setup ordering, Release configuration, failure-artifact, and log-correlation gaps. Parent fixed code-level findings and added durable assessment. Remaining shared finding is external: no configured/required iOS 17 self-hosted gate, so production approval stays blocked.
+- Validation: 254 hostless executed (252 pass / 2 skips), 376 app-hosted pass / 2 skips, optimized Release-config 55/55 UI, signed app/widget archive signatures, and pure Release bootstrap canary passed on iOS 27. Strict `just release-validate` correctly rejects iOS 27 before production gate.
+- Instruction-following: agents remained read-only and cited exact files/tests. Repeated passes were high-signal but continued surfacing one additional integration edge per round.
+- Strength: Terra found cross-process water loss, false parent success, Release-vs-Debug gaps, rollback loss, incomplete-calorie activity propagation, and unenforced minimum-OS proof. Luna produced broad logging inventory and privacy-safe taxonomy quickly.
+- Weakness: repository-wide review loops are expensive and external CI/branch settings cannot be repaired from source-only agents.
+- Token/quota note: parallel reviews completed within 2,400-second bounds; full optimized UI runs dominate wall time, not model calls.
+- Policy effect: use specialized Terra/Luna audits before one final identical review round; distinguish source-code approval from external release-enforcement blockers explicitly.
+
 Do not change standing model policy absent repeated evidence.
 
 ## Record template

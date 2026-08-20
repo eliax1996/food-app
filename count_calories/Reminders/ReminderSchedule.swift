@@ -47,7 +47,7 @@ enum ReminderPreferenceKey {
 
 nonisolated enum ReminderPreferenceDefaults {
     static var current: UserDefaults {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         if ProcessInfo.processInfo.arguments.contains("-ui-testing") {
             return UserDefaults(suiteName: "ch.elia.count-calories.ui-testing.reminders") ?? .standard
         }

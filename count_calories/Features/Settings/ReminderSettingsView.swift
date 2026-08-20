@@ -257,24 +257,42 @@ struct ReminderSettingsView: View {
 
     @MainActor
     private func save(_ draft: ReminderPreferences) async -> String? {
+        let operation = AppLogger.begin(
+            "reminders.save_preferences",
+            category: .userAction,
+            source: "settings"
+        )
         draft.store()
         preferences = draft
 
         var requestError: String?
+        var failedComponent: String?
         if draft.hasEnabledReminder {
             do {
-                _ = try await ReminderNotificationManager.shared.requestAuthorizationIfNeeded()
+                _ = try await ReminderNotificationManager.shared.requestAuthorizationIfNeeded(
+                    parentOperationID: operation.id
+                )
             } catch {
                 requestError = "Notification access could not be requested. Your reminder choices were saved; try again."
+                failedComponent = "authorization_request"
             }
         }
 
         let state = await ReminderNotificationManager.shared.authorizationState()
-        let schedulingResult = await reschedule(preferences: draft)
+        let schedulingResult = await reschedule(
+            preferences: draft,
+            parentOperationID: operation.id
+        )
         authorizationState = state
         onSaved(draft, state)
         if requestError == nil, schedulingResult == .failed {
             requestError = "Your reminder choices were saved, but notifications could not be updated. Previous reminders were kept where possible; try again."
+            failedComponent = "notification_schedule"
+        }
+        if let failedComponent {
+            AppLogger.partial(operation, failedComponent: failedComponent)
+        } else {
+            AppLogger.succeed(operation)
         }
         return requestError
     }
@@ -287,7 +305,10 @@ struct ReminderSettingsView: View {
         onSaved(preferences, state)
     }
 
-    private func reschedule(preferences: ReminderPreferences) async -> ReminderSchedulingResult {
+    private func reschedule(
+        preferences: ReminderPreferences,
+        parentOperationID: UUID? = nil
+    ) async -> ReminderSchedulingResult {
         await ReminderNotificationManager.shared.reschedule(
             meals: entries.map {
                 MealReminderRecord(mealType: $0.mealType, date: $0.date)
@@ -300,7 +321,8 @@ struct ReminderSettingsView: View {
                 )
             },
             weights: weights.map { WeightReminderRecord(date: $0.date) },
-            preferences: preferences
+            preferences: preferences,
+            parentOperationID: parentOperationID
         )
     }
 }
@@ -658,7 +680,7 @@ private func timeText(_ time: ReminderTime) -> String {
     return date.formatted(date: .omitted, time: .shortened)
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Reminders") {
     NavigationStack {
         ReminderSettingsView(

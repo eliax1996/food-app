@@ -2,7 +2,7 @@ import Foundation
 
 struct BulkFoodExtractorFactory {
     static func make() -> any BulkFoodExtracting {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-ui-testing-bulk-unavailable") {
             return UnavailableBulkFoodExtractor(reason: .deviceNotEligible)

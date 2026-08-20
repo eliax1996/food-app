@@ -322,20 +322,36 @@ struct WeightLogView: View {
         kilograms: Double,
         date: Date
     ) throws {
-        guard let mutationCoordinator else {
-            throw PlanEvidenceMutationError.coordinatorUnavailable
+        let operation = AppLogger.begin(
+            entry == nil ? "weight.add" : "weight.edit",
+            category: .userAction,
+            source: "weight_log"
+        )
+        do {
+            guard let mutationCoordinator else {
+                throw PlanEvidenceMutationError.coordinatorUnavailable
+            }
+            let store = WeightMeasurementStore(coordinator: mutationCoordinator)
+            if let entry {
+                try store.update(entry, kilograms: kilograms, date: date)
+            } else {
+                try store.add(kilograms: kilograms, date: date)
+            }
+            rescheduleReminders()
+            AppLogger.succeed(operation)
+        } catch {
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
+            throw error
         }
-        let store = WeightMeasurementStore(coordinator: mutationCoordinator)
-        if let entry {
-            try store.update(entry, kilograms: kilograms, date: date)
-        } else {
-            try store.add(kilograms: kilograms, date: date)
-        }
-        rescheduleReminders()
     }
 
     @MainActor
     private func deleteWeight(_ entry: WeightEntry) {
+        let operation = AppLogger.begin(
+            "weight.delete",
+            category: .userAction,
+            source: "weight_log"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -344,7 +360,9 @@ struct WeightLogView: View {
                 try WeightMeasurementStore(coordinator: mutationCoordinator).delete(entry)
             )
             rescheduleReminders()
+            AppLogger.succeed(operation)
         } catch {
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             operationError = .delete
         }
     }
@@ -353,6 +371,11 @@ struct WeightLogView: View {
     private func undoDeletion() {
         guard let deletedMeasurement = deletedMeasurements.last else { return }
 
+        let operation = AppLogger.begin(
+            "weight.restore",
+            category: .userAction,
+            source: "weight_log"
+        )
         do {
             guard let mutationCoordinator else {
                 throw PlanEvidenceMutationError.coordinatorUnavailable
@@ -360,7 +383,9 @@ struct WeightLogView: View {
             _ = try WeightMeasurementStore(coordinator: mutationCoordinator).restore(deletedMeasurement)
             deletedMeasurements.removeLast()
             rescheduleReminders()
+            AppLogger.succeed(operation)
         } catch {
+            AppLogger.fail(operation, error: error, rollback: "succeeded")
             operationError = .restore
         }
     }
@@ -691,7 +716,7 @@ private struct WeightEditor: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
 #Preview("Weight Log") {
     WeightLogView(onViewProgress: {})
         .previewPlanEvidenceContainer(PreviewData.makeContainer())

@@ -2,7 +2,7 @@ import Foundation
 
 enum FoodSearchServiceFactory {
     static func make() -> RemoteFoodSearchService? {
-#if DEBUG
+#if DEBUG || RELEASE_VALIDATION
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("-ui-testing") || arguments.contains("-design-review") {
             let url = FileManager.default.temporaryDirectory

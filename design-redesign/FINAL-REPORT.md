@@ -148,6 +148,12 @@ Current exact-tree gates after BACKLOG-CLOSURE-001:
 
 Live Open Food Facts tests remain intentionally opt-in; deterministic mocked/cache/API-contract tests run in normal gates.
 
+### Post-closure production-readiness audit
+
+2026-08-20 test/observability hardening added optimized Release-config app/UI gates, signed archive/signature checks, pure Release bootstrap canary, 55 functional journeys including file-backed relaunch/water/reminder/scanner paths, shared app/widget atomic water core, correlated privacy-safe operational logs, and automatic failure artifacts. Current counts: 254 hostless executed (252 pass / 2 skips), 376 app-hosted pass / 2 skips, 55/55 UI.
+
+This does **not** mark a production candidate approved: `just release-validate` hard-requires iOS 17 and currently fails closed because local machine has only iOS 27. Self-hosted iOS 17 runner, simulator variable, required branch/tag check, and App Store Connect IPA export must complete externally. Full assessment: [`../docs/test-observability-production-readiness-assessment.md`](../docs/test-observability-production-readiness-assessment.md).
+
 ## Backlog disposition
 
 No active or deferred project task remains. Historical mutations and personal targets were implemented under separate contracts. HealthKit/account/cross-device sync and other unsupported directions are explicitly rejected from current scope rather than left as proposals. Rejected directions also include LLM-authored nutrition, silent bulk logging, cloud upload of full meal text, scanner-only entry, opaque scores, streak pressure, exercise credits, and reminder windows.
@@ -162,6 +168,7 @@ No active or deferred project task remains. Historical mutations and personal ta
 - Post-closure diary experiment: [`experiments/COMPETITOR-GAP-001.md`](experiments/COMPETITOR-GAP-001.md)
 - Backlog-closure experiment: [`experiments/BACKLOG-CLOSURE-001.md`](experiments/BACKLOG-CLOSURE-001.md)
 - Full completion plan: [`COMPLETION-PLAN.md`](COMPLETION-PLAN.md)
+- Test and observability readiness: [`../docs/test-observability-production-readiness-assessment.md`](../docs/test-observability-production-readiness-assessment.md)
 
 ## Final decision
 

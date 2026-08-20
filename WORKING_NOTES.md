@@ -19,18 +19,19 @@ Latest accepted milestone: BACKLOG-CLOSURE-001, following COMPETITOR-GAP-001 his
 
 ## Current component
 
-No active component. All redesign milestones through FINAL-001, COMPETITOR-GAP-001, and BACKLOG-CLOSURE-001 are accepted and complete.
+Product feature queue remains empty. Post-closure test/observability hardening is implemented and documented in `docs/test-observability-production-readiness-assessment.md`.
 
-Historical diary mutations, personal nutrition targets, frequent-food ranking, shared calorie accessibility semantics, and Today external-surface extraction are implemented. HealthKit/accounts/sync, streak/coaching, exercise credits, duplicate shortcuts, photo/cloud AI, reminder windows, and extra amount variants are explicitly rejected from current scope. No deferred queue remains.
+Historical diary mutations, personal nutrition targets, frequent-food ranking, shared calorie accessibility semantics, and Today external-surface extraction are implemented. HealthKit/accounts/sync, streak/coaching, exercise credits, duplicate shortcuts, photo/cloud AI, reminder windows, and extra amount variants are explicitly rejected from current scope. No feature queue remains.
 
 ## Final validation
 
-- hostless: 243 executed — 241 passed / 2 opt-in live skips
-- app-hosted: 351 passed / 2 opt-in live skips
-- functional UI: 52/52 passed
+- hostless: 254 executed — 252 passed / 2 opt-in live skips
+- app-hosted: 376 passed / 2 opt-in live skips
+- optimized Release-config functional UI: 55/55 passed
+- signed archive/signatures and pure Release simulator bootstrap canary: passed
 - final backlog-closure independent critical/high review: 3/3 APPROVE
 - app + widget compile, simulator install/launch, and `git diff --check`: passed
 
 ## Immediate action
 
-None. Markdown backlog is closed; await a new explicit product request.
+Before production: configure self-hosted iOS 17 runner + `IOS17_SIMULATOR_ID`, require **Release validation** for branch/tag protection, run exact-tree `just release-validate`, and retain exported IPA result. Current local iOS 27 checks do not waive this blocker.

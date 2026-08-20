@@ -120,6 +120,43 @@ final class FoodSearchCacheTests: XCTestCase {
         XCTAssertNotNil(byteTwoSnapshot)
     }
 
+    func testFailedCacheWriteRollsBackInMemoryMutation() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let blockedParent = directory.appending(path: "not-a-directory")
+        try Data("block".utf8).write(to: blockedParent)
+        let cache = try FoodSearchCache(
+            fileURL: blockedParent.appending(path: "cache.json")
+        )
+        let key = FoodSearchCacheKey(
+            normalizedQuery: "rollback",
+            languages: ["en"]
+        )
+        let page = FoodSearchPage(
+            query: FoodSearchQuery("rollback"),
+            foods: [FoodNutrition(
+                barcode: "12345678",
+                name: "Rollback fixture",
+                defaultAmount: NutritionAmount(value: 100, unit: .grams),
+                caloriesPer100: 100
+            )],
+            page: 1,
+            pageSize: 5,
+            rawHitCount: 1
+        )
+
+        do {
+            _ = try await cache.store(page, for: key, fetchedAt: .now)
+            XCTFail("Blocked cache path should fail.")
+        } catch {
+            // Expected storage failure.
+        }
+        let snapshot = await cache.snapshot(for: key)
+        XCTAssertNil(snapshot)
+    }
+
     func testRepresentativeQueryFootprintFitsDefaultCountAndByteCaps() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }

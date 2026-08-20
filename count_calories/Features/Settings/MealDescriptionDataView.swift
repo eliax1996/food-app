@@ -74,12 +74,19 @@ struct MealDescriptionDataView: View {
     }
 
     private func refresh() async {
+        let operation = AppLogger.begin(
+            "bulk.local_data_refresh",
+            category: .bulkFood,
+            source: "settings"
+        )
         do {
             let learningStore = try await BulkFoodLearningStore.applicationStore()
             let draftStore = try await BulkFoodDraftStore.applicationStore()
             learnedChoiceCount = await learningStore.count()
             hasDraft = await draftStore.hasDraft()
+            AppLogger.succeed(operation, count: learnedChoiceCount + (hasDraft ? 1 : 0))
         } catch {
+            AppLogger.fail(operation, error: error)
             learnedChoiceCount = 0
             hasDraft = false
             statusMessage = "Meal description data could not be loaded. Please try again."
@@ -87,22 +94,36 @@ struct MealDescriptionDataView: View {
     }
 
     private func clearChoices() async {
+        let operation = AppLogger.begin(
+            "bulk.learning_clear",
+            category: .userAction,
+            source: "settings"
+        )
         do {
             let store = try await BulkFoodLearningStore.applicationStore()
             try await store.clear()
             learnedChoiceCount = 0
+            AppLogger.succeed(operation)
         } catch {
+            AppLogger.fail(operation, error: error)
             statusMessage = "Learned food choices could not be cleared. Please try again."
         }
     }
 
     private func discardDraft() async {
+        let operation = AppLogger.begin(
+            "bulk.draft_discard",
+            category: .userAction,
+            source: "settings"
+        )
         do {
             let store = try await BulkFoodDraftStore.applicationStore()
             let lease = await store.acquireLease()
             try await store.clear(lease: lease)
             hasDraft = false
+            AppLogger.succeed(operation)
         } catch {
+            AppLogger.fail(operation, error: error)
             statusMessage = "Saved meal draft could not be discarded. Please try again."
         }
     }
