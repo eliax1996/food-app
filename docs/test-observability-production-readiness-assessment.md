@@ -203,4 +203,6 @@ Current code/test artifact results on available iOS 27 simulator:
 
 Current-runtime `just release-config-check` passed end to end after its authoring loop exposed and fixed a testability flag, test-harness path, and one flaky target-field input. Final repeat completed all optimized tests, archive/signature checks, and pure Release bootstrap canary in one command.
 
+Three final identical independent reviewers returned **SOURCE: APPROVE / APPROVE / APPROVE** with no critical/high source-controlled defect. They unanimously retained external blockers below.
+
 Production status remains **BLOCKED**, not green: no local iOS 17 runtime; self-hosted `count-calories-ios17` runner, `IOS17_SIMULATOR_ID`, required branch/tag status, and successful App Store Connect IPA export still need external configuration/execution. Historical binary SwiftData fixtures also remain required before next schema-changing release.

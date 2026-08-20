@@ -30,6 +30,7 @@ Historical diary mutations, personal nutrition targets, frequent-food ranking, s
 - optimized Release-config functional UI: 55/55 passed
 - signed archive/signatures and pure Release simulator bootstrap canary: passed
 - final backlog-closure independent critical/high review: 3/3 APPROVE
+- production-readiness source review: 3/3 APPROVE; external iOS17/branch/signing/device blockers retained
 - app + widget compile, simulator install/launch, and `git diff --check`: passed
 
 ## Immediate action

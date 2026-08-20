@@ -64,7 +64,7 @@ Current automated results:
 - signed production archive: app/widget structure and strict signatures passed;
 - pure Release simulator app: built, installed, launched, and remained alive after bootstrap canary.
 
-Production approval remains blocked until required iOS 17 self-hosted workflow/branch protection runs `just release-validate`; local machine has only iOS 27 runtime. Original closure, diary, and backlog-closure reviews remain accepted; current production-readiness assessment is linked above.
+Production-readiness source review reached **3/3 APPROVE**. Production approval remains blocked until required iOS 17 self-hosted workflow/branch protection runs `just release-validate`; local machine has only iOS 27 runtime. Original closure, diary, and backlog-closure reviews remain accepted; current assessment is linked above.
 
 ## Redesign evidence
 
