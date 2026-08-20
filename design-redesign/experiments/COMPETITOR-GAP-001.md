@@ -32,8 +32,8 @@ Diary is intentionally read-only v1:
 
 ## Evidence
 
-- `screenshots/COMPETITOR-GAP-001/attempt-01-diary-light.png`
-- `screenshots/COMPETITOR-GAP-001/attempt-01-diary-ax3-dark.png`
+- `../screenshots/COMPETITOR-GAP-001/attempt-01-diary-light.png`
+- `../screenshots/COMPETITOR-GAP-001/attempt-01-diary-ax3-dark.png`
 
 Normal light view shows date, total, two meal groups, row snapshots, and recorded-day navigation. AX3 dark view stacks navigation and entry values while preserving full food names and scroll continuation.
 

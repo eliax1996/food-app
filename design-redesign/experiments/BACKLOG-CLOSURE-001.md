@@ -40,16 +40,16 @@ These are decisions, not deferred tasks.
 
 Light:
 
-- `screenshots/BACKLOG-CLOSURE-001/plan-personal-targets-top-light.png`
-- `screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-top-light.png`
-- `screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-light.png`
-- `screenshots/BACKLOG-CLOSURE-001/diary-actions-light.png`
+- `../screenshots/BACKLOG-CLOSURE-001/plan-personal-targets-top-light.png`
+- `../screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-top-light.png`
+- `../screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-light.png`
+- `../screenshots/BACKLOG-CLOSURE-001/diary-actions-light.png`
 
 Accessibility 3 dark:
 
-- `screenshots/BACKLOG-CLOSURE-001/plan-personal-targets-ax3-dark.png`
-- `screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-ax3-dark.png`
-- `screenshots/BACKLOG-CLOSURE-001/diary-actions-ax3-dark.png`
+- `../screenshots/BACKLOG-CLOSURE-001/plan-personal-targets-ax3-dark.png`
+- `../screenshots/BACKLOG-CLOSURE-001/nutrition-personal-targets-ax3-dark.png`
+- `../screenshots/BACKLOG-CLOSURE-001/diary-actions-ax3-dark.png`
 
 Hierarchy-driven device walkthroughs used separate device-interaction subagents. Exact target rows, edit/reset controls, coverage, snapshot nutrients, and diary actions remained readable and scroll-reachable; no persistent overlap, clipping, or dead action was found. Every session was closed.
 
@@ -102,3 +102,9 @@ Reviewer 3: APPROVE
 ```
 
 No critical/high finding remains. Earlier review rounds are retained as resolved hardening history, not residual disagreement.
+
+## 2026-08-20 full Markdown re-audit
+
+Fresh reviewers reread all 54 tracked Markdown files and cross-checked uncertain claims against current source/tests. Re-audit found documentation defects rather than missing production behavior: one unsupported day-estimate phrase, one superseded bulk row-override requirement, obsolete Log food labels/reminder-window wording, stale phase/current-count language, ephemeral or incorrectly relative evidence paths, missing delegation metadata, and a source-less iOS diagnostic needing explicit external-limitation disposition. Each was corrected or explicitly rejected with rationale; no item was silently deferred.
+
+Parent mechanical audit reports 0 unchecked tasks, 0 broken inline links, 0 broken prose evidence paths, and 0 `/tmp` evidence references. Current `just test-unit 600` executed 243 tests with 241 pass / 2 opt-in live skips. Three fresh identical neutral repository-wide reviewers then returned **APPROVE / APPROVE / APPROVE**, each reporting 54 files read and 0 active/unresolved items.

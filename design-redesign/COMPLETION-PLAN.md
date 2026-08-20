@@ -205,7 +205,7 @@ Competitor research supported exact times over ambiguous windows. Implemented de
 - immediate preview of next reminder;
 - denied-notification recovery without misleading enabled state.
 
-Add deterministic schedule tests for custom windows, boundary minutes, DST, elapsed windows, existing meal suppression, preference independence, and rescheduling after edits.
+Add deterministic schedule tests for custom exact times, boundary minutes, DST, elapsed-day handling, existing meal suppression, preference independence, and rescheduling after edits.
 
 ### 6. Hierarchical Settings redesign
 

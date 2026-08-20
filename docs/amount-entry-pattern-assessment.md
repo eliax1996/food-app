@@ -39,7 +39,7 @@ Give amount value, each adjustment, serving count/presets, and calculated total 
 
 ### Unit/UI tests
 
-Unit coverage should verify `100 → 90/99/101/110`, decimal preservation, `0.01` lower bound, disabled crossing decrements, positive increments, grams/ml labels, immediate calorie scaling, and unchanged serving count. UI coverage should verify four identifiers/labels, 44-point hit targets, one-row normal layout, 2 × 2 accessibility layout, no keyboard requirement for button flow, VoiceOver-facing values, and separate serving controls using deterministic gram and milliliter foods.
+Unit coverage verifies `100 → 90/99/101/110`, decimal preservation, `0.01` lower bound, disabled crossing decrements, positive increments, grams/ml labels, immediate calorie scaling, and unchanged serving count. UI coverage verifies four identifiers/labels, 44-point hit targets, one-row normal layout, 2 × 2 accessibility layout, no keyboard requirement for button flow, VoiceOver-facing values, and separate serving controls using deterministic gram and milliliter foods.
 
 MCP bounded visual review used deterministic Almond Milk (`100 g`, `15 kcal`) and milliliter fixtures at normal/accessibility sizes. Repeated behavior was promoted to deterministic UI tests with stable identifiers; A passed, so B was rejected. MCP remains visual/transient review, not regression proof.
 

@@ -51,8 +51,8 @@ Positive results remain fresh for 30 days; empty-terminal knowledge remains fres
 
 ### Measurement and validation record
 
-- 64 representative one-page five-hit queries encoded to 65,841 bytes. Projected 2,048-query storage is 2,106,912 bytes (about 2.01 MiB); count cap governs typical data while 32 MiB guards long/multipage outliers.
-- Focused tests: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate is 85 pass / 2 opt-in skips, including required `timed_out` decoding and partial-timeout rejection.
+- Current deterministic fixture rerun on 2026-08-20: 64 representative one-page five-hit queries encoded to 72,561 bytes. Projected 2,048-query storage is 2,321,952 bytes (about 2.21 MiB); count cap governs typical data while 32 MiB guards long/multipage outliers. Focused measurement test passed 1/1.
+- Feature-milestone focused suites were client 11, cache 6, service 15, coordinator 8, with 85 hostless pass / 2 opt-in skips. Final whole-tree hostless validation later executed 243 tests (241 pass / 2 skips), including required `timed_out` decoding and partial-timeout rejection.
 - Manual Xcode flow passed Remote Oat Drink at 250 ml and 100 kcal, dismissed keyboard, increased daily total by exactly 100 kcal after save, and persisted the selected food as a local row.
 - Historical feature-local UI run had 2 pass / 2 fail before focus fix, followed by Xcode-host failures before XCTest. Later whole-product exact-tree UI suites passed remote search; no search regression remains open.
 

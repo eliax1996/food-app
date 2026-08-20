@@ -322,7 +322,7 @@ Accepted attempt 01 evidence:
 - ![Today bulk entry](screenshots/BULK-AI-FOOD-001/attempt-01-today-entry.png) — direct Log food remains primary beside Describe meal.
 - ![Typed meal description](screenshots/BULK-AI-FOOD-001/attempt-01-describe.png) — editable typed input, meal destination, explicit Find Foods, and local/query privacy disclosure.
 - ![Editable review top](screenshots/BULK-AI-FOOD-001/attempt-01-review-top.png) — source disclosure, exact progress, query/amount provenance, and selected nutrition record.
-- ![Editable review lower](screenshots/BULK-AI-FOOD-001/attempt-01-review-lower.png) — serving basis, full-width removal, Add Food, and explicit atomic total.
+- ![Editable review lower](screenshots/BULK-AI-FOOD-001/attempt-01-review-lower.png) — serving basis, full-width removal, and explicit atomic total. Capture predates consistency rename from **Add Food** to current **Add another food**.
 - ![Review dark](screenshots/BULK-AI-FOOD-001/attempt-01-review-dark.png) and ![Review dark lower](screenshots/BULK-AI-FOOD-001/attempt-01-review-dark-lower.png) — dark appearance retains hierarchy and contrast.
 - ![Describe AX3 dark](screenshots/BULK-AI-FOOD-001/attempt-01-describe-ax3-dark.png), ![Review AX3 dark](screenshots/BULK-AI-FOOD-001/attempt-01-review-ax3-dark.png), ![Review AX3 middle](screenshots/BULK-AI-FOOD-001/attempt-01-review-ax3-dark-middle.png), and ![Review AX3 lower](screenshots/BULK-AI-FOOD-001/attempt-01-review-ax3-dark-lower.png) — accessibility text keeps every edit/recovery/confirmation control reachable.
 

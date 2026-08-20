@@ -94,7 +94,7 @@ Starting an epoch never deletes raw logs, completion history, proposal history, 
 
 Analysis uses six consecutive seven-local-day blocks ending yesterday: 42 calendar days total. This six-week first-proposal wait is a conservative Count Calories choice intended to avoid reacting to a short plateau.
 
-Every one of the 42 civil days must have an explicitly complete, nonstale food log. Count Calories does not average a selected subset and assume it represents missing days; users may enter a reviewed estimate for an unusual day, but the app never imputes it. This all-days requirement is stricter than Foodnoms’ 14-of-28 minimum and MacroFactor’s four-of-seven operating guidance because this first implementation has no validated missing-intake model.
+Every one of the 42 civil days must have an explicitly complete, nonstale food log. Count Calories does not average a selected subset and assume it represents missing days. Users may correct or manually log their best-known foods and amounts before attesting a day, but there is no day-level intake-estimate field and the app never imputes missing intake. This all-days requirement is stricter than Foodnoms’ 14-of-28 minimum and MacroFactor’s four-of-seven operating guidance because this implementation has no validated missing-intake model.
 
 Across the full epoch window require:
 

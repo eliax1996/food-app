@@ -119,7 +119,7 @@ Normal, denied, dark/AX3, partial, editor, small-layout, Today, and detail pixel
 
 #### Decision
 
-**ACCEPTED — ATTEMPT 01 / SLICES A AND B COMPLETE.** Plan references, focused Settings, configurable reminders, authorization recovery, and requested numeric-entry follow-up meet acceptance. REFINE-001 continues with Slice C welcome/setup and explainable calculated calorie plan; no calculated or adaptive recommendation has been silently added.
+**ACCEPTED — ATTEMPT 01 / SLICES A AND B COMPLETE.** Plan references, focused Settings, configurable reminders, authorization recovery, and requested numeric-entry follow-up meet acceptance. Historical sequence then continued with Slice C welcome/setup and explainable calculated calorie plan; no calculated or adaptive recommendation was silently added.
 
 ### Attempt 02 — Slice C
 
@@ -165,7 +165,7 @@ Accepted files under `../screenshots/REFINE-001/`:
 
 #### Decision
 
-**ACCEPTED — ATTEMPT 02 / SLICE C COMPLETE.** Optional setup is explainable, supported-population-bounded, resumable, reversible, and explicit. Manual goals remain untouched until confirmation. REFINE-001 continues with Slice D evidence-gated adaptation.
+**ACCEPTED — ATTEMPT 02 / SLICE C COMPLETE.** Optional setup is explainable, supported-population-bounded, resumable, reversible, and explicit. Manual goals remain untouched until confirmation. Historical sequence then continued with Slice D evidence-gated adaptation.
 
 ### Attempt 03 — Slice D
 
@@ -198,4 +198,4 @@ Accepted attempt-03 files under `../screenshots/REFINE-001/` cover Today In prog
 
 #### Decision
 
-**ACCEPTED — ATTEMPT 03 / SLICE D COMPLETE.** Adaptation remains evidence-gated, on-device, proposal-only, explicit, reversible, and fail-closed. REFINE-001 is complete; user-prioritized BULK-AI-FOOD-001 begins next.
+**ACCEPTED — ATTEMPT 03 / SLICE D COMPLETE.** Adaptation remains evidence-gated, on-device, proposal-only, explicit, reversible, and fail-closed. REFINE-001 is complete; historical sequence then moved to now-complete BULK-AI-FOOD-001.

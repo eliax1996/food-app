@@ -41,4 +41,4 @@ Root navigation, native grouped-form rhythm, semantic color roles, numeric typog
 
 ## Decision
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: ROBUSTNESS-001.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Historical next milestone was ROBUSTNESS-001; it and final closure are complete.

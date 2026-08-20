@@ -90,11 +90,11 @@ Decision archive: `PRODUCT-BACKLOG.md`.
 - Photo/cloud meal recognition, reminder windows, scanner-only entry, LLM-authored nutrition, and extra amount-control variants: rejected by retained accuracy, privacy, fallback, or interaction evidence.
 - These are decisions, not deferred tasks. A new user request may create a new contract; repository currently promises none.
 
-## Technical debt discovered
+## Hardening and platform-diagnostic disposition
 
 - Resolved in BACKLOG-CLOSURE-001: Today mutation surfaces use `TodayExternalSurfaceCoordinator` for widget/reminder/Live Activity synchronization.
 - Resolved in BACKLOG-CLOSURE-001: app and widget use `DailyCaloriesAccessibilitySummary` for one truthful daily-status semantic contract.
-- Numeric keyboard activation emits source-less iOS 27 SwiftUI `Invalid frame dimension (negative or non-finite).` runtime diagnostics in Food Tools and related UI tests; every flow passes with no visible defect or source frame.
+- **Accepted external platform limitation — not active backlog:** iOS 27 SwiftUI emits source-less `Invalid frame dimension (negative or non-finite).` diagnostics while native numeric keyboards activate in Food Tools and related UI tests. App-owned frame values are finite constants, every affected flow passes, captured pixels show no defect, and diagnostic provides no app source frame. Reopen only if Apple supplies actionable attribution or user-visible failure appears.
 - Weight raw same-day/backdated persistence is implemented; duplicate-profile and future-row correctness fixes are covered by passing app-hosted persistence runs.
 
 ## Validation snapshot
@@ -103,6 +103,7 @@ Decision archive: `PRODUCT-BACKLOG.md`.
 - Current app-hosted `just test-app-unit 900`: **351 passed / 2 opt-in live skips**.
 - Current functional `TEST_CASE_TIMEOUT=60 just test-ui 2400`: **52/52 passed**.
 - `git diff --check`: **passed**.
+- 2026-08-20 full Markdown re-audit: **54/54 read, 0 unchecked tasks, 0 broken local/evidence paths, 0 active items, 3/3 independent approval**.
 - Live Open Food Facts checks remain intentionally opt-in.
 
 ## Visual evidence

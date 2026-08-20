@@ -12,7 +12,7 @@ Launch current app build in configured simulator, add default meal through real 
 
 - daily calorie total increases by exactly 15 kcal;
 - `Almond Milk` meal row appears;
-- row shows `1x, 100 g, 15 kcal`;
+- row shows `1× · 100 g` and `15 kcal` (accessibility value: `1× · 100 g, 15 calories`);
 - no functional or visible layout failure occurred.
 
 Compare before and after totals. Do not assume initial total is zero because simulator store persists.
@@ -68,10 +68,10 @@ Spawn fresh, read-only subagent with MCP plus file/image read access. Force-load
 ```text
 Capture and read latest hierarchy and screenshot. If count_calories is backgrounded
 or app switcher is visible, foreground its app card using hierarchy-derived center
-coordinates and recapture. Record current daily-calorie-total. Tap add-meal using
-latest hierarchy center, recapture, verify default Almond Milk at 100 g, tap save-meal
-(OK) using latest hierarchy center, and recapture. Success requires total delta +15
-and visible meal-entry-Almond Milk showing 1x, 100 g, 15 kcal. Retry transient launch
+coordinates and recapture. Record current daily-calorie-total. Tap add-meal / Log food using
+latest hierarchy center, recapture, verify default Almond Milk at 100 g, tap save-meal /
+Add using latest hierarchy center, and recapture. Success requires total delta +15
+and visible meal-entry-Almond Milk showing 1× · 100 g and 15 kcal. Retry transient launch
 or tap timing once. Do not modify files or end session; parent owns cleanup.
 ```
 
@@ -97,8 +97,8 @@ For each step:
 Expected identifiers/labels:
 
 - total: `daily-calorie-total`;
-- add button: `add-meal` / `Add meal`;
-- save button: `save-meal` / `OK`;
+- add button: `add-meal` / `Log food`;
+- save button: `save-meal` / `Add`;
 - result row: `meal-entry-Almond Milk` / `Almond Milk`.
 
 Default meal type depends on local time (`Breakfast`, `Lunch`, `Dinner`, or `Snack`). Do not hardcode meal type.
@@ -125,7 +125,7 @@ Pass only when latest hierarchy proves all:
 - bundle identifier is `ch.elia.count-calories`;
 - parsed calorie total equals previous total plus 15;
 - `meal-entry-Almond Milk` exists;
-- row details include `1x, 100 g, 15 kcal`;
+- row details include `1× · 100 g` and `15 kcal`; accessibility value includes `1× · 100 g, 15 calories`;
 - screenshot has no overlap, clipping, unreadable text, or unexpected blank state.
 
 Record before total, after total, meal details, final hierarchy path, and final screenshot path.
@@ -149,11 +149,13 @@ Run cleanup even if delegation or verification fails.
 - Tap misses: recapture because coordinates changed, then retry once.
 - Never leave session open while diagnosing unrelated build/test failures.
 
-## Last successful run
+## Historical manual run and current regression proof
 
-Verified 2026-08-02 on configured iPhone 17 Pro simulator:
+Manual hierarchy-driven run verified 2026-08-02 on configured iPhone 17 Pro simulator:
 
 - before: `0 / 1.700 kcal`;
 - after: `15 / 1.700 kcal`;
 - row: `Almond Milk`, `Snack`, `1x, 100 g, 15 kcal`;
 - Xcode interaction session closed successfully.
+
+Current deterministic UI coverage protects same contract: `testAddingDefaultMealUpdatesToday` asserts exact +15 kcal and `testMealDeleteRequiresCancelOrConfirmation` asserts Almond Milk `1× · 100 g` plus 15 calories. Latest whole-tree UI record is 52/52 in `design-redesign/FINAL-REPORT.md`. Rerun manual flow when explicitly requested; dated result above is historical evidence, not claim of a current simulator session.

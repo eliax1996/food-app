@@ -2,14 +2,14 @@
 
 ## Goal
 
-Build a focused iOS calorie tracker that lets people record foods, water, weight, and daily goals quickly. Barcode scans automatically retrieve nutrition data, cache the product, and open Add Meal with its reported serving or package amount. Use grams for food and milliliters for beverages. Let users confirm amount and choose portions in quarter steps from 0.25 through 4, while allowing larger values through direct entry. Offer opt-in meal and water reminders that users can control by reminder type.
+Build a focused iOS calorie tracker that lets people record foods, water, weight, and daily goals quickly. Barcode scans automatically retrieve nutrition data, cache the product, and open Log food with its reported serving or package amount. Use grams for food and milliliters for beverages. Let users confirm amount and choose portions in quarter steps from 0.25 through 4, while allowing larger values through direct entry. Offer opt-in meal and water reminders that users can control by reminder type.
 
 Prioritize a fast, dependable user experience. Preserve offline access for products that have already been scanned.
 
 ## Structure
 
 - `count_calories/App/`: app entry point, root tab/deep-link composition, and shared seeded preview data.
-- `count_calories/Features/`: feature-owned SwiftUI screens and components for Counter, History, Config, and Scanner. Primary screens and independently useful portions each own previews.
+- `count_calories/Features/`: feature-owned SwiftUI screens and components for Counter, History, Settings, and Scanner. Primary screens and independently useful portions each own previews.
 - `count_calories/Models/`: shared SwiftData persistence models.
 - `count_calories/Services/`: app-wide logging, notification, Live Activity, and widget-summary integrations.
 - `count_calories/Tracking/`: deterministic calorie math, daily-history aggregation, meal-time suggestions, weight-entry defaults/adjustments, calculated-plan/setup rules, and deep-link parsing shared with hostless tests.
@@ -177,7 +177,7 @@ When removing or replacing code, always ask: **Can some piece of code be written
 - Mirror production concepts in test names and test files so feature ownership remains obvious.
 - Use descriptive names and explicit data ownership.
 - Avoid speculative compatibility code and unused generalization.
-- Treat warnings as defects. Keep formatting and access control consistent with nearby code.
+- Treat app-attributed warnings as defects. A source-less platform diagnostic may be classified as an accepted external limitation only after deterministic flows pass, rendered evidence shows no defect, app-owned inputs are verified finite, and durable status records exact reopen criteria. Keep formatting and access control consistent with nearby code.
 - Add comments only for non-obvious decisions or constraints.
 - Handle network failures, malformed data, missing nutrition fields, and unavailable services explicitly.
 
@@ -223,7 +223,7 @@ Before writing each test, ask:
 
 If a test only restates private implementation steps, replace it with a test of observable behavior. Test public outcomes, error handling, persistence boundaries, and important edge cases.
 
-Reminder coverage should protect fixed meal windows, suppression after matching records, elapsed-time water scheduling, daily water-goal suppression, independent preferences, and the pending-notification limit.
+Reminder coverage should protect independently configured exact meal times, suppression after matching records, elapsed-time water scheduling, daily water-goal suppression, independent preferences, and the pending-notification limit.
 
 Tracking coverage should protect serving/portion calorie scaling, invalid amounts, meal suggestion windows, calendar-day aggregation and history limits, supported widget deep links, and legacy meal-model fallbacks.
 

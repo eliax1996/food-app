@@ -74,7 +74,7 @@ Disabled lookup still appeared blue/enabled, creating false affordance.
 
 ### UI-test candidacy
 
-Custom-food creation was explored once, not repeatedly proved. It is secondary and currently covered by one deterministic in-memory MCP proof plus app compilation. Promote it if behavior is revisited or regresses; do not repeat MCP proof.
+At attempt 03, custom-food creation had one deterministic in-memory MCP proof plus app compilation, so another manual proof was not warranted. Later deterministic functional coverage (`testCustomFoodNutrientEditorSavesDraftFood` plus bulk/offline custom recovery) completed promotion; no test follow-up remains.
 
 ### Decision
 

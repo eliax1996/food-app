@@ -69,7 +69,7 @@ Very high 1.65  sustained manual labor
 maintenance = RMR × selected factor
 ```
 
-Routine excludes separately logged workouts and tracker calories. Count Calories does not yet add exercise calories.
+Routine excludes separately logged workouts and tracker calories. Count Calories does not add exercise-calorie credits; that direction is explicitly rejected from current scope because no trusted activity source/contract exists.
 
 ### Pace and adjustment
 

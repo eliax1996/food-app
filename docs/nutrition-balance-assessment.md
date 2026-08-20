@@ -106,7 +106,7 @@ This feature is not suitable as individualized guidance for children, pregnancy 
 
 ## Competitive evidence
 
-Retained current App Store evidence under `/tmp/calorie-design-research/images/` shows:
+Retained App Store evidence under `../design-redesign/research/competitors/` shows:
 
 - Foodnoms places Calories, Carbs, Fat, and Protein as compact supporting goals beneath the primary calorie log (`foodnoms-1.jpg`) and uses a separate Insights macro card (`foodnoms-3.jpg`).
 - Cronometer exposes explicit nutrient progress rows and values in a denser Daily Report (`cronometer-3.jpg`).

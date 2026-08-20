@@ -81,17 +81,17 @@ Attempt 02 preserves local context, keeps remote discovery usable with the keybo
 
 ### Cache measurement
 
-A deterministic measurement test encoded 64 representative one-page, five-hit queries at 65,841 bytes. Projecting that sample to 2,048 queries gives 2,106,912 bytes (about 2.01 MiB). The 2,048-query count therefore governs typical data; 32 MiB remains a guard for long or multipage outliers.
+At this milestone, deterministic measurement encoded 64 representative one-page, five-hit queries at 65,841 bytes and projected 2,048 queries to 2,106,912 bytes (about 2.01 MiB). Current rerun measurement is recorded in `../../docs/open-food-facts-search-assessment.md`. The 2,048-query count governs typical data; 32 MiB remains a guard for long or multipage outliers.
 
 ---
 
 ## Test and runtime record
 
 - Focused suites: client 11, cache 6, service 15, coordinator 8. Cache focused run passed 6/6 after measurement coverage was added.
-- Current hostless aggregate: 85 pass and 2 opt-in skips. Client coverage requires `timed_out` and rejects partial timeout responses rather than caching them as terminal.
+- Milestone-time hostless aggregate: 85 pass and 2 opt-in skips. Later final whole-tree validation executed 243 tests (241 pass / 2 skips). Client coverage requires `timed_out` and rejects partial timeout responses rather than caching them as terminal.
 - UI suite reached XCTest before the final focus fix: 2 passed and 2 failed because the search keyboard lingered. Focus fix was manually proven.
 - Later feature-local UI attempts were blocked before XCTest by process-handle failures. Subsequent whole-product exact-tree UI suites passed remote search; archived host failure is not current missing work.
 
 ## Phase transition
 
-FOOD-REMOTE-SEARCH-001 is accepted. Current redesign phase: `AMOUNT-EDITOR-001`.
+FOOD-REMOTE-SEARCH-001 is accepted. Historical next phase was `AMOUNT-EDITOR-001`; it and later closure work are complete.

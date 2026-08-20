@@ -6,11 +6,11 @@ Archive note: “future” language below records sequencing at research time. R
 
 ## Product question
 
-Count Calories currently asks people to edit age, target weight, a manual calorie goal, target date, and five reminder switches in one flat form. Meal times are hard-coded, notification permission can be denied while switches still look effective, and the calorie goal has no visible basis. REFINE-001 must add useful control without turning setup into a branded questionnaire or presenting population estimates as medical prescriptions.
+At assessment start, Count Calories asked people to edit age, target weight, a manual calorie goal, target date, and five reminder switches in one flat form. Meal times were hard-coded, notification permission could be denied while switches still looked effective, and the calorie goal had no visible basis. REFINE-001 needed useful control without turning setup into a branded questionnaire or presenting population estimates as medical prescriptions.
 
 This assessment originally covered first coherent Refine slices: native Settings hierarchy, transparent nutrition references derived from the existing manual calorie goal, configurable meal times, and weight reminders. Welcome setup and calculated recommendations were then specified separately in `calculated-plan-specification.md` and accepted as REFINE attempt 02.
 
-## Current-app critique
+## Assessment-start app critique
 
 ### Strengths
 
@@ -29,7 +29,7 @@ This assessment originally covered first coherent Refine slices: native Settings
 6. Daily goal is editable but unexplained. Existing values must not be relabeled “calculated.”
 7. Target date can imply feasibility even though no rate, body inputs, or safety check supports it.
 8. No weight reminder exists despite weight trend depending on repeat measurements.
-9. Current manual calorie goal produces a Fiber reference in Today detail, but no Plan surface shows theoretical macro gram ranges beside actual measured intake.
+9. Assessment-start manual calorie goal produced a Fiber reference in Today detail, but no Plan surface showed theoretical macro gram ranges beside actual measured intake.
 
 ## Competitor findings
 
@@ -55,7 +55,7 @@ Findings:
 - Nutrition needs at least four logged days/week and ideally daily. Partial days are treated as materially more dangerous than wholly missing days.
 - Adjustments arrive at weekly check-in and require approval. MacroFactor does not slash calories to “catch up” to a missed target date.
 
-Opportunity: preserve this separation of raw data, trend evidence, and user-confirmed proposal. Do not copy dark power-user styling or imply equivalent algorithm quality before Count Calories has enough data.
+Resolved opportunity: attempt 03 preserves raw data, trend evidence, and user-confirmed proposal as separate states. It does not copy dark power-user styling or imply equivalent algorithm quality.
 
 ### MyFitnessPal
 
@@ -94,7 +94,7 @@ Findings:
 - Planned projection and actual-streak projection are distinguished. Projection hides when pace is extreme or unsupported.
 - Gain mode is a workaround rather than a first-class flow.
 
-Opportunity: concrete activity examples beat unexplained “light/moderate” labels; Count Calories should make maintain and gain first-class rather than hiding manual math.
+Resolved opportunity: attempt 02 uses concrete routine examples and makes Maintain and Gain first-class rather than hiding manual math.
 
 ### Yazio
 
@@ -112,7 +112,7 @@ Findings:
 - Meal reminders use independently chosen exact times. Weigh-in reminder supports daily or weekly frequency plus time.
 - Weekly change is capped at 1 kg. Manual calorie and macro controls remain available.
 
-Opportunity: exact times are clearer than vague windows for first implementation; daily/weekly weight cadence is understandable and testable.
+Resolved opportunity: attempt 01 uses exact meal times plus explicit Daily/Weekly weight cadence; unsupported reminder windows are rejected.
 
 ### Lifesum
 
@@ -130,7 +130,7 @@ Findings:
 - Product describes Mifflin–St Jeor plus activity and rejects goals below its individualized recommendation, but does not publish one universal safe personal target.
 - In-app notification controls coexist with system notification permission.
 
-Opportunity: keep system delivery state distinct from app reminder preference.
+Resolved opportunity: attempt 01 keeps system delivery authorization distinct from saved app reminder preference and exposes denied recovery.
 
 ### Cronometer
 
@@ -162,7 +162,7 @@ Retained official-help screenshots:
 
 ![Cronometer weight reminder after last log](../design-redesign/research/refine/competitors/cronometer/notifications-05.png)
 
-Opportunity: adopt hierarchy, review-before-save, and conditional timing conventions. Do not copy Cronometer’s dense branded cards or use acknowledgment checkbox as substitute for preventing an unsafe result.
+Resolved opportunity: focused Settings editors use hierarchy, review-before-save, and conditional timing without dense branded cards or acknowledgment in place of safety validation.
 
 ### Foodnoms
 
@@ -189,7 +189,7 @@ Resolved opportunity: NUTRITION-GOALS-001 recalculates transparent references; a
 2. **Independent reminder conditions.** Breakfast, Lunch, Snack, Dinner, Weight, and Water keep separate preferences.
 3. **Meal suppression remains semantic.** A reminder fires only when matching meal has not been logged that local day.
 4. **Weight cadence offers Daily or Weekly.** Daily uses selected time. Weekly schedules after seven days without a weight, at selected time; a new weight resets due date.
-5. **No adaptive calorie change in this slice.** Research supports waiting for trend and logging evidence, then showing a user-confirmed proposal. Current app lacks plan source/history and data-quality state.
+5. **No adaptive calorie change in Slices A/B.** Research supported waiting for trend and logging evidence, then showing a user-confirmed proposal. Attempt 03 later added plan history and data-quality state under its separate contract.
 6. **Existing calorie goal is Manual.** Migration preserves value exactly; it is never retroactively labeled calculated.
 7. **References are not personal macro prescriptions.** First Plan surface shows general adult ranges and measured actuals only with complete relevant coverage.
 
@@ -232,7 +232,7 @@ Safety interpretation:
 - Implemented target-date UI rejects infeasible rates rather than lowering calories to satisfy date.
 - Hard lower bound cannot be below 1,000 kcal/day for supported adults. A higher individualized recommendation may be appropriate; this remains a specification question, not a value to guess.
 - Children, pregnancy/lactation, eating-disorder care, and medically prescribed diets remain outside automated recommendation scope.
-- Current slice performs no energy-needs calculation, so it introduces no new personal calorie recommendation.
+- Slice A performed no energy-needs calculation and introduced no new personal calorie recommendation; later calculated/adaptive slices used separate explicit contracts.
 
 ## NUTRITION-GOALS-001 formula
 

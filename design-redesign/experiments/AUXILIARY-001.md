@@ -50,4 +50,4 @@ All files: `design-redesign/screenshots/AUXILIARY-001/`.
 
 ## Decision
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: CONSISTENCY-001.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Historical next milestone was CONSISTENCY-001; it and later closure work are complete.

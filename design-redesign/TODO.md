@@ -1,6 +1,6 @@
 # Product iteration TODO
 
-Live execution queue. Read with `STATUS.md` and `COMPLETION-PLAN.md`. Check items only after code, evidence, tests, and durable docs agree.
+Completed execution checklist archive. Read with `STATUS.md` and `COMPLETION-PLAN.md`; every item below is closed, and Queue records current empty state.
 
 ## Complete — REFINE-001
 

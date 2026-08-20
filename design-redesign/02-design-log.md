@@ -36,7 +36,7 @@ Foodnoms and Lose It foreground remaining budget, macro/goal status, and meal-gr
 
 Current use of `List`, semantic colors, `TabView`, and sheets is strong. Native review flags bottom safe-area overlap, compact stepper hit targets, weak VoiceOver grouping, and probable large-type crowding. Remedy should preserve native containers instead of introducing decorative cards.
 
-### Missing opportunities
+### Historical missing opportunities
 
 - Per-meal totals and add actions.
 - Recent/frequent shortcuts.
@@ -98,7 +98,7 @@ Lifesum and MacroFactor prioritize search, often-logged foods, and quick quantit
 
 Uses NavigationStack, Form, searchable list, segmented controls at normal sizes, and Menu rows at accessibility sizes. Cancel/Add semantics replace vague OK.
 
-### Missing opportunities
+### Historical missing opportunities
 
 Favorites and meal templates were considered, then rejected from current scope: recents plus derived frequent foods solve local repetition without another management model.
 
@@ -152,7 +152,7 @@ Matches MacroFactor/Lifesum category convention of recents plus immediate search
 
 Uses List, Section, searchable navigation drawer, semantic checkmark, and ContentUnavailableView for no results.
 
-### Missing opportunities
+### Historical missing opportunities
 
 Frequency ranking was implemented in BACKLOG-CLOSURE-001 from local history without a new model. Favorites remain rejected because no additional user value evidence offsets management cost.
 
@@ -190,7 +190,7 @@ Positive data has 30-day freshness; empty-terminal knowledge has 90-day freshnes
 
 ### Attempt 01
 
-Screenshot: `../screenshots/FOOD-REMOTE-SEARCH-001/attempt-01-results.png`
+Screenshot: `screenshots/FOOD-REMOTE-SEARCH-001/attempt-01-results.png`
 
 Full `ContentUnavailableView` for empty Saved foods consumed 234 pt and pushed remote controls beneath the keyboard.
 
@@ -200,23 +200,23 @@ Decision: **REJECTED**.
 
 Screenshots:
 
-- `../screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-results.png`
-- `../screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-selected.png`
-- `../screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-persisted.png`
+- `screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-results.png`
+- `screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-selected.png`
+- `screenshots/FOOD-REMOTE-SEARCH-001/attempt-02-persisted.png`
 
 Replaced full unavailable state with compact `Saved foods` empty row. Manual Xcode flow selected Remote Oat Drink at 250 ml / 100 kcal, dismissed keyboard, increased daily total by exactly 100 kcal after save, and confirmed persisted local row. Attempt 02 is visually accepted.
 
 ### Evidence and validation
 
-- Measurement: 64 representative one-page five-hit queries = 65,841 bytes; 2,048 projected = 2,106,912 bytes (about 2.01 MiB). Count cap governs typical data; 32 MiB guards long/multipage outliers.
-- Focused suites: client 11, cache 6, service 15, coordinator 8. Current hostless aggregate: 85 pass / 2 opt-in skips. Timed-out partial search responses are rejected rather than cached as terminal.
+- Milestone-time measurement: 64 representative one-page five-hit queries = 65,841 bytes; 2,048 projected = 2,106,912 bytes (about 2.01 MiB). Current fixture measurement is recorded in `../docs/open-food-facts-search-assessment.md`; count cap governs typical data and 32 MiB guards long/multipage outliers.
+- Milestone-time focused suites were client 11, cache 6, service 15, coordinator 8, with 85 hostless pass / 2 opt-in skips. Later final whole-tree validation executed 243 hostless tests (241 pass / 2 skips). Timed-out partial search responses remain rejected rather than cached as terminal.
 - Historical feature-local UI run before final focus fix had 2 pass / 2 fail, then Xcode-host attempts failed before XCTest. Later whole-product exact-tree UI suites passed; this archived host issue is not current missing work.
 
 ### Decision
 
 **ACCEPTED — ATTEMPT 02**
 
-Reason: compact empty-state treatment preserves hierarchy and keyboard-safe remote interaction; architecture, persistence, manual behavior, and accepted screenshots meet feature requirements. Next phase: `AMOUNT-EDITOR-001`.
+Reason: compact empty-state treatment preserves hierarchy and keyboard-safe remote interaction; architecture, persistence, manual behavior, and accepted screenshots meet feature requirements. Historical next phase was `AMOUNT-EDITOR-001`, now complete.
 
 ## [AMOUNT-EDITOR-001] Human-friendly amount adjustment
 
@@ -235,7 +235,7 @@ Amount rules require finite exact values, preserve decimal remainders, normalize
 - Almond Milk manual proof: `100 g / 15 kcal` → `−10` → `90 g / 14 kcal` → `+10` → `100 g / 15 kcal`.
 - Remote Oat Drink at `250 ml / 100 kcal` verifies volume labels.
 - Accessibility3 proof reached `90 g / 14 kcal`, serving `1`; menus were readable, total reachable, and no clipping appeared.
-- Screenshots: `../screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png`, `attempt-01-adjusted.png`, `attempt-01-milliliters.png`, `attempt-01-accessibility3.png`.
+- Screenshots: `screenshots/AMOUNT-EDITOR-001/attempt-01-normal.png`, `attempt-01-adjusted.png`, `attempt-01-milliliters.png`, `attempt-01-accessibility3.png`.
 - Focused amount tests: 5 pass. Aggregate: 90 pass / 2 opt-in skips. `just check` passed.
 - Diagnostic UI test was added. Feature-local XCTest hosting was blocked at this milestone; later whole-product exact-tree UI suites passed the flow.
 
@@ -277,7 +277,7 @@ Trend and goal relationship understood in under three seconds; readable axes; no
 
 #### Attempt 01 — rejected
 
-Retained calories evidence: `../screenshots/HISTORY-001/attempt-01-calories.png`.
+Retained calories evidence: `screenshots/HISTORY-001/attempt-01-calories.png`.
 
 Rejected for weak one-line gray summary, full month-day labels overlapping, and stale parent-computed sheet header. Keep screenshot as rejected evidence; do not present it as accepted design.
 
@@ -285,10 +285,10 @@ Rejected for weak one-line gray summary, full month-day labels overlapping, and 
 
 Deterministic iPhone 17 Pro preview evidence:
 
-- `../screenshots/HISTORY-001/attempt-02-calories.png`
-- `../screenshots/WEIGHT-001/attempt-02-populated.png`
-- `../screenshots/WEIGHT-001/attempt-02-empty.png`
-- `../screenshots/WEIGHT-001/attempt-02-editor.png`
+- `screenshots/HISTORY-001/attempt-02-calories.png`
+- `screenshots/WEIGHT-001/attempt-02-populated.png`
+- `screenshots/WEIGHT-001/attempt-02-empty.png`
+- `screenshots/WEIGHT-001/attempt-02-editor.png`
 
 Attempt 02 fixes hierarchy, actual-day labeling, localized wheel/header rendering, and weight recording affordance. It satisfies `HISTORY-001`, `PROGRESS-001`, and `WEIGHT-001` analytics requirements.
 
@@ -341,7 +341,7 @@ This is transparent supersession, not a claim that initial nutrition evidence wa
 - Toolbar `+` is the add/Record Weight action.
 - Summary shows current value, basic recent-seven-reading context, and target.
 - Compact basic chart uses latest seven raw readings with native line + points and target rule. Explicit endpoint dates appear only when at least two readings exist.
-- One reading shows a useful prompt instead of a single dot/dead chart. Rejected evidence is retained at `../screenshots/TRACKING-IA-001/rejected-one-reading-chart.png` because that chart had no useful trend; final behavior prompts until two readings.
+- One reading shows a useful prompt instead of a single dot/dead chart. Rejected evidence is retained at `screenshots/TRACKING-IA-001/rejected-one-reading-chart.png` because that chart had no useful trend; final behavior prompts until two readings.
 - Measurements are grouped by local calendar date, newest date first, with newest rows first. Multiple same-day readings remain distinct.
 - Toolbar add defaults to now and supports independent date/time backdating. Row tap edits value/date/time for one raw record.
 - Delete requires confirmation and stacked undo; cancel preserves data.
@@ -349,7 +349,7 @@ This is transparent supersession, not a claim that initial nutrition evidence wa
 
 ### Evidence
 
-Accepted TRACKING-IA-001 visual files are only these attempt-01 files under `../screenshots/TRACKING-IA-001/`:
+Accepted TRACKING-IA-001 visual files are only these attempt-01 files under `screenshots/TRACKING-IA-001/`:
 
 - `attempt-01-four-tabs.png`
 - `attempt-01-weight-populated.png`
@@ -410,7 +410,7 @@ Category products place scanner/search adjacent to logging and move food-databas
 
 Large Form sheet, semantic disabled color, grouped fields, Done toolbar action, and explanatory footers follow native conventions.
 
-### Missing opportunities
+### Historical missing opportunities
 
 Resolved later: deterministic DEBUG barcode fixtures and functional success/failure UI coverage remove live-network dependence from normal gates.
 
@@ -448,7 +448,7 @@ Direct screenshot review and independent judges exposed hidden Back controls in 
 
 ### Evidence
 
-Accepted attempt-01 files under `../screenshots/NUTRIENTS-001/` cover Today, complete, measured-gap, partial, AX3 dark, Food Tools, and normal/AX3-dark custom nutrient entry. Full record: `experiments/NUTRIENTS-001.md`.
+Accepted attempt-01 files under `screenshots/NUTRIENTS-001/` cover Today, complete, measured-gap, partial, AX3 dark, Food Tools, and normal/AX3-dark custom nutrient entry. Full record: `experiments/NUTRIENTS-001.md`.
 
 ### Validation and decision
 
@@ -469,7 +469,7 @@ Meal reminders use independent exact times. Weight reminders support Daily/Weekl
 
 ### Critical iterations
 
-Review corrected overdue weekly timing, localized reminder windows, accidental sheet dismissal, unsupported goal-history copy, authorization-return rescheduling, and AMDR denominator math. Today now labels the normalized colored bar macro-only, shows grams, and uses reported logged calories only for adult-range shares. Compact meal rows preserve all four groups above the floating tab bar.
+Review corrected overdue weekly timing, localized reminder schedules, accidental sheet dismissal, unsupported goal-history copy, authorization-return rescheduling, and AMDR denominator math. Today now labels the normalized colored bar macro-only, shows grams, and uses reported logged calories only for adult-range shares. Compact meal rows preserve all four groups above the floating tab bar.
 
 ### Evidence and validation
 
@@ -479,7 +479,7 @@ Evidence under `screenshots/REFINE-001/` covers Settings, Plan/editor/partial, r
 - `just test-app-unit 420`: 184 pass / 2 live skips.
 - `just test-ui 600`: 14/14 pass.
 
-**ATTEMPT 01 ACCEPTED — SLICES A/B COMPLETE.** REFINE continues with welcome/setup and explainable calculated calorie plan.
+**ATTEMPT 01 ACCEPTED — SLICES A/B COMPLETE.** Historical REFINE sequence continued with now-complete welcome/setup and explainable calculated calorie plan.
 
 ## [WEIGHT-ENTRY-001] Low-friction weight and numeric entry
 
@@ -509,7 +509,7 @@ Independent code review blocked initial work on interrupted acceptance state, st
 - `just test-app-unit 480`: 210 pass / 2 live skips.
 - `TEST_CASE_TIMEOUT=60 just test-ui 900`: 22/22 pass; every final XCTest completed under one minute.
 
-**ATTEMPT 02 ACCEPTED — SLICE C COMPLETE.** Next: evidence-gated adaptation.
+**ATTEMPT 02 ACCEPTED — SLICE C COMPLETE.** Historical next slice was evidence-gated adaptation, now complete.
 
 ## [SETTINGS-DIRECT-EDIT-001] Direct reminder and setup entry
 
@@ -533,15 +533,15 @@ Today now records explicit In progress / Complete / Needs review evidence. Empty
 
 Goal check-ins show exact collection dates and earliest eligibility, then only propose after all 42 complete days plus distributed agreeing 28/35/42 weight/intake windows. Steps remain at most 100 kcal and 200 kcal per trailing 28 days. Apply is explicit; Close preserves proposal; Decline retires it until fresh evidence; Disable confirms evidence-period reset; exact Revert remains available while revision current. Progress resolves each historical day against highest-sequence effective goal revision and labels earlier context unavailable.
 
-Critical review iterations fixed hidden Revert after disable, calendar/time-zone epoch rollover, proposal-value revalidation, stale apply retry, redundant/non-energy staleness, exact collecting guidance, empty-day ambiguity, destructive confirmations, focused tab-bar overlap, and 44-point Today controls. Attempt-03 evidence under `../screenshots/REFINE-001/` received final **3/3 APPROVE**. Hostless 195/2 skips, app-hosted 250/2 skips, and functional UI 31/31 passed.
+Critical review iterations fixed hidden Revert after disable, calendar/time-zone epoch rollover, proposal-value revalidation, stale apply retry, redundant/non-energy staleness, exact collecting guidance, empty-day ambiguity, destructive confirmations, focused tab-bar overlap, and 44-point Today controls. Attempt-03 evidence under `screenshots/REFINE-001/` received final **3/3 APPROVE**. Hostless 195/2 skips, app-hosted 250/2 skips, and functional UI 31/31 passed.
 
-**ACCEPTED — ATTEMPT 03 / SLICE D COMPLETE. REFINE-001 COMPLETE.** Next: user-prioritized BULK-AI-FOOD-001 research/specification before implementation.
+**ACCEPTED — ATTEMPT 03 / SLICE D COMPLETE. REFINE-001 COMPLETE.** Historical next milestone was user-prioritized BULK-AI-FOOD-001, now complete.
 
 ## [BULK-AI-FOOD-001] Typed and dictated multi-food review
 
 ### Accepted implementation
 
-Today keeps direct Log food primary and adds Describe meal. Typed text or explicit on-device Dictate intent becomes provisional query/amount/unit rows only. Saved foods, bounded retained choices, cache, and Open Food Facts own matching; verified food records own calories and nutrients. Review exposes query, amount provenance, selected record/source/serving basis, per-row recovery/removal, Add Food, and one explicit atomic total.
+Today keeps direct Log food primary and adds Describe meal. Typed text or explicit on-device Dictate intent becomes provisional query/amount/unit rows only. Saved foods, bounded retained choices, cache, and Open Food Facts own matching; verified food records own calories and nutrients. Review exposes query, amount provenance, selected record/source/serving basis, per-row recovery/removal, **Add another food**, and one explicit atomic total.
 
 Model/default amounts require explicit acceptance. Invalid visible values block confirmation. Remembered barcode snapshots require current saved verification; automatic reuse touches LRU only after successful application. Seven-day draft, learned choices, audio/description privacy, availability fallback, and clear controls stay truthful. Durable operation, row, plate, and commit-date identity makes retries/crash resume idempotent; learning uses frozen committed rows and draft cleanup runs independently after commit.
 
@@ -551,7 +551,7 @@ No-match recovery can suspend bulk review, open existing custom-food flow, then 
 
 Hostless 219 pass / 2 opt-in live skips; app-hosted 297 pass / 2 skips; broad functional UI passed 44/44 on the final tree. `just validate 300` and `git diff --check` passed. Final three independent critical/high source reviewers: **APPROVE / APPROVE / APPROVE**.
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: AUXILIARY-001.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Historical next milestone was AUXILIARY-001, now complete.
 
 ## [AUXILIARY-001] Widget and Live Activity
 
@@ -565,7 +565,7 @@ Live Activity no longer starts implicitly during ordinary Today synchronization.
 
 App + widget iOS 17 build passed. Hostless remained 219 / 2 live skips; app-hosted passed 300 / 2 skips. Broad UI executed 45 passing tests with one unrelated amount-test timeout that passed focused rerun. Light, over-goal, dark AX3 widget plus Lock Screen/compact/expanded Live Activity previews are retained. Final three independent critical/high source reviewers: **APPROVE / APPROVE / APPROVE**.
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: CONSISTENCY-001.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Historical next milestone was CONSISTENCY-001, now complete.
 
 ## [CONSISTENCY-001] Whole-app language and behavior
 
@@ -575,7 +575,7 @@ Initial independent audit found mixed **Add Food/Add food/Log food** semantics a
 
 Hostless 219 / 2 live skips, app-hosted affected suite 300 / 2 skips, focused atomic bulk UI, incremental build, and `git diff --check` passed. Final independent critical/high consistency review: **APPROVE / APPROVE / APPROVE**.
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Next: ROBUSTNESS-001.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Historical next milestone was ROBUSTNESS-001, now complete.
 
 ## [ROBUSTNESS-001] Whole-app stress matrix
 

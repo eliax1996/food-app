@@ -115,7 +115,7 @@ Final closure hardening preserves these invariants:
 - Persistent-store failure shows retry instead of deleting data or crashing.
 - Reminder replacement generation is assigned synchronously, then serialized, capacity-aware, rollback-capable, authorization-aware, and failure-visible; fresh-context snapshots follow Today, widget-water, diary, and weight writes.
 - Missing nutrient facts stay unknown; incomplete or invalid energy suppresses guidance.
-- Meal text/audio, learned corrections, and personal nutrition targets remain local and clearable; only derived search queries may reach Open Food Facts.
+- Meal text/audio, learned corrections, and personal nutrition targets remain local and clearable. Bulk flow sends only derived per-row food queries to Open Food Facts; explicit barcode lookup separately sends scanned/entered barcode identifiers under existing API disclosure.
 - Historical writes reject future destinations, stale commands, identity collisions, unsupported provenance, invalid scaling, and unconfirmed duplicates before one atomic save. Store-scoped migration preserves prior item editing without promoting unknown aggregates; raw-field undo consumes one-use tombstone, advances mutation generation, and never restores stale attestation.
 - General references remain visible beside personal targets; missing nutrient facts never become zero or a false target comparison.
 
@@ -132,6 +132,8 @@ Reviewer 3: APPROVE
 ```
 
 No unresolved critical/high design or engineering finding remains. Initial diary review and final BACKLOG-CLOSURE-001 review each independently converged at **APPROVE / APPROVE / APPROVE** under identical neutral critical/high criteria. Closure reviewers drove and rechecked migration, CAS, exact undo, reversible density, strict parsing, synchronization ordering, and legacy-truth hardening before final convergence.
+
+A 2026-08-20 follow-up reread all 54 tracked Markdown files, corrected stale/superseded contract wording and evidence paths, mechanically found 0 unchecked tasks or broken local paths, and independently reconverged at **APPROVE / APPROVE / APPROVE** with 0 active/unresolved items. Full record: [`experiments/BACKLOG-CLOSURE-001.md`](experiments/BACKLOG-CLOSURE-001.md).
 
 ## Final validation
 

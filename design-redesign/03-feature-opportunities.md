@@ -84,7 +84,7 @@ Compact protein/carbs/fat progress below calories, with detailed nutrient screen
 
 ### Why it belongs in this product
 
-Nutrition API already normalizes products, but persistence currently stores calories only.
+At proposal time, nutrition API normalized products but persistence stored calories only. NUTRIENTS-001 later added immutable optional nutrient snapshots.
 
 ### Expected impact
 

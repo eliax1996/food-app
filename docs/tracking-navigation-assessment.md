@@ -39,11 +39,9 @@ Final Weight behavior is a compact measurement log plus basic seven-reading raw-
 
 Research inputs:
 
-- `/tmp/navigation-weight-research.txt` — nonempty; reviewed.
-- `/tmp/navigation-nutrition-research.txt` — broad run was empty after timeout; no evidence taken from it.
-- `/tmp/navigation-nutrition-focused-research.txt` — bounded MacroFactor, Foodnoms, MyFitnessPal, and Cronometer navigation report; reviewed.
-- `/tmp/nutrition-history-research.txt` — reviewed.
-- `/tmp/weight-history-research.txt` — reviewed.
+- Ephemeral reviewer transcripts compared weight navigation, nutrition navigation, nutrition history, and weight history; these temporary files are not retained.
+- Broad nutrition run timed out empty and contributed no evidence. Bounded findings were cross-checked against durable exact URLs in the source index below.
+- Retained visual evidence lives under `../design-redesign/research/competitors/` and `../design-redesign/screenshots/TRACKING-IA-001/`.
 
 All external sources below were accessed 2026-08-08. Screenshots and App Store listings prove shown UI or published claims; they do not prove undocumented behavior.
 
@@ -219,13 +217,13 @@ All gates below are closed by final validation. TRACKING-IA-001 is accepted and 
 
 ## Evidence log
 
-- **2026-08-08 — V:** Reviewed `/tmp/navigation-weight-research.txt`. Apple Health, Happy Scale, Withings, Weight Diary Lite, and Weigh In evidence separates recording, chronological history, and analytics. Monitor Your Weight includes useful current/legacy comparison material, but older screenshots are a legacy caveat.
-- **2026-08-08 — V:** Reviewed `/tmp/nutrition-history-research.txt`. MacroFactor, Cronometer, MyFitnessPal, Lose It!, Foodnoms, Lifesum, and YAZIO evidence uses date-first food diaries and meal/group-specific actions; weight remains a separate measurement/history concern. Nutrition references remain relevant to Today, Progress, and the no-generic-table boundary.
-- **2026-08-08 — V:** Reviewed `/tmp/weight-history-research.txt`. Apple Health, Happy Scale, Withings, and dedicated weight apps support chronological native lists, row edit/delete patterns, date handling, raw-reading preservation, and accessibility patterns; source file explicitly marks undocumented behavior and inferences.
-- **2026-08-08 — V:** Broad `/tmp/navigation-nutrition-research.txt` timed out empty and contributed no evidence. Bounded `/tmp/navigation-nutrition-focused-research.txt` verified MacroFactor, Foodnoms, MyFitnessPal, and Cronometer: daily log and analytics remain broad destinations while weight is nested or globally added.
+- **2026-08-08 — V:** Ephemeral reviewer findings, cross-checked against durable source-index URLs, found Apple Health, Happy Scale, Withings, Weight Diary Lite, and Weigh In separate recording, chronological history, and analytics. Monitor Your Weight includes useful current/legacy comparison material, but older screenshots are a legacy caveat.
+- **2026-08-08 — V:** Cross-checked MacroFactor, Cronometer, MyFitnessPal, Lose It!, Foodnoms, Lifesum, and YAZIO evidence uses date-first food diaries and meal/group-specific actions; weight remains a separate measurement/history concern. Nutrition references remain relevant to Today, Progress, and the no-generic-table boundary.
+- **2026-08-08 — V:** Cross-checked Apple Health, Happy Scale, Withings, and dedicated weight apps support chronological native lists, row edit/delete patterns, date handling, raw-reading preservation, and accessibility patterns; source index marks undocumented behavior and inferences.
+- **2026-08-08 — V:** Broad nutrition review timed out empty and contributed no evidence. Bounded findings, cross-checked against MacroFactor, Foodnoms, MyFitnessPal, and Cronometer URLs below, showed daily log and analytics remain broad destinations while weight is nested or globally added.
 - **2026-08-08 — D:** Original `eae1c92` three-tab/drill-down assessment is superseded by explicit user feedback. Initial nutrition evidence still favors nested Weight, but discoverability plus dedicated-weight precedent now wins.
 - **2026-08-08 — R:** Repository baseline confirmed pre-change `Counter | Progress | Config`, combined Progress weight recording, `PlateEntry` snapshot fields, and calendar-day calorie aggregation. Implementation now records raw same-day/backdated measurements under root Weight and removes current-weight recording from Settings.
-- **2026-08-08 — V/R:** Attempt-01 visual evidence was captured under `screenshots/TRACKING-IA-001/`; explicit UI target reached **6/6 pass** for four tabs, prompt-to-chart, two same-day readings, backdated regrouping, edit, delete cancel/confirm/undo, Settings, and direct `View full trends` to Progress / Weight.
+- **2026-08-08 — V/R:** Attempt-01 visual evidence was captured under `../design-redesign/screenshots/TRACKING-IA-001/`; explicit UI target reached **6/6 pass** for four tabs, prompt-to-chart, two same-day readings, backdated regrouping, edit, delete cancel/confirm/undo, Settings, and direct `View full trends` to Progress / Weight.
 - **2026-08-08 — R:** `just validate 300` passed; hostless validation reported **125 passed / 2 opt-in live skips**; simulator build, install, and launch passed. App-hosted persistence tests passed after duplicate-profile/future-row correctness fixes and again in an integrated run.
 - **2026-08-08 — R:** One later standalone `just test-app-unit 300` timed out before XCTest. This is external Xcode 27 host instability, not a red product gate.
 - **2026-08-08 — D:** Final IA is `Today | Weight | Progress | Settings`; Weight owns basic seven-reading raw-chart context and raw CRUD; Progress owns fuller fourteen-reading analytics with no weight CRUD; Settings has no current-weight field. Generic mixed history remains rejected. COMPETITOR-GAP-001 and BACKLOG-CLOSURE-001 later implemented separate date-first calorie diary detail and known-snapshot mutations.

@@ -293,6 +293,28 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Token/quota note: three parallel repository-wide reviewers each timed out at 900 seconds with empty output; attached-diff Sol medium completed within bounds.
 - Policy effect: for broad closure review, first attach a bounded final diff to Sol medium; use repository tools only when call-site context is genuinely absent, and parent verifies against full tree.
 
+### 2026-08-20 — Model/effort metadata not retained: BACKLOG-CLOSURE-001 review and device loops
+
+- Shape: hierarchy-driven light/AX3-dark evidence capture plus repeated neutral repository-wide critical/high review of historical mutation, personal targets, ranking, accessibility, and external-surface ordering.
+- Outcome: device sessions produced retained evidence and were closed; successive reviewers found 22 material correctness issues, all fixed before final 3/3 approval. Detailed findings and final proof remain in `../design-redesign/experiments/BACKLOG-CLOSURE-001.md`.
+- Validation: parent ran final hostless, app-hosted, functional UI, build/install/launch, and diff gates.
+- Instruction-following: review/device outcomes were retained, but invocation model and effort were not written durably. This audit does not reconstruct missing metadata from filenames.
+- Strength: independent loops exposed migration, identity, exact undo, CAS, parsing, synchronization, and overflow defects that narrow tests initially missed.
+- Weakness: absent model/effort metadata prevents empirical comparison and violated this guide’s recording intent.
+- Token/quota note: many broad reviewer rounds were required; retained outputs show several empty/time-limited attempts.
+- Policy effect: every future delegated invocation record must include model and effort when started, not only after completion; parent should append this guide before deleting task notes.
+
+### 2026-08-20 — Sol `medium`: full Markdown closure re-audit
+
+- Shape: three identical neutral repository-wide passes over 54 tracked Markdown files, with source/test cross-checks for uncertain implementation claims.
+- Outcome: first complete passes exposed unsupported adaptive wording, superseded bulk override requirements, obsolete labels/reminder language, stale milestone phrasing, and broken ephemeral/relative evidence paths. After corrections, later passes found exact-time terminology drift, stale current Log food labels, and ambiguous platform-diagnostic debt framing. Final fresh pass reached 3/3 APPROVE with 0 active items and 0 broken links.
+- Validation: parent ran mechanical checklist/link/evidence-path audits, `git diff --check`, focused cache measurement, and full `just test-unit 600` (243 executed, 241 pass / 2 opt-in skips).
+- Instruction-following: all completed reviewers reported file count, exclusions, unchecked count, unresolved count, and broken-link count. One earlier Luna `max` process timed out empty; two peers completed.
+- Strength: Sol medium finished full-tree documentation/source reconciliation reliably and found precise cross-file contradictions.
+- Weakness: one-finding-at-a-time convergence required repeated full passes; parallel calls consume substantial wall time.
+- Token/quota note: final three-way Sol pass completed within bounded process timeout; initial parallel Luna pass produced one empty timeout.
+- Policy effect: use Sol medium for finite repository-wide documentation reconciliation when every file must be read; retain exact model/effort and audit counters immediately.
+
 Do not change standing model policy absent repeated evidence.
 
 ## Record template

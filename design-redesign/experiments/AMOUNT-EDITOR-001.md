@@ -56,4 +56,4 @@ Accepted screenshots:
 
 **ACCEPTED — ATTEMPT 01**
 
-Prototype A meets amount-entry, unit, accessibility, and keyboard-free correction requirements. Current next: `HISTORY-001 + PROGRESS-001 + WEIGHT-001`.
+Prototype A meets amount-entry, unit, accessibility, and keyboard-free correction requirements. Historical next milestone was `HISTORY-001 + PROGRESS-001 + WEIGHT-001`; it and later closure work are complete.

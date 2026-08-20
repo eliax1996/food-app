@@ -101,14 +101,14 @@ Each row:
 4. result block:
    - loading spinner “Searching saved foods” / “Searching Open Food Facts”;
    - selected record name, calories for reviewed amount, per-serving basis, source (**Saved**, **Remembered**, **Open Food Facts**);
-   - **Change Food** opens existing-style local/cache/remote result picker scoped to row;
+   - **Change Food** opens existing-style local/cache/remote result picker scoped to row. Selected serving/nutrition facts stay record-owned and read-only here; explicit nutrition correction uses Custom Food rather than an arbitrary override of saved/Open Food Facts data;
    - failure with exact recovery: **Retry**, **Change Query**, **Choose Saved Food**, **Remove**;
 5. remove action with undo toast or confirmation only when destructive ambiguity warrants it.
 
 Toolbar actions:
 
 - **Cancel**: if no edits and no retained draft, dismiss. Otherwise confirmation offers **Keep Draft**, **Discard Draft**, **Keep Reviewing**.
-- **Add Food**: adds blank unresolved row and focuses query.
+- **Add another food**: adds blank unresolved row and focuses query.
 - Primary bottom safe-area action: **Log N Foods · X kcal**. Disabled while any included row is unresolved/loading/invalid. Accessibility value explains exact blocker count.
 
 Confirmation should not require another alert: review screen itself is explicit confirmation. Button must state count and total. On transaction failure, remain on review with all rows and show retryable alert.

@@ -128,7 +128,7 @@ Three final independent read-only acceptance reviewers received identical neutra
 
 ## Acceptance decision
 
-**ACCEPTED — ATTEMPT 01 / COMPLETE.** Missing values remain truthful, historical snapshots are stable, actual-versus-general-reference presentation is explainable, critical UI coverage is deterministic, final rendered evidence is accepted, and all product gates are green. Calorie-goal-derived theoretical gram ranges versus measured actuals are intentionally scheduled as `NUTRITION-GOALS-001` inside REFINE-001 rather than expanding this completed daily-truth milestone.
+**ACCEPTED — ATTEMPT 01 / COMPLETE.** Missing values remain truthful, historical snapshots are stable, actual-versus-general-reference presentation is explainable, critical UI coverage is deterministic, final rendered evidence is accepted, and all product gates are green. Calorie-goal-derived theoretical gram ranges versus measured actuals were scheduled separately as `NUTRITION-GOALS-001` and later completed inside REFINE-001.
 
 ### REFINE-001 denominator correction
 
