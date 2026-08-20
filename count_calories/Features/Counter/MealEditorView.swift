@@ -461,7 +461,7 @@ private struct FoodSearchView: View {
                 }
             }
 
-            Section(trimmedSearch.isEmpty ? "All foods" : "Saved foods") {
+            Section {
                 if filteredFoods.isEmpty, canSearchRemote {
                     Text("No saved foods match.")
                         .font(.subheadline)
@@ -473,6 +473,9 @@ private struct FoodSearchView: View {
                         foodButton(food)
                     }
                 }
+            } header: {
+                Text(trimmedSearch.isEmpty ? "All foods" : "Saved foods")
+                    .accessibilityIdentifier("food-catalog-section-heading")
             }
 
             if canSearchRemote, let remoteSearch {

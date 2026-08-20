@@ -1,7 +1,7 @@
 # Test, UI-journey, and observability production-readiness assessment
 
 **Audit date:** 2026-08-20
-**Status:** AUTOMATED CURRENT-RUNTIME GATE GREEN — PRODUCTION APPROVAL BLOCKED ON iOS 17 RUNNER / REMOTE ENFORCEMENT
+**Status:** iOS 17 MINIMUM-RUNTIME GATE GREEN — DISTRIBUTION BLOCKED ON APP STORE PERMISSIONS / REMOTE ENFORCEMENT
 
 ## Decision
 
@@ -114,6 +114,8 @@ External-surface parent span now waits for reminder and Live Activity child task
 
 UI tests should not duplicate every numeric/domain boundary. Invalid/nonfinite/overflow/calendar/CAS/migration rules belong in unit/app-hosted tests. Pixel contrast, exact Dynamic Type wrapping, WidgetKit/Dynamic Island rendering, real permissions, and live service behavior need visual/device/scheduled evidence. Performance remains separate from correctness.
 
+Xcode 27 no longer offers iOS 17.5 through its current component catalog, so Apple’s archived signed runtime was installed through `just simulator-runtime-install 17.5`. Sustained one-process Xcode 27 automation against that archived runtime exposed a source-less `XCTAutomationSupport`/libtrace crash while servicing accessibility requests; every implicated journey passed alone. Minimum-runtime release validation therefore resets simulator services and executes all discovered functional UI methods independently on iOS 17. This preserves all 55 assertions and fails on any journey result instead of retrying or suppressing app crashes.
+
 ## Operational logging contract
 
 ### What is logged
@@ -170,11 +172,12 @@ Logging every tap or enough health data to replay full app state would be noisy 
 ## Remaining production risks and required evidence
 
 1. **Prior-release store migration fixture:** current app-hosted tests reopen current-schema files and deeply test migration logic, but repository does not retain binary stores from every shipped historical schema. Before next schema-changing release, capture versioned sanitized store fixtures and open them with production container configuration.
-2. **Minimum-OS runtime:** app, widget, app tests, and UI-test targets compile with iOS 17 deployment. Current local machine has only iOS 27 simulator. Workflow requires self-hosted `count-calories-ios17` runner and `IOS17_SIMULATOR_ID`; gate verifies selected runtime is actually iOS 17 before testing. Branch protection must require its check. Until runner/check exists and passes, minimum-runtime release proof is outstanding.
-3. **WidgetKit/ActivityKit process behavior:** shared core tests + Release archive + retained visuals do not execute every system-hosted lifecycle. Run supported-device widget/Live Activity smoke for releases touching those surfaces.
-4. **Notification delivery:** deterministic manager and denied-state UI tests cannot prove Focus/scheduled-summary/system delivery. Run permission/pending-request smoke when notification integration changes.
-5. **Speech/Foundation Models/camera:** fixture tests prove app state machine and fallbacks; compatible-device smoke proves Apple framework runtime.
-6. **Live Open Food Facts:** deterministic transport fixtures remain release authority. Run opt-in live contract on schedule and alert maintainers; do not make release correctness depend on network uptime.
+2. **Remote minimum-OS enforcement:** local iOS 17.5 proof is green. Workflow still requires self-hosted `count-calories-ios17` runner, its own valid `IOS17_SIMULATOR_ID`, and branch/tag protection requiring that exact check; local evidence cannot configure remote policy.
+3. **App Store distribution identity:** archive and strict signatures pass, but IPA export fails because team `Elia Migliore` has no App Store Connect provider/profile-creation permission and no matching app/widget App Store profiles. A provider-backed Apple Developer team must supply both profiles and rerun exact-tree export.
+4. **WidgetKit/ActivityKit process behavior:** shared core tests + Release archive + retained visuals do not execute every system-hosted lifecycle. Run supported-device widget/Live Activity smoke for releases touching those surfaces.
+5. **Notification delivery:** deterministic manager and denied-state UI tests cannot prove Focus/scheduled-summary/system delivery. Run permission/pending-request smoke when notification integration changes.
+6. **Speech/Foundation Models/camera:** fixture tests prove app state machine and fallbacks; compatible-device smoke proves Apple framework runtime.
+7. **Live Open Food Facts:** deterministic transport fixtures remain release authority. Run opt-in live contract on schedule and alert maintainers; do not make release correctness depend on network uptime.
 
 ## Production release rule
 
@@ -184,25 +187,22 @@ A production candidate is not approved by `just test` or `just validate` alone. 
 just release-validate
 ```
 
-Pull requests to `main` and `v*` tags also have `.github/workflows/release-validation.yml`, targeting self-hosted iOS 17 runner and failing if selected simulator is not iOS 17. Repository owner must configure runner variable and require **Release validation** in branch protection; workflow file alone cannot enforce remote repository settings. Then run only relevant physical/system smoke from residual list above. Any code/build-affecting fix invalidates release result and requires rerun.
+Pull requests to `main` and `v*` tags also have `.github/workflows/release-validation.yml`, targeting self-hosted iOS 17 runner and failing if selected simulator is not iOS 17. Repository owner must configure runner variable and require **Release validation** in branch protection; workflow file alone cannot enforce remote repository settings. Provider-backed App Store profiles must then let IPA export succeed. Run only relevant physical/system smoke from residual list above. Any code/build-affecting fix invalidates release result and requires rerun.
 
 ## Final validation
 
-Current code/test artifact results on available iOS 27 simulator:
+Current exact-tree results on installed iOS 17.5 minimum runtime:
 
 | Gate | Result |
 |---|---|
-| `just test-unit 600` | 254 executed — 252 passed / 2 opt-in live skips |
-| `just test-app-unit 900` | 376 passed / 2 opt-in live skips |
-| Release-config app-hosted phase | Passed under optimization with `RELEASE_VALIDATION` seam only; no `DEBUG` condition |
-| Release-config functional UI | 55/55 passed |
-| Signed production archive | App + embedded widget present; both signatures passed strict verification |
-| Pure Release simulator | Built, installed, launched without test arguments, remained alive after bootstrap canary |
-| `just simulator-logs 60` | Passed; correlated operation/parent IDs visible with no user-entered values |
-| `just release-validate 60` | **Failed closed before tests:** configured simulator is iOS 27, production gate requires iOS 17 |
+| Hostless core | 254 executed — 252 passed / 2 opt-in live skips |
+| Optimized Release app-hosted | 377 passed / 2 opt-in live skips |
+| Optimized Release functional UI | 55/55 independently isolated journeys passed |
+| Signed Release archive | App + embedded widget present; both signatures passed strict verification |
+| Pure Release iOS 17 simulator | Built, installed, launched without test arguments, remained alive after bootstrap canary |
+| Debug iOS 17 simulator | Compiled, installed, and launched through `just simulator-run` |
+| App Store Connect IPA export | **Blocked externally:** team lacks App Store provider/profile-creation permission and matching app/widget App Store profiles |
 
-Current-runtime `just release-config-check` passed end to end after its authoring loop exposed and fixed a testability flag, test-harness path, and one flaky target-field input. Final repeat completed all optimized tests, archive/signature checks, and pure Release bootstrap canary in one command.
+Minimum-runtime execution exposed two source issues hidden by iOS 27: partial-schema coordinator fixtures were invalid under strict iOS 17 SwiftData, and coordinator context autosave could defeat injected pre-save rollback. Fixtures now share production `AppModelSchema`; coordinator autosave is disabled and every mutation reaches persistence only through explicit save points. iOS 17 UI work also fixed returned nutrient-editor keyboard focus, obscured setup controls, legacy accessibility-type selectors, and failure diagnostics.
 
-Three final identical independent reviewers returned **SOURCE: APPROVE / APPROVE / APPROVE** with no critical/high source-controlled defect. They unanimously retained external blockers below.
-
-Production status remains **BLOCKED**, not green: no local iOS 17 runtime; self-hosted `count-calories-ios17` runner, `IOS17_SIMULATOR_ID`, required branch/tag status, and successful App Store Connect IPA export still need external configuration/execution. Historical binary SwiftData fixtures also remain required before next schema-changing release.
+Production status remains **BLOCKED**, not by minimum-runtime source behavior: self-hosted runner/variable and required branch/tag status remain unconfigured, App Store Connect export lacks provider-backed profiles, relevant physical-system smoke remains, and historical binary SwiftData fixtures remain required before next schema-changing release.

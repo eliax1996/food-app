@@ -326,6 +326,17 @@ Use low/medium for narrow analysis, high for complex implementation, max for har
 - Token/quota note: parallel reviews completed within 2,400-second bounds; full optimized UI runs dominate wall time, not model calls.
 - Policy effect: use specialized Terra/Luna audits before one final identical review round; distinguish source-code approval from external release-enforcement blockers explicitly.
 
+### 2026-08-20 — Terra `high` + Sol `high`: iOS 17 minimum-runtime failure diagnosis
+
+- Shape: two bounded read-only analyses after archived iOS 17.5 exposed 41 app-hosted failures and 13 optimized UI failures under Xcode 27.
+- Outcome: Terra correctly separated strict partial-schema fixtures, real coordinator-autosave rollback risk, and stale cross-context test assumptions. Sol accurately identified legacy accessibility-type selectors, obscured controls, one-pixel frame rounding, ambiguous labels, and failure-recorder masking; parent additionally found and fixed real nutrient-editor keyboard focus persistence.
+- Validation: parent installed iOS 17.5, normalized coordinator fixtures to production `AppModelSchema`, disabled coordinator autosave, strengthened selectors/diagnostics, and ran 377 app-hosted plus 55/55 isolated optimized UI journeys. Signed archive and pure Release iOS 17 bootstrap passed.
+- Instruction-following: both agents stayed read-only, ran no project operations, cited files/lines, and did not recommend raising deployment target without evidence.
+- Strength: Terra gave precise SwiftData semantic classification; Sol gave actionable UI portability triage and correctly demanded reruns for masked crashes.
+- Weakness: Sol read a moving tree and therefore missed parent’s in-flight UI edits and initially classified keyboard persistence as timing rather than app behavior. Neither could repair App Store provider/profile permissions.
+- Token/quota note: bounded result-file prompts completed while simulator validation dominated wall time.
+- Policy effect: no matrix change. Use Terra for bounded persistence/runtime classification and Sol high for multi-failure UI/toolchain synthesis; parent must validate against latest diff and real runtime.
+
 Do not change standing model policy absent repeated evidence.
 
 ## Record template

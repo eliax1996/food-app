@@ -15,6 +15,15 @@ final class AdaptivePlanPersistenceTests: XCTestCase {
         init(_ value: Date) { self.value = value }
     }
 
+    func testCoordinatorDisablesAutosaveForExplicitAtomicTransactions() throws {
+        let fixture = try makeFixture()
+
+        XCTAssertFalse(
+            fixture.coordinator.testingModelContext.autosaveEnabled,
+            "Coordinator mutations must reach persistence only through explicit save points."
+        )
+    }
+
     func testLegacyManualMigrationBackfillsOnlyMissingIdentityAndFabricatesNoOptIn() throws {
         let fixture = try makeFixture()
         let profile = UserProfile(dailyCalorieGoal: 1_923, planGoalSource: .manual)
@@ -559,7 +568,7 @@ final class AdaptivePlanPersistenceTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let storeURL = directory.appendingPathComponent("adaptive.store")
-        let schema = Schema([PlateEntry.self, WeightEntry.self, UserProfile.self, FoodLogCompletion.self])
+        let schema = AppModelSchema.make()
         var migratedPlateID: UUID?
         var migratedWeightID: UUID?
 
@@ -861,13 +870,7 @@ final class AdaptivePlanPersistenceTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let clock = Clock(now)
-        let schema = Schema([
-            PlateEntry.self,
-            WeightEntry.self,
-            UserProfile.self,
-            FoodLogCompletion.self,
-            HistoricalPlateDeletionOperation.self
-        ])
+        let schema = AppModelSchema.make()
         let container = try ModelContainer(
             for: schema,
             configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]

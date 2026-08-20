@@ -16,6 +16,7 @@ iteration_timeout := env_var_or_default("ITERATION_TIMEOUT", "60")
 validation_timeout := env_var_or_default("VALIDATION_TIMEOUT", "90")
 ui_test_timeout := env_var_or_default("UI_TEST_TIMEOUT", "2400")
 release_timeout := env_var_or_default("RELEASE_TIMEOUT", "2400")
+runtime_download_timeout := env_var_or_default("RUNTIME_DOWNLOAD_TIMEOUT", "7200")
 test_case_timeout := env_var_or_default("TEST_CASE_TIMEOUT", "30")
 
 # Show the available commands.
@@ -52,6 +53,15 @@ simulator-install timeout=iteration_timeout: (_run "simulator-install" timeout "
 # Incrementally compile, install, and launch in the simulator.
 simulator-run timeout=iteration_timeout: (_run "simulator-run" timeout "")
 
+# List simulator runtimes installed for configured Xcode.
+simulator-runtime-list timeout=iteration_timeout: (_run "simulator-runtime-list" timeout "")
+
+# Download/install one exact iOS simulator runtime version, such as 17.5.
+simulator-runtime-install version timeout=runtime_download_timeout: (_run "simulator-runtime-install" timeout version)
+
+# Create an iPhone simulator on newest installed iOS 17 runtime and print its UUID.
+simulator-ios17-create timeout=iteration_timeout: (_run "simulator-ios17-create" timeout "")
+
 # Shut down the configured simulator without erasing its data or build cache.
 simulator-stop timeout=iteration_timeout: (_run "simulator-stop" timeout "")
 
@@ -76,6 +86,15 @@ test-ui-release-one identifier timeout=validation_timeout: (_run "test-ui-releas
 # Run the app-hosted unit target when iOS-specific test hosting needs verification.
 test-app-unit timeout=validation_timeout: (_run "test-app-unit" timeout "")
 
+# Run all app-hosted unit tests in optimized Release-validation configuration.
+test-app-release timeout=ui_test_timeout: (_run "test-app-release" timeout "")
+
+# Run one app-hosted unit test in Debug configuration.
+test-app-one identifier timeout=validation_timeout: (_run "test-app-one" timeout identifier)
+
+# Run one app-hosted unit test in optimized Release validation configuration.
+test-app-release-one identifier timeout=validation_timeout: (_run "test-app-release-one" timeout identifier)
+
 # Run launch-performance measurement explicitly; never part of the edit loop or correctness gate.
 test-performance timeout=validation_timeout: (_run "test-performance" timeout "")
 
@@ -85,6 +104,9 @@ test timeout=validation_timeout: (_run "test-all" timeout "")
 # Summarize the most recent simulator test result without launching a new test.
 test-results timeout=iteration_timeout: (_run "test-results" timeout "")
 
+# Export attachments from most recent simulator test result into test diagnostics.
+test-artifacts timeout=iteration_timeout: (_run "test-artifacts" timeout "")
+
 # Show recent privacy-safe Count Calories unified logs from configured simulator.
 simulator-logs timeout=iteration_timeout: (_run "simulator-logs" timeout "")
 
@@ -93,6 +115,9 @@ validate timeout=validation_timeout: (_run "validate" timeout "")
 
 # Build/sign/archive and launch pure Release artifact without rerunning tests.
 release-artifact-check timeout=release_timeout: (_run "release-artifact-check" timeout "")
+
+# Rebuild signed archive and attempt App Store Connect IPA export without tests.
+release-export-check timeout=release_timeout: (_run "release-export-check" timeout "")
 
 # Current-runtime diagnostic: full optimized/artifact gate, but not minimum-iOS release approval.
 release-config-check timeout=release_timeout: (_run "release-config-check" timeout "")
@@ -111,6 +136,9 @@ doctor timeout=iteration_timeout: (_run "doctor" timeout "")
 
 # Restart the configured simulator without erasing its data or build cache.
 simulator-reset timeout=iteration_timeout: (_run "simulator-reset" timeout "")
+
+# Erase all data from configured disposable simulator, then leave it shut down.
+simulator-erase timeout=iteration_timeout: (_run "simulator-erase" timeout "")
 
 # Recover from a stuck test session and clear all derived build data.
 recover timeout=iteration_timeout: (_run "recover" timeout "")

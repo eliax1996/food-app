@@ -81,7 +81,7 @@ final class PersonalNutritionTargetsPersistenceTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let storeURL = directory.appendingPathComponent("targets.store")
-        let schema = Schema([UserProfile.self])
+        let schema = AppModelSchema.make()
         let targets = try XCTUnwrap(PersonalNutritionTargets(
             carbohydratesGrams: 210,
             proteinGrams: 110,
@@ -112,7 +112,7 @@ final class PersonalNutritionTargetsPersistenceTests: XCTestCase {
     }
 
     private func makeFixture() throws -> Fixture {
-        let schema = Schema([UserProfile.self])
+        let schema = AppModelSchema.make()
         let container = try ModelContainer(
             for: schema,
             configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]

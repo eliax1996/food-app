@@ -96,6 +96,7 @@ final class PlanEvidenceMutationCoordinator {
     ) {
         self.modelContainer = modelContainer
         modelContext = ModelContext(modelContainer)
+        modelContext.autosaveEnabled = false
         self.calendar = calendar
         self.now = now
         self.makeUUID = makeUUID

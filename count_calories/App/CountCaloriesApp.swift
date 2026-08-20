@@ -66,17 +66,7 @@ struct CountCaloriesApp: App {
         let persistentUITestSession: String? = nil
         let usesInMemoryStore = false
 #endif
-        let schema = Schema([
-            Food.self,
-            PlateEntry.self,
-            FoodLogCompletion.self,
-            BulkFoodBatchOperation.self,
-            WaterDay.self,
-            WeightEntry.self,
-            UserProfile.self,
-            AppMigrationState.self,
-            HistoricalPlateDeletionOperation.self
-        ])
+        let schema = AppModelSchema.make()
         _persistence = StateObject(wrappedValue: AppPersistence {
             let configuration: ModelConfiguration
             if let persistentUITestSession {

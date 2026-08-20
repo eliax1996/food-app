@@ -167,6 +167,100 @@ test_options=(
     -maximum-test-execution-time-allowance 60
 )
 
+list_simulator_runtimes() {
+    run_step "List installed simulator runtimes" "$operation_timeout" \
+        "$xcrun" simctl list runtimes
+}
+
+install_simulator_runtime() {
+    if ! /usr/bin/python3 -c 'import re, sys; raise SystemExit(0 if re.fullmatch(r"[0-9]+(?:\.[0-9]+){1,2}", sys.argv[1]) else 1)' "$argument"; then
+        print -u2 -- "error: simulator-runtime-install requires an exact numeric version such as 17.5"
+        return 64
+    fi
+    if run_step "Download and install iOS $argument simulator runtime with Xcode" "$operation_timeout" \
+        "$xcodebuild" -downloadPlatform iOS -buildVersion "$argument"; then
+        return 0
+    fi
+
+    local xcodes
+    xcodes="$(command -v xcodes || true)"
+    if [[ -z "$xcodes" ]]; then
+        print -u2 -- "error: configured Xcode does not offer iOS $argument; install the 'xcodes' tool to use Apple's archived runtime catalog"
+        return 69
+    fi
+    local download_directory="$DERIVED_DATA_ROOT/runtime-downloads"
+    /bin/mkdir -p "$download_directory"
+    run_step "Download and install archived iOS $argument simulator runtime" "$operation_timeout" \
+        "$xcodes" runtimes install "iOS $argument" \
+        --architecture arm64 \
+        --directory "$download_directory" \
+        --no-color
+}
+
+create_ios17_simulator() {
+    local runtimes device_types devices runtime_id device_type_id existing_id created_id
+    runtimes="$(/usr/bin/mktemp -t count-calories-runtimes.XXXXXX)"
+    device_types="$(/usr/bin/mktemp -t count-calories-device-types.XXXXXX)"
+    devices="$(/usr/bin/mktemp -t count-calories-devices.XXXXXX)"
+    trap "/bin/rm -f '$runtimes' '$device_types' '$devices'" EXIT
+
+    run_with_timeout 20 "$xcrun" simctl list runtimes -j > "$runtimes"
+    runtime_id="$(/usr/bin/python3 -c '
+import json, sys
+items = []
+for runtime in json.load(open(sys.argv[1])).get("runtimes", []):
+    version = runtime.get("version", "")
+    if runtime.get("isAvailable") and version.split(".", 1)[0] == "17":
+        parts = tuple(int(part) for part in version.split("."))
+        items.append((parts, runtime.get("identifier", "")))
+if not items:
+    raise SystemExit(1)
+print(max(items)[1])
+' "$runtimes")" || {
+        print -u2 -- "error: no available iOS 17 simulator runtime; run 'just simulator-runtime-install 17.5' first"
+        return 66
+    }
+
+    run_with_timeout 20 "$xcrun" simctl list devicetypes -j > "$device_types"
+    device_type_id="$(/usr/bin/python3 -c '
+import json, sys
+items = json.load(open(sys.argv[1])).get("devicetypes", [])
+for preferred in ("iPhone 15 Pro", "iPhone 15", "iPhone 14 Pro", "iPhone 14"):
+    for item in items:
+        if item.get("name") == preferred:
+            print(item["identifier"])
+            raise SystemExit(0)
+for item in items:
+    if item.get("name", "").startswith("iPhone"):
+        print(item["identifier"])
+        raise SystemExit(0)
+raise SystemExit(1)
+' "$device_types")" || {
+        print -u2 -- "error: no iPhone simulator device type is installed"
+        return 66
+    }
+
+    run_with_timeout 20 "$xcrun" simctl list devices -j > "$devices"
+    existing_id="$(/usr/bin/python3 -c '
+import json, sys
+data, runtime_id = json.load(open(sys.argv[1])), sys.argv[2]
+for device in data.get("devices", {}).get(runtime_id, []):
+    if device.get("name") == "Count Calories iOS 17" and device.get("isAvailable", True):
+        print(device["udid"])
+        raise SystemExit(0)
+raise SystemExit(1)
+' "$devices" "$runtime_id")" || true
+    if [[ -n "$existing_id" ]]; then
+        print -- "✓ Existing Count Calories iOS 17 simulator: $existing_id"
+        return 0
+    fi
+
+    print -- "→ Create Count Calories iOS 17 simulator"
+    created_id="$(run_with_timeout 30 "$xcrun" simctl create \
+        "Count Calories iOS 17" "$device_type_id" "$runtime_id")"
+    print -- "✓ Created Count Calories iOS 17 simulator: $created_id"
+}
+
 verify_required_simulator_os() {
     local required_major="${REQUIRED_SIMULATOR_OS_MAJOR:-}"
     [[ -z "$required_major" ]] && return 0
@@ -242,6 +336,12 @@ stop_simulator() {
 reset_simulator() {
     run_with_timeout 30 "$xcrun" simctl shutdown "$SIMULATOR_ID" >/dev/null 2>&1 || true
     ensure_simulator_ready
+}
+
+erase_simulator() {
+    stop_simulator
+    run_step "Erase configured simulator data" "$operation_timeout" \
+        "$xcrun" simctl erase "$SIMULATOR_ID"
 }
 
 build_simulator() {
@@ -343,6 +443,7 @@ EOF
         -archivePath "$release_archive" \
         -exportPath "$release_export" \
         -exportOptionsPlist "$release_export_options" \
+        -allowProvisioningUpdates \
         -quiet
     local ipas=("$release_export"/*.ipa(N))
     if (( ${#ipas} != 1 )); then
@@ -441,14 +542,51 @@ run_core_tests() {
         "$@"
 }
 
+run_isolated_release_ui_tests() {
+    local -a identifiers
+    identifiers=("${(@f)$(/usr/bin/python3 -c '
+from pathlib import Path
+import re
+methods = []
+for path in sorted(Path("count_caloriesUITests").glob("*.swift")):
+    methods.extend(re.findall(r"^\s*func\s+(test[A-Za-z0-9_]+)\s*\(", path.read_text(), re.MULTILINE))
+for method in sorted(set(methods)):
+    if method != "testLaunchPerformance":
+        print(method)
+')}")
+    if (( ${#identifiers} == 0 )); then
+        print -u2 -- "error: no functional UI tests discovered for isolated minimum-runtime validation"
+        return 66
+    fi
+
+    local index=0
+    local identifier
+    for identifier in "${identifiers[@]}"; do
+        (( index += 1 ))
+        reset_simulator
+        run_release_validation_tests \
+            "Release-config functional UI test $index/${#identifiers} ($identifier)" \
+            "-only-testing:count_caloriesUITests/CountCaloriesUITests/$identifier"
+    done
+    print -- "✓ Release-config functional UI tests: ${#identifiers} isolated tests passed"
+}
+
 run_release_candidate() {
     run_core_tests "Hostless core tests"
     run_release_validation_tests "Release-config app-hosted unit tests" \
         "-only-testing:count_caloriesTests"
-    reset_simulator
-    run_release_validation_tests "Release-config functional UI tests" \
-        "-only-testing:count_caloriesUITests" \
-        "-skip-testing:count_caloriesUITests/CountCaloriesUITests/testLaunchPerformance"
+    if [[ "${REQUIRED_SIMULATOR_OS_MAJOR:-}" == "17" ]]; then
+        # Xcode 27's archived iOS 17 XCTest bridge can crash inside
+        # XCTAutomationSupport after sustained cross-test diagnostics. A fresh
+        # simulator service per journey preserves complete assertions without
+        # treating that source-less bridge crash as an app result.
+        run_isolated_release_ui_tests
+    else
+        reset_simulator
+        run_release_validation_tests "Release-config functional UI tests" \
+            "-only-testing:count_caloriesUITests" \
+            "-skip-testing:count_caloriesUITests/CountCaloriesUITests/testLaunchPerformance"
+    fi
     archive_release
     build_release_simulator
     install_release_simulator
@@ -474,6 +612,15 @@ case "$action" in
         build_simulator
         install_simulator
         launch_simulator
+        ;;
+    simulator-runtime-list)
+        list_simulator_runtimes
+        ;;
+    simulator-runtime-install)
+        install_simulator_runtime
+        ;;
+    simulator-ios17-create)
+        create_ios17_simulator
         ;;
     test-unit)
         run_core_tests "Hostless core tests"
@@ -515,6 +662,26 @@ case "$action" in
     test-app-unit)
         run_simulator_tests "App-hosted unit tests" "-only-testing:count_caloriesTests"
         ;;
+    test-app-release)
+        run_release_validation_tests "Release-config app-hosted unit tests" \
+            "-only-testing:count_caloriesTests"
+        ;;
+    test-app-one)
+        if [[ -z "$argument" ]]; then
+            print -u2 -- "error: test-app-one requires a test filter such as WeightMeasurementStoreTests/testAddingTwoSameDayMeasurementsPreservesBoth"
+            exit 64
+        fi
+        run_simulator_tests "Selected app-hosted unit test" \
+            "-only-testing:count_caloriesTests/$argument"
+        ;;
+    test-app-release-one)
+        if [[ -z "$argument" ]]; then
+            print -u2 -- "error: test-app-release-one requires a test filter"
+            exit 64
+        fi
+        run_release_validation_tests "Selected Release-config app-hosted unit test" \
+            "-only-testing:count_caloriesTests/$argument"
+        ;;
     test-performance)
         reset_simulator
         run_simulator_tests "Launch-performance test" \
@@ -535,6 +702,21 @@ case "$action" in
         run_step "List latest test details" "$operation_timeout" \
             "$xcrun" xcresulttool get test-results tests --path "$result_bundles[1]"
         ;;
+    test-artifacts)
+        result_bundles=("$simulator_derived_data"/Logs/Test/*.xcresult(Nom))
+        if (( ${#result_bundles} == 0 )); then
+            print -u2 -- "error: no simulator test result exists; run a test recipe first"
+            exit 66
+        fi
+        artifact_directory="$test_diagnostics/latest-attachments"
+        /bin/rm -rf "$artifact_directory"
+        /bin/mkdir -p "$artifact_directory"
+        run_step "Export latest test attachments" "$operation_timeout" \
+            "$xcrun" xcresulttool export attachments \
+            --path "$result_bundles[1]" \
+            --output-path "$artifact_directory"
+        print -- "✓ Exported attachments: $artifact_directory"
+        ;;
     simulator-logs)
         ensure_simulator_ready
         run_step "Show recent Count Calories logs" "$operation_timeout" \
@@ -554,6 +736,10 @@ case "$action" in
         build_release_simulator
         install_release_simulator
         launch_release_simulator
+        ;;
+    release-export-check)
+        archive_release
+        export_release
         ;;
     release-config-check)
         run_release_candidate
@@ -599,6 +785,9 @@ case "$action" in
         ;;
     simulator-reset)
         reset_simulator
+        ;;
+    simulator-erase)
+        erase_simulator
         ;;
     recover)
         reset_simulator

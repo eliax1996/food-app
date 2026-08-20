@@ -150,9 +150,9 @@ Live Open Food Facts tests remain intentionally opt-in; deterministic mocked/cac
 
 ### Post-closure production-readiness audit
 
-2026-08-20 test/observability hardening added optimized Release-config app/UI gates, signed archive/signature checks, pure Release bootstrap canary, 55 functional journeys including file-backed relaunch/water/reminder/scanner paths, shared app/widget atomic water core, correlated privacy-safe operational logs, and automatic failure artifacts. Current counts: 254 hostless executed (252 pass / 2 skips), 376 app-hosted pass / 2 skips, 55/55 UI.
+2026-08-20 test/observability hardening added optimized Release-config app/UI gates, signed archive/signature checks, pure Release bootstrap canary, 55 functional journeys including file-backed relaunch/water/reminder/scanner paths, shared app/widget atomic water core, correlated privacy-safe operational logs, and automatic failure artifacts. Installed iOS 17.5 then exposed and drove fixes for SwiftData explicit-save atomicity, test-schema fidelity, keyboard return, safe-area visibility, and legacy accessibility selectors. Current counts: 254 hostless executed (252 pass / 2 skips), 377 optimized iOS 17 app-hosted pass / 2 skips, 55/55 isolated iOS 17 UI journeys.
 
-This does **not** mark a production candidate approved: `just release-validate` hard-requires iOS 17 and currently fails closed because local machine has only iOS 27. Self-hosted iOS 17 runner, simulator variable, required branch/tag check, and App Store Connect IPA export must complete externally. Full assessment: [`../docs/test-observability-production-readiness-assessment.md`](../docs/test-observability-production-readiness-assessment.md).
+This does **not** mark a production candidate approved: local iOS 17 app/UI/archive/pure-Release bootstrap proof is green, but App Store Connect export fails because current team lacks provider/profile-creation permission and matching app/widget App Store profiles. Self-hosted runner variable, required branch/tag check, relevant physical-system smoke, and successful provider-backed IPA export remain external. Full assessment: [`../docs/test-observability-production-readiness-assessment.md`](../docs/test-observability-production-readiness-assessment.md).
 
 ## Backlog disposition
 

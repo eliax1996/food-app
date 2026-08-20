@@ -918,14 +918,7 @@ final class BulkFoodBatchPersistenceTests: XCTestCase {
         let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let schema = Schema([
-            Food.self,
-            PlateEntry.self,
-            FoodLogCompletion.self,
-            BulkFoodBatchOperation.self,
-            WeightEntry.self,
-            UserProfile.self
-        ])
+        let schema = AppModelSchema.make()
         let container = try ModelContainer(
             for: schema,
             configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]

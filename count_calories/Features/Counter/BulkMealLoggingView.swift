@@ -857,6 +857,7 @@ struct BulkMealLoggingView: View {
                         }
                     }
                 }
+                .accessibilityIdentifier("bulk-meal-confirm-discard-draft")
                 Button("Keep Draft", role: .cancel) {}
             } message: {
                 Text("This removes saved description and review. This cannot be undone.")

@@ -28,17 +28,7 @@ enum PreviewData {
     private static var coordinators: [ObjectIdentifier: PlanEvidenceMutationCoordinator] = [:]
 
     static func makeContainer(state: DesignReviewState = .normal) -> ModelContainer {
-        let schema = Schema([
-            Food.self,
-            PlateEntry.self,
-            FoodLogCompletion.self,
-            BulkFoodBatchOperation.self,
-            WaterDay.self,
-            WeightEntry.self,
-            UserProfile.self,
-            AppMigrationState.self,
-            HistoricalPlateDeletionOperation.self
-        ])
+        let schema = AppModelSchema.make()
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 
         do {

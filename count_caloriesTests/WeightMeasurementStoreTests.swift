@@ -251,18 +251,19 @@ final class WeightMeasurementStoreTests: XCTestCase {
             .add(kilograms: 70, date: now.addingTimeInterval(-3_600))
 
         XCTAssertEqual(entry.sequence, 76)
-        let profiles = try context.fetch(FetchDescriptor<UserProfile>())
+        let verification = ModelContext(context.container)
+        let profiles = try verification.fetch(FetchDescriptor<UserProfile>())
         XCTAssertEqual(profiles.count, 2)
         XCTAssertTrue(profiles.allSatisfy { $0.nextWeightSequence == 76 })
         XCTAssertTrue(profiles.allSatisfy { $0.currentWeight == 70 })
-        XCTAssertEqual(firstProfile.targetWeight, 63.5)
-        XCTAssertEqual(firstProfile.age, 41)
-        XCTAssertEqual(firstProfile.dailyCalorieGoal, 1_950)
-        XCTAssertEqual(firstProfile.targetDate, now.addingTimeInterval(86_400 * 120))
-        XCTAssertEqual(secondProfile.targetWeight, 72)
-        XCTAssertEqual(secondProfile.age, 29)
-        XCTAssertEqual(secondProfile.dailyCalorieGoal, 2_300)
-        XCTAssertEqual(secondProfile.targetDate, now.addingTimeInterval(86_400 * 240))
+        let persistedFirst = try XCTUnwrap(profiles.first { $0.age == 41 })
+        XCTAssertEqual(persistedFirst.targetWeight, 63.5)
+        XCTAssertEqual(persistedFirst.dailyCalorieGoal, 1_950)
+        XCTAssertEqual(persistedFirst.targetDate, now.addingTimeInterval(86_400 * 120))
+        let persistedSecond = try XCTUnwrap(profiles.first { $0.age == 29 })
+        XCTAssertEqual(persistedSecond.targetWeight, 72)
+        XCTAssertEqual(persistedSecond.dailyCalorieGoal, 2_300)
+        XCTAssertEqual(persistedSecond.targetDate, now.addingTimeInterval(86_400 * 240))
     }
 
     func testUndoRestoresLegacyFutureMeasurementExactlyWithoutChangingCurrentWeight() throws {
@@ -327,14 +328,15 @@ final class WeightMeasurementStoreTests: XCTestCase {
 
         try store.add(kilograms: 70, date: now.addingTimeInterval(-3_600))
 
-        let savedProfiles = try context.fetch(FetchDescriptor<UserProfile>())
+        let verification = ModelContext(context.container)
+        let savedProfiles = try verification.fetch(FetchDescriptor<UserProfile>())
         XCTAssertEqual(savedProfiles.count, 1, "Existing profile must be updated instead of duplicated.")
-        XCTAssertTrue(savedProfiles.first === profile, "Store must update existing profile instance first.")
-        XCTAssertEqual(profile.currentWeight, 70, "Store must reconcile current weight on existing profile.")
-        XCTAssertEqual(profile.targetWeight, 63.5, "Reconciling current weight must preserve target weight.")
-        XCTAssertEqual(profile.age, 41, "Reconciling current weight must preserve age.")
-        XCTAssertEqual(profile.dailyCalorieGoal, 1_950, "Reconciling current weight must preserve calorie goal.")
-        XCTAssertEqual(profile.targetDate, now.addingTimeInterval(86_400 * 120), "Reconciling current weight must preserve target date.")
+        let persisted = try XCTUnwrap(savedProfiles.first)
+        XCTAssertEqual(persisted.currentWeight, 70, "Store must reconcile current weight on existing profile.")
+        XCTAssertEqual(persisted.targetWeight, 63.5, "Reconciling current weight must preserve target weight.")
+        XCTAssertEqual(persisted.age, 41, "Reconciling current weight must preserve age.")
+        XCTAssertEqual(persisted.dailyCalorieGoal, 1_950, "Reconciling current weight must preserve calorie goal.")
+        XCTAssertEqual(persisted.targetDate, now.addingTimeInterval(86_400 * 120), "Reconciling current weight must preserve target date.")
     }
 
     private func makeContext() throws -> ModelContext {
@@ -349,11 +351,10 @@ final class WeightMeasurementStoreTests: XCTestCase {
     }
 
     private func makeContainer() throws -> ModelContainer {
-        try ModelContainer(
-            for: WeightEntry.self,
-            UserProfile.self,
-            Food.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        let schema = AppModelSchema.make()
+        return try ModelContainer(
+            for: schema,
+            configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]
         )
     }
 

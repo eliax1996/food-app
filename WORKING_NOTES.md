@@ -26,13 +26,13 @@ Historical diary mutations, personal nutrition targets, frequent-food ranking, s
 ## Final validation
 
 - hostless: 254 executed — 252 passed / 2 opt-in live skips
-- app-hosted: 376 passed / 2 opt-in live skips
-- optimized Release-config functional UI: 55/55 passed
-- signed archive/signatures and pure Release simulator bootstrap canary: passed
+- optimized iOS 17 app-hosted: 377 passed / 2 opt-in live skips
+- optimized iOS 17 functional UI: 55/55 isolated journeys passed
+- signed archive/signatures and pure Release iOS 17 bootstrap canary: passed
 - final backlog-closure independent critical/high review: 3/3 APPROVE
 - production-readiness source review: 3/3 APPROVE; external iOS17/branch/signing/device blockers retained
 - app + widget compile, simulator install/launch, and `git diff --check`: passed
 
 ## Immediate action
 
-Before production: configure self-hosted iOS 17 runner + `IOS17_SIMULATOR_ID`, require **Release validation** for branch/tag protection, run exact-tree `just release-validate`, and retain exported IPA result. Current local iOS 27 checks do not waive this blocker.
+Before production: move signing to provider-backed Apple Developer team with app/widget App Store profiles, configure self-hosted iOS 17 runner + `IOS17_SIMULATOR_ID`, require **Release validation** for branch/tag protection, rerun exact-tree IPA export, and retain result. Local iOS 17 app/UI/archive/bootstrap proof is green; export currently fails on team permission/profile creation.

@@ -368,14 +368,7 @@ final class HistoricalDiaryMutationPersistenceTests: XCTestCase {
     }
 
     func testProfilelessStorePersistsMigrationDecisionAndNeverReconsidersUnknownRow() throws {
-        let schema = Schema([
-            Food.self,
-            PlateEntry.self,
-            UserProfile.self,
-            FoodLogCompletion.self,
-            AppMigrationState.self,
-            HistoricalPlateDeletionOperation.self
-        ])
+        let schema = AppModelSchema.make()
         let container = try ModelContainer(
             for: schema,
             configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]
@@ -643,14 +636,7 @@ final class HistoricalDiaryMutationPersistenceTests: XCTestCase {
             day: 18,
             hour: 12
         ))))
-        let schema = Schema([
-            Food.self,
-            PlateEntry.self,
-            UserProfile.self,
-            FoodLogCompletion.self,
-            AppMigrationState.self,
-            HistoricalPlateDeletionOperation.self
-        ])
+        let schema = AppModelSchema.make()
         let container = try ModelContainer(
             for: schema,
             configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]

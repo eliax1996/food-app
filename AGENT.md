@@ -43,7 +43,8 @@ Use `just` as the only entrypoint for project operations. Do not invoke `scripts
 - `just test-unit`: run deterministic nutrition, reminder-planning, and tracking tests directly on macOS against production source files.
 - `just test-one Class[/method]`: incrementally compile and run one hostless test filter.
 - `just test-rerun`: rerun the already-built hostless tests only when sources have not changed.
-- `just test-app-unit`: explicitly verify the duplicate app-hosted XCTest integration when needed.
+- `just test-app-unit`, `just test-app-release`: verify complete app-hosted XCTest integration in Debug or optimized Release-validation configuration.
+- `just test-app-one Class/method`, `just test-app-release-one Class/method`: run one app-hosted test in Debug or optimized Release-validation configuration.
 - `just test-ui`: run functional UI journeys behind a clean simulator restart, excluding launch-performance measurement; default command timeout is 2,400 seconds while each test remains capped at 60 seconds.
 - `just test-ui-one Class/method`: run one functional UI test behind a clean simulator restart for focused authoring and diagnosis.
 - `just test-ui-release-one Class/method`: run one optimized Release-configuration UI test with explicit `RELEASE_VALIDATION` seams.
@@ -52,15 +53,19 @@ Use `just` as the only entrypoint for project operations. Do not invoke `scripts
 - `just validate`: run hostless tests, compile, install, and launch in the simulator; this remains a development/runtime gate, not sufficient production-release proof.
 - `just release-config-check`: full optimized tests/archive/signature/pure-Release bootstrap on current simulator; diagnostic only, never minimum-OS approval.
 - `just release-artifact-check`: archive/signature/pure-Release bootstrap without rerunning tests while authoring release harness.
+- `just release-export-check`: rebuild signed archive and attempt App Store Connect IPA export with automatic provisioning updates, without rerunning tests.
 - `just release-validate`: mandatory pre-production gate: hard-required iOS 17 runtime, hostless tests, optimized Release-configuration app-hosted/UI tests with explicit `RELEASE_VALIDATION` seams (no `DEBUG`), signed production Release archive/signature checks, App Store Connect IPA export, Release simulator install, launch, and post-bootstrap process-alive canary in one locked operation.
+- `just test-results`, `just test-artifacts`: inspect latest simulator XCTest summary/details and export retained screenshots, hierarchies, and traces.
 - `just simulator-logs`: show recent privacy-safe Count Calories unified logs; failed simulator tests also capture these logs under derived-data test diagnostics.
 - `just simulator-build`, `just simulator-install`, `just simulator-run`: incremental simulator app operations.
+- `just simulator-runtime-list`, `just simulator-runtime-install VERSION`, `just simulator-ios17-create`: inspect/install simulator runtimes and idempotently create minimum-iOS test destination. Pass printed UUID through `SIMULATOR_ID` instead of changing repository default.
 - `just build`, `just install`, `just launch`, `just run`: incremental physical-iPhone operations.
 - `just device-test`, `just device-validate`: complete physical-iPhone validation operations.
 - `just provision`: explicitly allow Apple provisioning updates after a normal physical build reports a signing problem; normal iterations intentionally avoid provisioning network work.
 - `just doctor`: bounded checks for Xcode, the configured simulator, and the paired iPhone.
 - `just simulator-stop`: shut down the configured simulator without erasing its data or build caches.
-- `just simulator-reset`: restart the configured simulator without erasing its data or build caches.
+- `just simulator-reset`: restart configured simulator without erasing data or build caches.
+- `just simulator-erase`: explicitly erase all data from configured disposable simulator when runtime installation or corrupted state requires it; never use as routine recovery.
 - `just clean`: remove the isolated simulator and device derived-data caches.
 - `just recover`: restart the simulator and clear derived data only after a genuinely stale build/test session.
 

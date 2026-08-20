@@ -244,7 +244,7 @@ final class CalculatedPlanProfileTests: XCTestCase {
     }
 
     private func makeCoordinator() throws -> (ModelContext, PlanEvidenceMutationCoordinator) {
-        let schema = Schema([UserProfile.self])
+        let schema = AppModelSchema.make()
         let container = try ModelContainer(
             for: schema,
             configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]

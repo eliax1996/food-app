@@ -18,31 +18,38 @@ final class CountCaloriesUITests: XCTestCase {
     }
 
     override func record(_ issue: XCTIssue) {
-        if !capturedFailureArtifacts {
-            capturedFailureArtifacts = true
-            let app = XCUIApplication()
+        let shouldCaptureArtifacts = !capturedFailureArtifacts
+        if shouldCaptureArtifacts { capturedFailureArtifacts = true }
+        super.record(issue) // Preserve original failure before optional diagnostics can fail.
+        guard shouldCaptureArtifacts else { return }
 
-            let screenshot = XCTAttachment(screenshot: app.screenshot())
-            screenshot.name = "Failure screenshot"
-            screenshot.lifetime = .keepAlways
-            add(screenshot)
+        let app = XCUIApplication()
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = "Failure screenshot"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
 
+        if app.state == .runningForeground {
             let hierarchy = XCTAttachment(string: app.debugDescription)
             hierarchy.name = "Failure accessibility hierarchy"
             hierarchy.lifetime = .keepAlways
             add(hierarchy)
-
-            if let trace = try? String(
-                contentsOfFile: "/tmp/count-calories-ui-trace",
-                encoding: .utf8
-            ), !trace.isEmpty {
-                let traceAttachment = XCTAttachment(string: trace)
-                traceAttachment.name = "UI journey trace"
-                traceAttachment.lifetime = .keepAlways
-                add(traceAttachment)
-            }
+        } else {
+            let processState = XCTAttachment(string: "Application unavailable; state=\(app.state.rawValue)")
+            processState.name = "Failure application state"
+            processState.lifetime = .keepAlways
+            add(processState)
         }
-        super.record(issue)
+
+        if let trace = try? String(
+            contentsOfFile: "/tmp/count-calories-ui-trace",
+            encoding: .utf8
+        ), !trace.isEmpty {
+            let traceAttachment = XCTAttachment(string: trace)
+            traceAttachment.name = "UI journey trace"
+            traceAttachment.lifetime = .keepAlways
+            add(traceAttachment)
+        }
     }
 
     @MainActor
@@ -314,8 +321,8 @@ final class CountCaloriesUITests: XCTestCase {
         describeMeal.tap()
         assertHittable(discard, identifier: "bulk-meal-discard-draft", phase: "Discard choice")
         discard.tap()
-        let confirmDiscard = app.sheets.buttons["Discard Draft"]
-        assertHittable(confirmDiscard, identifier: "Discard Draft confirmation", phase: "Discard confirmation")
+        let confirmDiscard = app.buttons["bulk-meal-confirm-discard-draft"]
+        assertHittable(confirmDiscard, identifier: "bulk-meal-confirm-discard-draft", phase: "Discard confirmation")
         confirmDiscard.tap()
 
         assertHittable(description, identifier: "bulk-meal-description", phase: "Fresh draft")
@@ -421,6 +428,11 @@ final class CountCaloriesUITests: XCTestCase {
             phase: "Unavailable describe"
         )
         assertHittable(description, identifier: "bulk-meal-description", phase: "Unavailable describe")
+        if !manual.isHittable {
+            let keyboardDone = app.buttons["bulk-meal-keyboard-done"]
+            if keyboardDone.isHittable { keyboardDone.tap() }
+            for _ in 0..<3 where !manual.isHittable { app.swipeUp() }
+        }
         assertHittable(manual, identifier: "bulk-meal-manual", phase: "Unavailable describe")
         XCTAssertFalse(
             app.buttons["bulk-meal-find-foods"].exists,
@@ -1048,7 +1060,7 @@ final class CountCaloriesUITests: XCTestCase {
         let cancelScanner = app.buttons["barcode-scanner-cancel"]
         let foodToolsTitle = app.navigationBars["Food tools"]
         let manualBarcode = app.textFields["manual-barcode"]
-        let done = app.buttons["Done"]
+        let done = app.buttons.matching(identifier: "food-tools-done").firstMatch
 
         XCTContext.runActivity(named: "Launch Today with camera access denied") { _ in
             app.launch()
@@ -1225,7 +1237,9 @@ final class CountCaloriesUITests: XCTestCase {
         let manualBarcode = app.textFields["manual-barcode"]
         let lookup = app.buttons["barcode-lookup-button"]
         let failureTitle = app.staticTexts["barcode-lookup-failure-title"]
-        let customFoodTitle = app.staticTexts["Custom food"]
+        let customFoodTitle = app.descendants(matching: .any)
+            .matching(identifier: "custom-food-section-heading")
+            .firstMatch
         let customFoodName = app.textFields["custom-food-name"]
         let mealEditor = app.descendants(matching: .any)
             .matching(identifier: "meal-editor")
@@ -1469,6 +1483,8 @@ final class CountCaloriesUITests: XCTestCase {
             assertHittable(nutrientDone, identifier: "nutrient-editor-done", phase: "Custom nutrients")
             nutrientDone.tap()
             assertExists(foodToolsTitle, identifier: "Food tools navigation title", phase: "Custom nutrients")
+            assertKeyboardDismissed(app, phase: "Custom nutrients")
+            for _ in 0..<3 where !saveCustomFood.isHittable { app.swipeUp() }
             assertHittable(saveCustomFood, identifier: "Save custom food", phase: "Custom nutrients")
             saveCustomFood.tap()
             assertAbsent(foodToolsTitle, identifier: "Food tools navigation title", phase: "Custom saved")
@@ -1546,7 +1562,9 @@ final class CountCaloriesUITests: XCTestCase {
             .matching(identifier: "open-food-facts-no-matches")
             .firstMatch
         let genericSearch = app.buttons["search-open-food-facts"]
-        let savedFoodsSection = app.staticTexts["Saved foods"]
+        let savedFoodsSection = app.descendants(matching: .any)
+            .matching(identifier: "food-catalog-section-heading")
+            .firstMatch
         let noSavedFoodsMatch = app.staticTexts["No saved foods match."]
 
         XCTContext.runActivity(named: "Launch Today and open Choose food") { _ in
@@ -1594,9 +1612,13 @@ final class CountCaloriesUITests: XCTestCase {
             .firstMatch
         let genericSearch = app.buttons["search-open-food-facts"]
         let retry = app.buttons["retry-open-food-facts"]
-        let savedFoodsSection = app.staticTexts["Saved foods"]
+        let savedFoodsSection = app.descendants(matching: .any)
+            .matching(identifier: "food-catalog-section-heading")
+            .firstMatch
         let noSavedFoodsMatch = app.staticTexts["No saved foods match."]
-        let attribution = app.links["Open Food Facts attribution"]
+        let attribution = app.descendants(matching: .any)
+            .matching(identifier: "Open Food Facts attribution")
+            .firstMatch
         let offlineTitle = app.descendants(matching: .any)
             .matching(identifier: "open-food-facts-failure-title")
             .firstMatch
@@ -2659,7 +2681,8 @@ final class CountCaloriesUITests: XCTestCase {
         let targetSized = XCTNSPredicateExpectation(
             predicate: NSPredicate { object, _ in
                 guard let button = object as? XCUIElement else { return false }
-                return button.exists && button.frame.height >= 44
+                // XCTest rounds some iOS 17 list rows down by one physical pixel.
+                return button.exists && button.frame.height >= 43.5
             },
             object: element
         )
@@ -2734,6 +2757,23 @@ final class CountCaloriesUITests: XCTestCase {
             .completed,
             "\(phase): expected value '\(expected)'; \(diagnostic(for: element))"
         )
+    }
+
+    private func setSwitchOn(
+        _ element: XCUIElement,
+        identifier: String,
+        phase: String
+    ) {
+        assertHittable(element, identifier: identifier, phase: phase)
+        guard accessibilityValue(of: element) != "1" else { return }
+
+        let nestedSwitch = element.switches.firstMatch
+        if nestedSwitch.exists {
+            nestedSwitch.tap()
+        } else {
+            element.tap()
+        }
+        assertExactValue(element, expected: "1", phase: phase)
     }
 
     private func dailyEatenCalories(_ element: XCUIElement, phase: String) -> Int {
@@ -2861,10 +2901,8 @@ final class CountCaloriesUITests: XCTestCase {
         )
         assertExists(app.navigationBars["Welcome"], identifier: "Welcome", phase: "Calculated welcome")
         assertExists(setup, identifier: "calculated-plan-setup", phase: "Calculated welcome")
-        eligibility.coordinate(
-            withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
-        ).tap()
-        assertExactValue(eligibility, expected: "1", phase: "Calculated welcome")
+        for _ in 0..<3 where eligibility.frame.maxY > continueButton.frame.minY { app.swipeUp() }
+        setSwitchOn(eligibility, identifier: "calculated-setup-eligibility", phase: "Calculated welcome")
         continueButton.tap()
         assertHittable(loseGoal, identifier: "calculated-goal-lose", phase: "Calculated goal")
         loseGoal.tap()
@@ -2968,7 +3006,9 @@ final class CountCaloriesUITests: XCTestCase {
         assertLabel(planSource, expected: "Source, Calculated", phase: "Calculated result")
         assertPlanGoal(planGoal, calories: 1_730, phase: "Calculated result")
         assertExists(
-            app.staticTexts["Calculated basis"],
+            app.descendants(matching: .any)
+                .matching(identifier: "calculated-basis-heading")
+                .firstMatch,
             identifier: "Calculated basis",
             phase: "Calculated result"
         )
@@ -3016,11 +3056,8 @@ final class CountCaloriesUITests: XCTestCase {
         }
 
         XCTContext.runActivity(named: "Continue then close without changing manual goal") { _ in
-            assertHittable(eligibility, identifier: "calculated-setup-eligibility", phase: "Settings setup")
-            eligibility.coordinate(
-                withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
-            ).tap()
-            assertExactValue(eligibility, expected: "1", phase: "Settings setup")
+            for _ in 0..<3 where eligibility.frame.maxY > continueButton.frame.minY { app.swipeUp() }
+            setSwitchOn(eligibility, identifier: "calculated-setup-eligibility", phase: "Settings setup")
             continueButton.tap()
             assertExists(app.navigationBars["Goal"], identifier: "Goal", phase: "Settings setup")
             closeSetup.tap()
@@ -3359,7 +3396,7 @@ final class CountCaloriesUITests: XCTestCase {
             planLink.tap()
             assertExists(planView, identifier: "plan-settings", phase: "Plan")
             assertPlanGoal(planGoal, calories: 1_700, phase: "Plan")
-            for _ in 0..<6 where !planFat.exists { app.swipeUp() }
+            for _ in 0..<8 where !planFiber.exists { app.swipeUp() }
             for (control, identifier) in [
                 (planCarbs, "plan-reference-carbs"),
                 (planProtein, "plan-reference-protein"),

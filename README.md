@@ -10,9 +10,10 @@ Repository operations use `just` exclusively:
 just iterate       # hostless tests + incremental compile
 just check         # incremental compile
 just test-unit     # deterministic hostless tests
-just simulator-run   # build, install, launch simulator app
-just validate        # development hostless/build/install/launch gate
-just release-validate # production gate: hostless + app-hosted + UI + install/launch
+just simulator-run          # build, install, launch simulator app
+just simulator-runtime-install 17.5 # install archived minimum runtime when needed
+just validate               # development hostless/build/install/launch gate
+just release-validate       # minimum-runtime tests, archive/export, pure Release launch
 just simulator-logs  # recent privacy-safe app operation logs
 ```
 
@@ -59,12 +60,12 @@ Today | Weight | Progress | Settings
 Current automated results:
 
 - hostless: **254 executed (252 passed / 2 opt-in live skips)**;
-- app-hosted: **376 passed / 2 opt-in live skips**;
-- optimized Release-config functional UI: **55/55 passed**;
+- optimized iOS 17 app-hosted: **377 passed / 2 opt-in live skips**;
+- optimized iOS 17 functional UI: **55/55 isolated journeys passed**;
 - signed production archive: app/widget structure and strict signatures passed;
 - pure Release simulator app: built, installed, launched, and remained alive after bootstrap canary.
 
-Production-readiness source review reached **3/3 APPROVE**. Production approval remains blocked until required iOS 17 self-hosted workflow/branch protection runs `just release-validate`; local machine has only iOS 27 runtime. Original closure, diary, and backlog-closure reviews remain accepted; current assessment is linked above.
+Local minimum-runtime proof now passes on installed iOS 17.5: optimized app/UI, signed archive, and pure Release bootstrap are green. Production distribution remains blocked because current Apple team has no App Store provider/profile-creation permission; self-hosted workflow variable/branch protection and relevant device smoke also remain external. Original closure, diary, and backlog-closure reviews remain accepted; current assessment is linked above.
 
 ## Redesign evidence
 

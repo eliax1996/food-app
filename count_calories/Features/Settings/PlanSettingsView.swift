@@ -193,6 +193,7 @@ struct PlanSettingsView: View {
             }
         } header: {
             Text(profile.planGoalSource == .calculated ? "Calculated basis" : "Saved calculated basis")
+                .accessibilityIdentifier("calculated-basis-heading")
         } footer: {
             if profile.planGoalSource == .calculated {
                 Text("Mifflin–St Jeor estimate using accepted inputs. Static pace math is a planning approximation, not a promise or medical advice.")

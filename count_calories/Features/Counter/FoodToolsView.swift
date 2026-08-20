@@ -87,6 +87,7 @@ struct FoodToolsView: View {
     }
 
     @FocusState private var focusedField: FocusedField?
+    @State private var appliedInitialFocus = false
 
     @Binding var barcode: String
     @Binding var foodName: String
@@ -236,6 +237,7 @@ struct FoodToolsView: View {
                         .disabled(!canSaveFood)
                 } header: {
                     Text("Custom food")
+                        .accessibilityIdentifier("custom-food-section-heading")
                 } footer: {
                     Text("Enter a name and 0–\(CalorieCalculator.maximumCalories.formatted()) kcal for the serving amount shown above.")
                 }
@@ -261,6 +263,8 @@ struct FoodToolsView: View {
         }
         .presentationDetents([.large])
         .onAppear {
+            guard !appliedInitialFocus else { return }
+            appliedInitialFocus = true
             focusedField = intent == .barcode ? .barcode : .name
         }
     }
@@ -390,7 +394,11 @@ private struct CustomFoodNutrientsEditor: View {
         fat = draftFat
         fiber = draftFiber
         focusedField = nil
-        dismiss()
+        Task { @MainActor in
+            // iOS 17 must process focus loss before navigation pops this editor.
+            await Task.yield()
+            dismiss()
+        }
     }
 }
 

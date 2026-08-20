@@ -96,15 +96,16 @@ Decision archive: `PRODUCT-BACKLOG.md`.
 - Resolved in BACKLOG-CLOSURE-001: app and widget use `DailyCaloriesAccessibilitySummary` for one truthful daily-status semantic contract.
 - **Accepted external platform limitation — not active backlog:** iOS 27 SwiftUI emits source-less `Invalid frame dimension (negative or non-finite).` diagnostics while native numeric keyboards activate in Food Tools and related UI tests. App-owned frame values are finite constants, every affected flow passes, captured pixels show no defect, and diagnostic provides no app source frame. Reopen only if Apple supplies actionable attribution or user-visible failure appears.
 - Weight raw same-day/backdated persistence is implemented; duplicate-profile and future-row correctness fixes are covered by passing app-hosted persistence runs.
+- **Accepted test-infrastructure limitation:** Xcode 27 `XCTAutomationSupport` can crash inside libtrace while one sustained suite drives archived iOS 17.5. Every implicated journey passed independently; minimum-runtime gate resets simulator services and runs all discovered UI methods separately, with no retries or weakened assertions.
 
 ## Validation snapshot
 
 - Current hostless: **254 executed (252 passed / 2 opt-in live skips)**.
-- Current app-hosted: **376 passed / 2 opt-in live skips**.
-- Current optimized Release-config functional UI: **55/55 passed**.
-- Signed production archive app/widget structure and strict signatures passed; pure Release simulator bootstrap canary passed on iOS 27.
-- Production-readiness source review: **3/3 APPROVE**; external iOS17 runner/branch/signing/device blockers retained.
-- Production `just release-validate` remains fail-closed until configured iOS 17 runner/runtime and required remote status exist; local iOS 27 cannot approve minimum-OS release.
+- Current optimized iOS 17 app-hosted: **377 passed / 2 opt-in live skips**.
+- Current optimized iOS 17 functional UI: **55/55 isolated journeys passed**.
+- Signed Release archive app/widget structure and strict signatures passed; pure Release simulator bootstrap canary passed on iOS 17.5.
+- Minimum-runtime source behavior is green; iOS 17 exposed and drove fixes for explicit-save atomicity, canonical test schema, keyboard return, safe-area visibility, and legacy accessibility selectors.
+- Production distribution remains blocked by App Store provider/profile permissions, remote runner/required status, and relevant physical-device evidence—not local minimum-runtime tests.
 - `git diff --check`: **passed**.
 - 2026-08-20 full Markdown re-audit: **54/54 read, 0 unchecked tasks, 0 broken local/evidence paths, 0 active items, 3/3 independent approval**.
 - Live Open Food Facts checks remain intentionally opt-in.
