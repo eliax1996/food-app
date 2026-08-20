@@ -205,4 +205,6 @@ Current exact-tree results on installed iOS 17.5 minimum runtime:
 
 Minimum-runtime execution exposed two source issues hidden by iOS 27: partial-schema coordinator fixtures were invalid under strict iOS 17 SwiftData, and coordinator context autosave could defeat injected pre-save rollback. Fixtures now share production `AppModelSchema`; coordinator autosave is disabled and every mutation reaches persistence only through explicit save points. iOS 17 UI work also fixed returned nutrient-editor keyboard focus, obscured setup controls, legacy accessibility-type selectors, and failure diagnostics.
 
+Three final identical independent reviewers audited committed minimum-runtime source and returned **SOURCE: APPROVE / APPROVE / APPROVE**, with no critical/high source-controlled defect.
+
 Production status remains **BLOCKED**, not by minimum-runtime source behavior: self-hosted runner/variable and required branch/tag status remain unconfigured, App Store Connect export lacks provider-backed profiles, relevant physical-system smoke remains, and historical binary SwiftData fixtures remain required before next schema-changing release.

@@ -65,7 +65,7 @@ Current automated results:
 - signed production archive: app/widget structure and strict signatures passed;
 - pure Release simulator app: built, installed, launched, and remained alive after bootstrap canary.
 
-Local minimum-runtime proof now passes on installed iOS 17.5: optimized app/UI, signed archive, and pure Release bootstrap are green. Production distribution remains blocked because current Apple team has no App Store provider/profile-creation permission; self-hosted workflow variable/branch protection and relevant device smoke also remain external. Original closure, diary, and backlog-closure reviews remain accepted; current assessment is linked above.
+Local minimum-runtime proof now passes on installed iOS 17.5: optimized app/UI, signed archive, and pure Release bootstrap are green; final source review reached **3/3 APPROVE**. Production distribution remains blocked because current Apple team has no App Store provider/profile-creation permission; self-hosted workflow variable/branch protection and relevant device smoke also remain external. Original closure, diary, and backlog-closure reviews remain accepted; current assessment is linked above.
 
 ## Redesign evidence
 

@@ -105,6 +105,7 @@ Decision archive: `PRODUCT-BACKLOG.md`.
 - Current optimized iOS 17 functional UI: **55/55 isolated journeys passed**.
 - Signed Release archive app/widget structure and strict signatures passed; pure Release simulator bootstrap canary passed on iOS 17.5.
 - Minimum-runtime source behavior is green; iOS 17 exposed and drove fixes for explicit-save atomicity, canonical test schema, keyboard return, safe-area visibility, and legacy accessibility selectors.
+- Final committed minimum-runtime source review: **3/3 APPROVE** with no critical/high source-controlled defect.
 - Production distribution remains blocked by App Store provider/profile permissions, remote runner/required status, and relevant physical-device evidence—not local minimum-runtime tests.
 - `git diff --check`: **passed**.
 - 2026-08-20 full Markdown re-audit: **54/54 read, 0 unchecked tasks, 0 broken local/evidence paths, 0 active items, 3/3 independent approval**.
